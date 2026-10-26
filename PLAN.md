@@ -3,7 +3,24 @@
 **One-liner:** Connect your Rho business account, and in 30 seconds Runway tells you your real burn, your runway, and exactly where the waste is. Then ask it "get me to 14 months" and it builds the plan.
 
 **Event:** AITX & MLOps World Community Hackathon, Austin Tech Week
-**Submission deadline:** Thu Oct 29, 5:00 PM · **Hack Fair:** Fri Oct 30, set up from 12:00 PM, judging 1:00 PM
+**Track:** 💳 Rho Fintech. Rho also co-sponsors the Hack Fair. The Copilot doubles as our story for the Antler investment team, who run the Agents track.
+**Submission deadline:** Thu Oct 29, 5:00 PM CT (Airtable form) · **Hack Fair:** Fri Oct 30, set up from 12:00 PM, judging 1:00 PM
+
+---
+
+## 0. How we win: the judging criteria mapped to features
+
+The judges say they score "real, working systems, not slide decks or simple API wrappers," across three things: **the live demo at the table, the Loom video, and the codebase.**
+
+| Criterion | What judges look for | How Runway scores |
+|---|---|---|
+| **Completeness** | The core workflow runs without crashing | Sync → categorize → detect → simulate → plan works on both the sandbox and the seeded company. Feature freeze Wed at 9 PM. Every external call has a fallback. |
+| **Technical depth** | A complex pipeline, not a wrapper | A multi-stage pipeline: Rho ingestion, LLM enrichment with a vendor cache, SQL detectors, a deterministic simulator, and a tool-using agent on top. The LLM never does the arithmetic. |
+| **Insight quality** | Output is non-obvious and genuinely useful | Findings carry dollar amounts and evidence (the actual transactions). Duplicate-tool detection by job-to-be-done is something a spreadsheet can't do. |
+| **Usability** | A real user could act on it tomorrow | Each finding comes with a drafted action (cancellation email, card-limit checklist, Jira ticket). Read-only Rho means it's safe to connect today. |
+| **Creativity** | Novel combination of tools or data, looks and feels good | Banking data + scraped vendor pricing (Apify) + an agent. Polished shadcn UI with a live runway simulator. |
+| **Performance** | Optimized for speed or scale | Vendor-level caching (each unique vendor hits the LLM once), batched categorization, indexed SQL views. **Measure it and show it**: sync and categorization timings on screen, and LLM calls saved by the cache in the README. |
+| *(bonus for MLOps judges)* | — | **An eval harness**: the seeded company has planted waste, so we can report the detectors' precision and recall plus categorization accuracy against a labelled set. Put the numbers in the README. |
 
 ---
 
@@ -14,7 +31,7 @@
 | The Rho API is **read-only**. Tokens can't move money, issue cards or modify accounts. | Rho docs and product page | Runway **recommends and drafts** actions. It never executes them. We pitch this as a trust feature: "safe to connect, it can't touch your money." |
 | Confirmed endpoints: `GET /accounts`, `/accounts/{id}`, `/transactions` (filter by account, type, status, date, search; cursor pagination), `/statements`, `/business`, `/users`. Cards are listed on the product page but not confirmed in the docs. | docs.rho.co | Transactions are the core input. Card-level insights are a stretch, used only if a Cards endpoint shows up. |
 | The sandbox is `https://rhoapi-sandbox.rho.co/api/v1`, accepts **any non-empty bearer token**, and returns fictional, deterministic data. | docs.rho.co | We can build tonight without waiting on the access form. The sandbox data may be too thin for a compelling demo (see §7). |
-| Production is `https://rhoapi.rho.co/api/v1` with scopes `accounts:read`, `transactions:read` and `statements:read`. | docs.rho.co | We still submit the access form so we can say "works on a real account" and possibly demo one. |
+| Production is `https://rhoapi.rho.co/api/v1` with scopes `accounts:read`, `transactions:read` and `statements:read`. | docs.rho.co | ✅ Access form submitted Mon Oct 26. If credentials or the Rho **SDK** arrive by email, swap the SDK in for our REST client. The `RhoClient` interface stays the same, so nothing else changes. |
 | Rho has a native Claude MCP connector. | Rho product page | Stretch: wire it in through the Messages API MCP connector instead of our own Rho client. |
 
 ## 2. Scope
@@ -103,11 +120,12 @@ The system prompt's core rules are:
 Times are Austin time. For a solo builder, do the rows top to bottom. With 2–3 people, split along **A (data/backend)**, **B (frontend)** and **C (agent/AI)**.
 
 ### Mon Oct 26, evening: foundations (~3 hrs)
-- [ ] **Submit the Rho API access form** (for the production story; the sandbox doesn't need it).
+- [x] **Submit the Rho API access form.**
+- [ ] Join the hackathon Discord, where updates and Rho SDK details will appear.
 - [ ] Redeem the Supabase credit, create the project, and run the schema migration from §4.
 - [ ] Scaffold Next.js + Tailwind + shadcn and deploy an empty app to Vercel so CI/CD works from hour one.
 - [ ] Hit the Rho sandbox with curl and **save sample responses**. Check: How many months of history? How many vendors? Is there SaaS-like spend? Is there a Cards endpoint? This decides whether we need §7's seed data.
-- [ ] Check the Notion guide for track names and judging criteria, then adjust §8's pitch to match.
+- [ ] Make sure the GitHub repo is **public** (a submission requirement).
 
 ### Tue Oct 27: data and intelligence
 - [ ] A: Write the Rho client (paginated `transactions`, `accounts`), build `/api/sync`, and upsert into Supabase.
@@ -121,15 +139,25 @@ Times are Austin time. For a solo builder, do the rows top to bottom. With 2–3
 - [ ] C: Implement the Copilot tools from §5, the streaming chat endpoint and the chat UI.
 - [ ] B: Build the what-if simulator, where toggling findings updates the runway number and chart live.
 - [ ] C: Write about 10 test prompts ("get me to 14 months", "what changed since August?", "why is burn up?") and fix bad answers.
+- [ ] A: Build the **eval script** (`npm run eval`). It scores detector precision and recall against the planted waste in the seed data and categorization accuracy against roughly 100 hand-labelled transactions, and prints a table for the README.
+- [ ] A: Add timing instrumentation: show sync, categorization and detection durations in the UI, plus the share of LLM calls avoided by the vendor cache.
 - [ ] Everyone: **Feature freeze at 9 PM.** Do a full demo run-through on the deployed URL.
 - **End of day:** The full demo works on the deployed app.
 
 ### Thu Oct 29: polish and submit (hard stop at 4:00 PM)
 - [ ] Morning: one stretch feature at most. Apify pricing is the recommended pick because it's the most visible.
 - [ ] Polish: loading states, empty states, a "Connected to Rho, read-only" trust badge, and a favicon.
-- [ ] Record a **2-minute backup demo video**.
-- [ ] Write the README (problem, demo GIF, architecture, sponsor tech used) and take screenshots.
-- [ ] **Submit by 4:00 PM.** That leaves an hour of buffer before the 5:00 PM close.
+- [ ] Record the **Loom demo video (2–5 min, Loom is required)** following the §8 script. It also serves as the backup if Friday's wifi dies.
+- [ ] Write the README. The submission requires each of these:
+  - [ ] Quick start (the commands to run)
+  - [ ] Tech stack and architecture diagram
+  - [ ] How to reproduce the demo: env vars, API keys, and a committed `.env.example`
+  - [ ] Datasets and synthetic data with provenance: the Rho sandbox (fictional, from Rho) and the seeded "Taco Robotics" company (synthetic, generated by `scripts/seed.ts`)
+  - [ ] Known limitations and next steps
+  - [ ] *Ours:* eval results table, performance numbers, screenshots or a GIF
+- [ ] Write the 150–300 word write-up: problem → who it helps → solution → impact (draft in §11).
+- [ ] Fill in the team roster (names, roles, contacts) and the deployed Vercel URL.
+- [ ] **Submit on the Airtable form by 4:00 PM**, track **Rho Fintech**. That leaves an hour of buffer before the 5:00 PM close. One submission per team.
 
 ### Fri Oct 30: Hack Fair
 - [ ] Arrive at 12:00 PM. Bring a laptop, a charger, a phone hotspot and the backup video on local disk.
@@ -152,7 +180,7 @@ A toggle in the UI switches between the **Live Rho sandbox** and the **demo comp
 2. **Connect (20s):** Click "Connect Rho". It syncs, and the dashboard shows **11.2 months of runway** and **$84k a month burn**.
 3. **Findings (40s):** "Runway found **$6,140 a month** in waste": duplicate video tools, zombie SaaS and Datadog price creep. Each finding is one click to expand and see the transactions.
 4. **Copilot (60s):** Type "Get me to 14 months without touching payroll." It streams a ranked plan, the simulator updates live to **14.3 months**, and it drafts the cancellation emails.
-5. **Trust and tech (30s):** It's read-only Rho, so it can never move money. Supabase for data and auth, Claude for categorization and the agent, deterministic SQL for every number.
+5. **Trust and tech (30s):** It's read-only Rho, so it can never move money. Supabase for data and auth, Claude for categorization and the agent, deterministic SQL for every number. Then show the eval table (detector precision and recall) and the timing panel. That answers "is this just a wrapper?" before anyone asks.
 6. **Close (15s):** "Every founder at Antler should have this the day they open a bank account."
 
 **Sponsor tech called out on the table sign:** Rho API, Supabase, Apify (if shipped), Atlassian/Jira (if shipped).
@@ -168,8 +196,20 @@ A toggle in the UI switches between the **Live Rho sandbox** and the **demo comp
 | Venue wifi dies on Friday | Phone hotspot, the backup video, and the seed data also available as a local JSON fallback |
 | Scope creep | Feature freeze Wed at 9 PM. Stretch features only Thursday morning. |
 
-## 10. Open questions (resolve Monday night)
-- [ ] Track names and judging criteria from the Notion guide: does a fintech or "agents" track exist?
-- [ ] Is there a Rho-specific prize or challenge?
-- [ ] Team: solo, or recruit a frontend person?
+## 10. Open questions
+- [x] Tracks and judging criteria: we're entering Rho Fintech, and §0 maps the criteria to features.
+- [ ] Team: solo, or recruit a frontend person on Discord?
 - [ ] Does the sandbox expose a Cards endpoint? If so, add card-level findings, e.g. "this card's spend is all SaaS from an inactive cardholder."
+- [ ] What does the Rho SDK look like when it arrives (language, auth), and does it cover more than the REST API?
+
+## 11. Draft write-up (150–300 words, finalize Thursday)
+
+> **Problem.** Running out of cash kills more startups than anything else, yet most early founders can't state their runway to the month. Their spend lives in a bank feed nobody reads, and SaaS waste such as duplicate tools, forgotten subscriptions and quiet price increases piles up unnoticed.
+>
+> **Who it helps.** Pre-seed and seed founders, and the fractional CFOs and accelerators (like Antler) who support them.
+>
+> **Solution.** Runway connects to a Rho business account through Rho's read-only API, so it can never move money. It ingests transactions into Supabase, uses Claude to normalize vendors and classify spend, and runs deterministic detectors for zombie subscriptions, duplicate tools and price creep. Every finding comes with a dollar amount and the transactions behind it. A tool-using agent, the Runway Copilot, answers questions like "get me to 14 months without touching payroll." It builds a ranked plan, checks it against a deterministic runway simulator, and drafts the cancellation emails and card-limit changes to carry it out. Apify-scraped vendor pricing surfaces cheaper plans.
+>
+> **Impact.** On our demo company, Runway found $X/month in waste (+Y months of runway) in under Z seconds. Our eval harness shows P% precision on planted waste. A founder can connect it today and act on it tomorrow.
+
+*(Fill in X/Y/Z/P from the real eval and timing numbers.)*
