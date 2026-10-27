@@ -4,8 +4,9 @@
 insert into public.organizations (id, name) values
   ('00000000-0000-0000-0000-00000000000a', 'Org A'),
   ('00000000-0000-0000-0000-00000000000b', 'Org B');
-insert into public.memberships (org_id, user_id) values
-  ('00000000-0000-0000-0000-00000000000a', '11111111-1111-1111-1111-111111111111');
+insert into public.memberships (org_id, user_id, role) values
+  ('00000000-0000-0000-0000-00000000000a', '11111111-1111-1111-1111-111111111111', 'owner'),
+  ('00000000-0000-0000-0000-00000000000a', '22222222-2222-2222-2222-222222222222', 'member');
 insert into public.connections (id, org_id, provider) values
   ('c0000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', 'demo'),
   ('c0000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b', 'demo');
@@ -42,7 +43,20 @@ do $$ begin
 end $$;
 update public.findings set status = 'open' where id = 'f0000000-0000-0000-0000-00000000000a';
 
--- Act as user 1 (member of Org A only).
+-- 2b. A plain member cannot approve actions.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+do $$ begin
+  begin
+    perform public.set_action_status('a0000000-0000-0000-0000-00000000000a', 'approved');
+    raise exception 'FAIL: member approved an action';
+  exception when raise_exception then
+    if sqlerrm like 'FAIL%' then raise; end if;
+  end;
+end $$;
+reset role;
+
+-- Act as user 1 (owner of Org A only).
 set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 

@@ -45,8 +45,8 @@ describe("agent tools", () => {
   });
 
   it("simulates a plan from finding ids and reports unknown ids", () => {
-    const sim = simulatePlan(a, { findingIds: ["price_creep:datadog", "nope"], extraMonthlyCutsCents: 0 });
-    expect(sim.appliedFindingIds).toEqual(["price_creep:datadog"]);
+    const sim = simulatePlan(a, { findingIds: ["price_creep:datadog:daniel_rivera", "nope"], extraMonthlyCutsCents: 0 });
+    expect(sim.appliedFindingIds).toEqual(["price_creep:datadog:daniel_rivera"]);
     expect(sim.unknownFindingIds).toEqual(["nope"]);
     expect(sim.monthlySavingsCents).toBe(120_000);
     expect(sim.addedMonths!).toBeGreaterThan(0);

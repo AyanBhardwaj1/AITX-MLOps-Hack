@@ -140,3 +140,46 @@ describe("semi-monthly cadence", () => {
     expect(s!.cadence).toBe("biweekly");
   });
 });
+
+describe("review regressions", () => {
+  it("never counts one subscription's savings in two findings", () => {
+    // Webex overlaps with Zoom AND sits on Andrew's idle card.
+    const txns = [
+      ...monthly("ZOOM.US", 150, 6, "Maya Thompson"),
+      ...monthly("CISCO WEBEX", 90, 6, "Andrew Collins"),
+      charge("UNITED AIRLINES", "2026-04-02", 420, "Andrew Collins"),
+      charge("DOORDASH", "2026-10-12", 30, "Maya Thompson"),
+    ];
+    const findings = detectFindings(txns, AS_OF);
+    const webexSavings = findings.filter((f) => f.vendorKeys.includes("webex")).reduce((s, f) => s + f.monthlySavingsCents, 0);
+    expect(webexSavings).toBe(9_000);
+  });
+
+  it("does not blame a departed person for a tool someone else now pays", () => {
+    const notion = [
+      ...Array.from({ length: 4 }, (_, i) => charge("NOTION LABS", addMonths("2026-03-14", i), 96, "Priya Shah")),
+      ...Array.from({ length: 4 }, (_, i) => charge("NOTION LABS", addMonths("2026-07-14", i), 96, "Bob Lee")),
+    ];
+    const txns = [...notion, charge("UNITED AIRLINES", "2026-05-02", 420, "Priya Shah"), charge("DOORDASH", "2026-10-12", 30, "Bob Lee")];
+    expect(detectFindings(txns, AS_OF).filter((f) => f.kind === "zombie")).toEqual([]);
+  });
+
+  it("keeps per-seat subscriptions on different cards as separate charges", () => {
+    const txns = [...monthly("FIGMA", 45, 6, "Alice Wong"), ...monthly("FIGMA", 45, 6, "Bob Lee")];
+    const streams = detectStreams(txns, AS_OF);
+    expect(streams.reduce((s, x) => s + x.monthlyCostCents, 0)).toBe(9_000);
+    // Two seats of the same tool are not "overlapping tools".
+    expect(detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_tools")).toEqual([]);
+  });
+
+  it("gives each double charge a unique id", () => {
+    const txns = [charge("CANVA", "2026-08-10", 119.99), charge("CANVA", "2026-08-10", 119.99), charge("CANVA", "2026-08-11", 119.99)];
+    const ids = detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_charge").map((f) => f.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("does not call two coffees in three days a double charge", () => {
+    const txns = [charge("DOORDASH", "2026-09-10", 18, "Maya Thompson"), charge("DOORDASH", "2026-09-11", 18, "Maya Thompson")];
+    expect(detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_charge")).toEqual([]);
+  });
+});

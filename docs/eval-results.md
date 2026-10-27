@@ -15,8 +15,6 @@ Each company has planted waste plus negative controls (usage-based AWS/OpenAI gr
 |---|---|---|
 | Dollar-weighted recall | 100.0% ± 0.0 | 100.0% ± 0.0 |
 | Vendor categorization accuracy (rules only, before LLM) | 96.9% ± 0.0 | 96.9% ± 0.0 |
-| Full analysis time (map + runway + detectors) | 5.8 ms | 3.7 ms |
+| Full analysis time (map + runway + detectors) | 6.0 ms | 4.1 ms |
 
 No missed items or false positives across all runs.
-
-**Caveat:** the detectors were developed against this same generator, so these numbers show the logic works on known patterns. They are not a measure of accuracy on real company ledgers. The eval already caught and fixed two real false positives during development: two people's identical DoorDash orders flagged as a double charge, and varying airfare flagged as price creep.

@@ -36,8 +36,11 @@ function runwayFrom(cashCents: Cents, netBurnCents: Cents): number {
   return netBurnCents > 0 ? cashCents / netBurnCents : Number.POSITIVE_INFINITY;
 }
 
+/** Beyond a century of runway a calendar date is meaningless (and overflows Date). */
+const MAX_DATED_RUNWAY_MONTHS = 1_200;
+
 function zeroCashDate(asOf: IsoDate, runwayMonths: number): IsoDate | null {
-  return Number.isFinite(runwayMonths) ? addDays(asOf, runwayMonths * AVG_DAYS_PER_MONTH) : null;
+  return runwayMonths <= MAX_DATED_RUNWAY_MONTHS ? addDays(asOf, runwayMonths * AVG_DAYS_PER_MONTH) : null;
 }
 
 /** Burn and runway from the last N complete calendar months before `asOf`. Pure and deterministic. */

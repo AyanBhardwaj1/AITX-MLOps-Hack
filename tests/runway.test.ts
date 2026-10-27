@@ -116,3 +116,12 @@ describe("goalSeek", () => {
     expect(goalSeek(s, [finding("a", 100_000)], 6).chosen).toEqual([]);
   });
 });
+
+describe("extreme runway", () => {
+  it("returns no zero-cash date instead of crashing when burn is tiny", () => {
+    const tiny = [txn("x", "2026-08-01", -60, "GUSTO PAYROLL")];
+    const s = computeSnapshot({ cashCents: 100_000_000, txns: tiny, asOf: "2026-10-20" });
+    expect(s.runwayMonths).toBeGreaterThan(1_000);
+    expect(s.zeroCashDate).toBeNull();
+  });
+});

@@ -21,6 +21,7 @@ export async function writeMemoWithLLM(facts: MemoFacts) {
     system: MEMO_SYSTEM,
     prompt: `<facts>${JSON.stringify(visible)}</facts>\n\nWrite the memo.`,
     abortSignal: AbortSignal.timeout(MEMO_TIMEOUT_MS),
+    maxOutputTokens: 800,
   });
   return { text: result.text, model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens };
 }

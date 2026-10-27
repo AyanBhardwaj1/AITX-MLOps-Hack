@@ -109,7 +109,16 @@ Each company also contains negative controls that must not be flagged: usage-bas
 
 ## Known limitations and next steps
 
-- **No user authentication yet.** The app serves one demo tenant. Before connecting a real Rho account, it needs Supabase Auth, per-org data loading and rate limiting on the agent routes.
+- **No user authentication yet.** The app serves one demo tenant, so **don't point `RHO_API_TOKEN` at a real account on a public deploy**. Before real customer data it needs:
+  - Supabase Auth
+  - per-org Rho tokens from Vault
+  - an org-keyed cache
+- **Basic abuse protection is in place:**
+  - Agent routes are rate-limited per IP, but per server instance; production needs a shared store.
+  - Copilot accepts only user/assistant text, capped in size, so clients can't inject system prompts or forge tool results.
+  - Output tokens are capped.
+  - Also set a monthly spend limit on the OpenAI project.
+- **Jira filing checks for an existing issue first**, by the finding's label via `POST /rest/api/3/search/jql`, and fails closed if that check errors. The endpoint name changed in 2025, so verify it against your Atlassian site.
 - **Supabase persistence is designed and tested** (migration plus `npm run test:db`) but not yet wired into the app. Analysis currently runs in memory per request.
 - **The LLM vendor-categorization fallback isn't implemented yet.** Unknown vendors are labelled "other".
 - **Zombie detection is a heuristic.** Bank data has no usage data, so "idle card" stands in for "unused". SSO or Google Workspace signals would make it precise.

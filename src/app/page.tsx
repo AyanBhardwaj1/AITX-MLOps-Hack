@@ -53,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   } catch (err) {
     console.error("[page] failed to load data", { mode, err });
     data = await buildData("demo");
-    notice = `Couldn't load the Rho ${mode} feed (${err instanceof Error ? err.message : "unknown error"}). Showing demo data instead.`;
+    notice = `Couldn't reach the Rho ${mode} feed, so this is the demo company instead.`;
   }
   return <Dashboard data={data} notice={notice} />;
 }

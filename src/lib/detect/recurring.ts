@@ -39,17 +39,21 @@ export function isOutflow(t: EnrichedTxn): boolean {
   return t.amountCents < 0 && t.status === "posted" && t.type !== "transfer" && t.vendor.category !== "transfer";
 }
 
-/** Groups outflows by vendor, oldest first, dropping charges that repeat within SAME_EVENT_DAYS. */
-export function billingEventsByVendor(txns: readonly EnrichedTxn[]): Map<string, EnrichedTxn[]> {
-  const byVendor = new Map<string, EnrichedTxn[]>();
+/**
+ * Groups outflows by vendor AND cardholder (so per-seat plans on different cards stay separate),
+ * oldest first, dropping charges that repeat within SAME_EVENT_DAYS on the same card.
+ */
+export function billingEventsByStream(txns: readonly EnrichedTxn[]): Map<string, EnrichedTxn[]> {
+  const byStream = new Map<string, EnrichedTxn[]>();
   const sorted = txns.filter(isOutflow).sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
   for (const t of sorted) {
-    const list = byVendor.get(t.vendor.key) ?? [];
+    const key = `${t.vendor.key}|${t.cardholder ?? ""}`;
+    const list = byStream.get(key) ?? [];
     const prev = list.at(-1);
     if (!prev || daysBetween(prev.postedAt, t.postedAt) > SAME_EVENT_DAYS) list.push(t);
-    byVendor.set(t.vendor.key, list);
+    byStream.set(key, list);
   }
-  return byVendor;
+  return byStream;
 }
 
 function matchCadence(gaps: readonly number[], occurrences: number): CadenceRule | null {
@@ -87,14 +91,15 @@ function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate): R
     nextExpected: addDays(last.postedAt, rule.nominalDays),
     active: daysBetween(last.postedAt, asOf) <= rule.nominalDays * ACTIVE_GRACE_CYCLES,
     txnIds: events.map((e) => e.id),
-    cardholders: [...new Set(events.map((e) => e.cardholder).filter((c): c is string => Boolean(c)))],
+    cardholder: last.cardholder ?? null,
+    cardholders: last.cardholder ? [last.cardholder] : [],
   };
 }
 
-/** Finds subscription-like streams: same vendor, regular cadence. Deterministic, no LLM. */
+/** Finds recurring streams: same vendor on the same card, regular cadence. Deterministic, no LLM. */
 export function detectStreams(txns: readonly EnrichedTxn[], asOf: IsoDate): RecurringStream[] {
   const streams: RecurringStream[] = [];
-  for (const events of billingEventsByVendor(txns).values()) {
+  for (const events of billingEventsByStream(txns).values()) {
     if (events.length < 2) continue;
     const gaps = events.slice(1).map((e, i) => daysBetween(events[i]!.postedAt, e.postedAt));
     const rule = matchCadence(gaps, events.length);

@@ -51,6 +51,8 @@ export interface Ticket {
   body: string;
   status: "draft" | "filed" | "failed";
   externalRef?: string;
+  /** Server-side only: why filing failed. Redacted before responses leave the server. */
+  error?: string;
 }
 
 export interface AutopilotRun {
@@ -65,18 +67,17 @@ export interface AutopilotRun {
   error?: string;
 }
 
-const MONEY_RE = /\$\d[\d,]*(?:\.\d+)?/g;
-const MONTHS_RE = /(\d+(?:\.\d+)?)\s*months?\b/gi;
+const NUMBER_RE = /\d[\d,]*(?:\.\d+)?/g;
 const oneDecimal = (n: number) => (Number.isFinite(n) ? (Math.round(n * 10) / 10).toFixed(1) : "unlimited");
+const normalizeNumber = (token: string) => String(Number(token.replaceAll(",", "")));
 
-/** Every dollar amount and month count in `text` must appear in the facts' allow-lists. */
-export function checkMemoNumbers(text: string, facts: Pick<MemoFacts, "allowedMoney" | "allowedMonths">) {
-  const money = new Set(facts.allowedMoney);
-  const months = new Set(facts.allowedMonths);
-  const unsupported = [
-    ...[...text.matchAll(MONEY_RE)].map((m) => m[0]).filter((m) => !money.has(m)),
-    ...[...text.matchAll(MONTHS_RE)].map((m) => m[1]!).filter((m) => !months.has(m)).map((m) => `${m} months`),
-  ];
+/**
+ * Every number in `text` (amounts, months, percentages, dates, counts; with or without "$")
+ * must appear somewhere in the facts. Anything else is treated as invented.
+ */
+export function checkMemoNumbers(text: string, facts: object) {
+  const allowed = new Set([...JSON.stringify(facts).matchAll(NUMBER_RE)].map((m) => normalizeNumber(m[0])));
+  const unsupported = [...text.matchAll(NUMBER_RE)].map((m) => m[0]).filter((tok) => !allowed.has(normalizeNumber(tok)));
   return { ok: unsupported.length === 0, unsupported };
 }
 
@@ -118,7 +119,9 @@ export function templateMemo(f: MemoFacts): string {
     ...(f.findings.length ? f.findings.map((x) => `- ${x.title}: ${x.savingsText}`) : ["- Nothing new this run."]),
     "",
     "## If you act on all of it",
-    `Monthly savings of ${f.monthlySavingsText} take runway to ${f.newRunwayText} (+${f.addedMonthsText}). One-time refunds to claim: ${f.oneTimeText}.`,
+    f.newRunwayText === "unlimited months"
+      ? `Monthly savings of ${f.monthlySavingsText} would make the company cash-flow positive. One-time refunds to claim: ${f.oneTimeText}.`
+      : `Monthly savings of ${f.monthlySavingsText} take runway to ${f.newRunwayText} (+${f.addedMonthsText}). One-time refunds to claim: ${f.oneTimeText}.`,
     "",
     "Each finding has a ticket below. Nothing is cancelled or paid until a person approves it.",
   ].join("\n");
@@ -167,7 +170,14 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
 
     const memo = await step<AutopilotRun["memo"]>("memo", async () => {
       if (!deps.writeMemo) return { value: { text: templateMemo(facts), source: "template" as const }, detail: { source: "template" } };
-      const llm = await deps.writeMemo(facts);
+      let llm: Awaited<ReturnType<NonNullable<AutopilotDeps["writeMemo"]>>>;
+      try {
+        llm = await deps.writeMemo(facts);
+      } catch (err) {
+        // The memo is a nice-to-have; an LLM outage must not fail the whole review.
+        const message = err instanceof Error ? err.message : String(err);
+        return { value: { text: templateMemo(facts), source: "template" as const }, detail: { source: "template", llmFailed: true, error: message } };
+      }
       const check = checkMemoNumbers(llm.text, facts);
       if (!check.ok) {
         return {
@@ -192,15 +202,15 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
         };
       }
       const fileTicket = deps.fileTicket;
-      // One failed ticket shouldn't sink the run; it is reported and can be retried idempotently.
+      // One failed ticket shouldn't sink the run; filing checks for an existing issue first, so a retry won't duplicate it.
       const results = await Promise.all(
         drafts.map(async (d): Promise<Ticket> => {
           const base = { fingerprint: d.fingerprint, findingId: d.findingId, title: d.title, body: d.body };
           try {
             const { externalRef } = await fileTicket(d);
             return { ...base, status: "filed", externalRef };
-          } catch {
-            return { ...base, status: "failed" };
+          } catch (err) {
+            return { ...base, status: "failed", error: err instanceof Error ? err.message : String(err) };
           }
         }),
       );

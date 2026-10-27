@@ -75,6 +75,16 @@ describe("checkMemoNumbers", () => {
       allowedMoney: ["$73,000"],
       allowedMonths: ["3.2"],
     });
-    expect(res).toEqual({ ok: false, unsupported: ["$5,000"] });
+    expect(res).toEqual({ ok: false, unsupported: ["5,000"] });
+  });
+
+  it("catches numbers written without a dollar sign or as hyphenated months", () => {
+    const facts = { allowedMoney: [], allowedMonths: [] };
+    expect(checkMemoNumbers("An 18-month horizon, saving 5,000 USD", facts).ok).toBe(false);
+  });
+
+  it("accepts negative amounts and dates that appear in the facts", () => {
+    const facts = { allowedMoney: ["$5,000"], allowedMonths: [], asOf: "2026-10-26" };
+    expect(checkMemoNumbers("Net burn is -$5,000 as of 2026-10-26.", facts).ok).toBe(true);
   });
 });

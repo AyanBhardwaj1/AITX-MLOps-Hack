@@ -19,6 +19,7 @@ import type { Analysis } from "../pipeline";
 import { env } from "./env";
 
 const MAX_STEPS = 8;
+const MAX_OUTPUT_TOKENS = 1_200;
 
 // Stable text first so provider prompt caching can reuse it across turns.
 const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage startup that banks with Rho.
@@ -35,6 +36,7 @@ export function createCopilot(a: Analysis) {
     model: openai(env().OPENAI_MODEL_AGENT),
     instructions: INSTRUCTIONS,
     stopWhen: isStepCount(MAX_STEPS),
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
     tools: {
       get_financial_snapshot: tool({
         description: "Cash, gross and net monthly burn, runway in months, zero-cash date, and average monthly spend by category (cents).",

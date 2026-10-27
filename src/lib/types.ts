@@ -77,6 +77,8 @@ export interface RecurringStream {
   nextExpected: IsoDate;
   active: boolean;
   txnIds: string[];
+  /** The card this stream bills (null for ACH/wire). */
+  cardholder: string | null;
   cardholders: string[];
 }
 

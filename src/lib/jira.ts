@@ -39,3 +39,8 @@ export function buildJiraIssue(draft: { fingerprint: string; title: string; body
     },
   };
 }
+
+/** JQL search body used before creating an issue, so re-runs never file duplicates. */
+export function jiraDedupeSearch(fingerprint: string) {
+  return { jql: `labels = "${fingerprintLabel(fingerprint)}"`, maxResults: 1, fields: ["key"] };
+}

@@ -295,6 +295,13 @@ begin
   if v_org is null or v_org not in (select private.user_org_ids()) then
     raise exception 'action not found';
   end if;
+  -- Approving spend-related actions is an owner decision.
+  if not exists (
+    select 1 from public.memberships m
+    where m.org_id = v_org and m.user_id = (select auth.uid()) and m.role = 'owner'
+  ) then
+    raise exception 'only org owners can approve or reject actions';
+  end if;
   -- Humans approve or reject drafts. Marking "sent" is the server's job after it delivers.
   if not (v_from = 'draft' and p_status in ('approved', 'rejected')) then
     raise exception 'cannot move action from % to %', v_from, p_status;
