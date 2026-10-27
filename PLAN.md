@@ -34,14 +34,13 @@ The judges say they score "real, working systems, not slide decks or simple API 
 | Confirmed endpoints: `GET /accounts`, `/accounts/{id}`, `/transactions` (filter by account, type, status, date, search; cursor pagination), `/statements`, `/business`, `/users`. Cards are listed on the product page but not confirmed in the docs. | docs.rho.co | Transactions are the core input. Card-level insights are a stretch, used only if a Cards endpoint shows up. |
 | The sandbox is `https://rhoapi-sandbox.rho.co/api/v1`, accepts **any non-empty bearer token**, and returns fictional, deterministic data. | docs.rho.co | We can build tonight without waiting on the access form. The sandbox data may be too thin for a compelling demo (see §7). |
 | Production is `https://rhoapi.rho.co/api/v1` with scopes `accounts:read`, `transactions:read` and `statements:read`. | docs.rho.co | ✅ Access form submitted Mon Oct 26. If credentials or the Rho **SDK** arrive by email, swap the SDK in for our REST client. The `RhoClient` interface stays the same, so nothing else changes. |
-| Rho has a native Claude MCP connector. | Rho product page | Stretch: wire it in through the Messages API MCP connector instead of our own Rho client. |
 
 ## 2. Scope
 
 ### Must ship (MVP, done by Wed night)
 0. **Autopilot** (for the Antler Agents track: "real work end to end, not a chatbot that only suggests"): one click, or a daily cron, runs the whole job without a human. It syncs from Rho, categorizes new transactions, re-runs the detectors, writes a monthly **Runway Review** memo, and files each finding as a task in the Runway inbox (and as a Jira ticket once that's wired up). Each run is logged with its steps, timings and outputs so judges can see what it did.
 1. **Connect and sync:** Pull accounts and 6–12 months of transactions from Rho (sandbox) and store them in Supabase.
-2. **Categorize:** Claude normalizes vendor names, assigns a category and flags SaaS/recurring spend. Batched, with structured output.
+2. **Categorize:** The LLM normalizes vendor names, assigns a category and flags SaaS/recurring spend. Batched, with structured output.
 3. **Burn and runway:** Monthly net burn (trailing 3 months), cash balance, runway in months, and a burn trend chart.
 4. **Waste finder:** Three detectors, each producing a "finding" with a monthly dollar amount:
    - **Zombie subscriptions:** recurring charges from vendors with no other activity, or tools nobody mentions.
@@ -51,7 +50,7 @@ The judges say they score "real, working systems, not slide decks or simple API 
 6. **What-if simulator:** Toggle each finding on or off, and the runway number and chart update live. **This is the demo moment.**
 
 ### Stretch (Thu morning, only if the MVP is solid)
-- **Cheaper-plan finder (Apify):** Scrape the pricing pages of the top 5–10 vendors, and have Claude compare what you pay with the cheapest tier that fits.
+- **Cheaper-plan finder (Apify):** Scrape the pricing pages of the top 5–10 vendors, and have the LLM compare what you pay with the cheapest tier that fits.
 - **Action export:** Push the approved plan to Jira as tickets (Atlassian sponsor) or email the founder a weekly digest.
 - **Anomaly alerts:** A Supabase cron job that re-syncs daily and flags unusual charges.
 - **Rho MCP connector** instead of our REST client.
@@ -66,9 +65,9 @@ Moving money, auth beyond a single demo user, multiple companies, mobile.
  Browser ──►│  Dashboard (burn, runway, findings, what-if)     Copilot chat (streams)       │
             │        │                                              │                        │
             │  /api/sync ──► Rho API (sandbox → prod)               │                        │
-            │  /api/categorize ──► Claude (structured output, batched)                       │
-            │  /api/findings  (SQL detectors + Claude for duplicates)                        │
-            │  /api/copilot ──► Claude tool runner ──► tools query Supabase                  │
+            │  /api/categorize ──► OpenAI (structured output, batched)                       │
+            │  /api/findings  (SQL detectors + LLM for duplicates)                           │
+            │  /api/copilot ──► OpenAI tool loop ──► tools query Supabase                  │
             └──────────────────────────────┬─────────────────────────────────────────────────┘
                                            ▼
                          Supabase Postgres (+ Auth, + pg_cron for stretch)
@@ -76,9 +75,9 @@ Moving money, auth beyond a single demo user, multiple companies, mobile.
                         Apify actor (stretch): vendor pricing pages ──► pricing table
 ```
 
-- **Language and stack:** TypeScript, Next.js (App Router), Tailwind + shadcn/ui, Recharts, `@supabase/supabase-js`, and `@anthropic-ai/sdk`. One app, one deploy, so there's no separate backend to babysit.
-- **Model:** `claude-opus-5-5` with adaptive thinking. Effort is `low` for bulk categorization and `high` for the Copilot. Server-side refusal fallbacks are on (`fallbacks: "default"`).
-- **Secrets:** Kept in `.env.local` and Vercel env vars only. Never committed: `RHO_API_TOKEN`, `RHO_BASE_URL`, `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `APIFY_TOKEN`.
+- **Language and stack:** TypeScript, Next.js (App Router), Tailwind + shadcn/ui, Recharts, `@supabase/supabase-js`, and the official `openai` SDK. One app, one deploy, so there's no separate backend to babysit.
+- **Models (OpenAI, set by env var):** `OPENAI_MODEL_AGENT` = mid-tier GPT-6 (`gpt-6.1-sol`, about $2/$10 per 1M tokens) for the Copilot, Autopilot and duplicate detection. `OPENAI_MODEL_FAST` = the cheapest GPT-6 (`gpt-6-luna`, about $0.10/$0.50) for bulk categorization. We avoid the top tier (`gpt-6-astra`, about $10/$50). Confirm the exact IDs on OpenAI's pricing page; they're env vars, so changing them needs no code change.
+- **Secrets:** Kept in `.env.local` and Vercel env vars only. Never committed: `RHO_API_TOKEN`, `RHO_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL_AGENT`, `OPENAI_MODEL_FAST`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `APIFY_TOKEN`.
 
 ## 4. Data model (Supabase)
 
@@ -101,7 +100,7 @@ Burn and runway are SQL views over `transactions`, which keeps them deterministi
 
 ## 5. The Copilot agent
 
-The agent is a Tool Runner loop (`client.beta.messages.toolRunner`) with typed Zod tools. Claude never does math in its head: every number comes back from a tool.
+The agent is an OpenAI function-calling loop with Zod-validated tools. The model never does math in its head: every number comes back from a tool.
 
 | Tool | What it does |
 |---|---|
@@ -136,7 +135,7 @@ Times are Austin time. For a solo builder, do the rows top to bottom. With 2–3
 - [ ] A: Write the Rho client (paginated `transactions`, `accounts`), build `/api/sync`, and upsert into Supabase.
 - [ ] A: Write the demo seed script (§7) so we always have a rich dataset.
 - [ ] C: Build `/api/categorize`, which batches 50 transactions per call with structured JSON output. Cache by `counterparty_raw` so each vendor is categorized once.
-- [ ] A: Write the burn/runway SQL views, the zombie and price-creep detectors in SQL, and the duplicate-tool detector with Claude (group vendors by job-to-be-done).
+- [ ] A: Write the burn/runway SQL views, the zombie and price-creep detectors in SQL, and the duplicate-tool detector with the LLM (group vendors by job-to-be-done).
 - [ ] B: Build the dashboard shell: runway hero number, burn chart, category breakdown and findings list.
 - **End of day:** Sync → categorize → findings works end to end on seed data and shows in the UI.
 
@@ -186,7 +185,7 @@ A toggle in the UI switches between the **Live Rho sandbox** and the **demo comp
 2. **Connect (20s):** Click "Connect Rho". It syncs, and the dashboard shows **11.2 months of runway** and **$84k a month burn**.
 3. **Findings (40s):** "Runway found **$6,140 a month** in waste": duplicate video tools, zombie SaaS and Datadog price creep. Each finding is one click to expand and see the transactions.
 4. **Copilot (60s):** Type "Get me to 14 months without touching payroll." It streams a ranked plan, the simulator updates live to **14.3 months**, and it drafts the cancellation emails.
-5. **Trust and tech (30s):** It's read-only Rho, so it can never move money. Supabase for data and auth, Claude for categorization and the agent, deterministic SQL for every number. Then show the eval table (detector precision and recall) and the timing panel. That answers "is this just a wrapper?" before anyone asks.
+5. **Trust and tech (30s):** It's read-only Rho, so it can never move money. Supabase for data and auth, GPT-6 for categorization and the agent, deterministic SQL for every number. Then show the eval table (detector precision and recall) and the timing panel. That answers "is this just a wrapper?" before anyone asks.
 6. **Close (15s):** "Every founder at Antler should have this the day they open a bank account."
 
 **Sponsor tech called out on the table sign:** Rho API, Supabase, Apify (if shipped), Atlassian/Jira (if shipped).
@@ -198,7 +197,7 @@ A toggle in the UI switches between the **Live Rho sandbox** and the **demo comp
 | Sandbox data is too thin | The seeded demo company (§7), built on Tuesday rather than as an afterthought |
 | Production Rho access never arrives | The sandbox needs no approval, so the demo doesn't depend on it |
 | The LLM invents numbers | Every number comes from SQL via tools. The prompt forbids unsourced figures. |
-| Categorization is slow or expensive | Cache by vendor (each unique vendor is categorized once), batch 50 at a time, `low` effort |
+| Categorization is slow or expensive | Cache by vendor (each unique vendor is categorized once), batch 50 at a time, cheapest model (`gpt-6-luna`) |
 | Venue wifi dies on Friday | Phone hotspot, the backup video, and the seed data also available as a local JSON fallback |
 | Scope creep | Feature freeze Wed at 9 PM. Stretch features only Thursday morning. |
 
@@ -214,7 +213,7 @@ A toggle in the UI switches between the **Live Rho sandbox** and the **demo comp
 >
 > **Who it helps.** Pre-seed and seed founders, and the fractional CFOs and accelerators (like Antler) who support them.
 >
-> **Solution.** Runway connects to a Rho business account through Rho's read-only API, so it can never move money. It ingests transactions into Supabase, uses Claude to normalize vendors and classify spend, and runs deterministic detectors for zombie subscriptions, duplicate tools and price creep. Every finding comes with a dollar amount and the transactions behind it. A tool-using agent, the Runway Copilot, answers questions like "get me to 14 months without touching payroll." It builds a ranked plan, checks it against a deterministic runway simulator, and drafts the cancellation emails and card-limit changes to carry it out. Apify-scraped vendor pricing surfaces cheaper plans.
+> **Solution.** Runway connects to a Rho business account through Rho's read-only API, so it can never move money. It ingests transactions into Supabase, uses an LLM to normalize vendors and classify spend, and runs deterministic detectors for zombie subscriptions, duplicate tools and price creep. Every finding comes with a dollar amount and the transactions behind it. A tool-using agent, the Runway Copilot, answers questions like "get me to 14 months without touching payroll." It builds a ranked plan, checks it against a deterministic runway simulator, and drafts the cancellation emails and card-limit changes to carry it out. Apify-scraped vendor pricing surfaces cheaper plans.
 >
 > **Impact.** On our demo company, Runway found $X/month in waste (+Y months of runway) in under Z seconds. Our eval harness shows P% precision on planted waste. A founder can connect it today and act on it tomorrow.
 
