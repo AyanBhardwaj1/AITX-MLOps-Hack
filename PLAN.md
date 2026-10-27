@@ -3,7 +3,9 @@
 **One-liner:** Connect your Rho business account, and in 30 seconds Runway tells you your real burn, your runway, and exactly where the waste is. Then ask it "get me to 14 months" and it builds the plan.
 
 **Event:** AITX & MLOps World Community Hackathon, Austin Tech Week
-**Track:** 💳 Rho Fintech. Rho also co-sponsors the Hack Fair. The Copilot doubles as our story for the Antler investment team, who run the Agents track.
+**Tracks (max 2 per submission):** 💳 **Rho Fintech** + 🤖 **Antler Agents**. Rho co-sponsors the Hack Fair, and Autopilot (§5) is our "real work end to end" story for Antler.
+**Prizes:** Track winners get cash + $500 Supabase credits + a demo at the AITX meetup + dinner. Community Choice gets $250 + the meetup + dinner.
+**Rule:** All code must be written during the hackathon (Oct 26 on). Open-source dependencies must have been public for 2+ weeks, which normal npm packages are.
 **Submission deadline:** Thu Oct 29, 5:00 PM CT (Airtable form) · **Hack Fair:** Fri Oct 30, set up from 12:00 PM, judging 1:00 PM
 
 ---
@@ -37,6 +39,7 @@ The judges say they score "real, working systems, not slide decks or simple API 
 ## 2. Scope
 
 ### Must ship (MVP, done by Wed night)
+0. **Autopilot** (for the Antler Agents track: "real work end to end, not a chatbot that only suggests"): one click, or a daily cron, runs the whole job without a human. It syncs from Rho, categorizes new transactions, re-runs the detectors, writes a monthly **Runway Review** memo, and files each finding as a task in the Runway inbox (and as a Jira ticket once that's wired up). Each run is logged with its steps, timings and outputs so judges can see what it did.
 1. **Connect and sync:** Pull accounts and 6–12 months of transactions from Rho (sandbox) and store them in Supabase.
 2. **Categorize:** Claude normalizes vendor names, assigns a category and flags SaaS/recurring spend. Batched, with structured output.
 3. **Burn and runway:** Monthly net burn (trailing 3 months), cash balance, runway in months, and a burn trend chart.
@@ -109,6 +112,8 @@ The agent is a Tool Runner loop (`client.beta.messages.toolRunner`) with typed Z
 | `get_vendor_pricing({vendor})` | Returns the scraped pricing tiers (stretch). |
 | `draft_action({kind: 'cancel_email' \| 'downgrade_request' \| 'card_limit_checklist' \| 'jira_ticket', vendor, details})` | Writes a draft into `plans.actions`. Nothing is sent automatically. |
 
+**Autopilot** uses the same tools in an unattended loop with a fixed goal ("review this month and file actions"), plus `file_task({finding_id, title, body})`. Its run log (tool calls, durations, tokens) is stored in a `runs` table and shown in the UI.
+
 The system prompt's core rules are:
 - Every claim about money must come from a tool result.
 - Reach the target runway with the fewest, lowest-risk cuts first.
@@ -147,7 +152,7 @@ Times are Austin time. For a solo builder, do the rows top to bottom. With 2–3
 ### Thu Oct 29: polish and submit (hard stop at 4:00 PM)
 - [ ] Morning: one stretch feature at most. Apify pricing is the recommended pick because it's the most visible.
 - [ ] Polish: loading states, empty states, a "Connected to Rho, read-only" trust badge, and a favicon.
-- [ ] Record the **Loom demo video (2–5 min, Loom is required)** following the §8 script. It also serves as the backup if Friday's wifi dies.
+- [ ] **By noon:** record the **Loom demo video (3–5 min, Loom is required)** following the §8 script. It also serves as the backup if Friday's wifi dies. The organizers' advice is to record early.
 - [ ] Write the README. The submission requires each of these:
   - [ ] Quick start (the commands to run)
   - [ ] Tech stack and architecture diagram
@@ -157,7 +162,8 @@ Times are Austin time. For a solo builder, do the rows top to bottom. With 2–3
   - [ ] *Ours:* eval results table, performance numbers, screenshots or a GIF
 - [ ] Write the 150–300 word write-up: problem → who it helps → solution → impact (draft in §11).
 - [ ] Fill in the team roster (names, roles, contacts) and the deployed Vercel URL.
-- [ ] **Submit on the Airtable form by 4:00 PM**, track **Rho Fintech**. That leaves an hour of buffer before the 5:00 PM close. One submission per team.
+- [ ] **Start the Airtable submission by 3:30 PM and submit by 4:00 PM.** The organizers say it takes 15–20 minutes, and the hard close is 5:00 PM. Tracks: **Rho Fintech + Antler Agents**. One submission per team.
+- [ ] Post the project on X tagging **@AITXCommunity** and **@MLOpsWorld** for **2 free Community Choice votes**.
 
 ### Fri Oct 30: Hack Fair
 - [ ] Arrive at 12:00 PM. Bring a laptop, a charger, a phone hotspot and the backup video on local disk.
