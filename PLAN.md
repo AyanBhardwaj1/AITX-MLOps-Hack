@@ -10,6 +10,42 @@
 
 ---
 
+## Status (updated Tue Oct 27, early morning)
+
+**Built and tested** (83 unit tests, eval at 100% precision and recall across 10 seeded runs, `npm run test:db` green, production build passing):
+- Rho client and mapper, applying lessons from earlier Rho hackathon projects ([docs/prior-art.md](docs/prior-art.md)).
+- Vendor normalization, recurring-charge detection and 4 waste detectors.
+- Burn, runway and goal-seek.
+- Seeded Taco Robotics company and the eval harness.
+- Tenant-ready Supabase schema.
+- Copilot (AI SDK v7 `ToolLoopAgent`) and the Autopilot pipeline with memo number-checking and Jira ADF.
+- Dashboard with what-if, evidence drill-down and the Autopilot timeline.
+
+**Research changes adopted** (full report: [reports/Runway fintech agent system design.md](reports/Runway%20fintech%20agent%20system%20design.md)):
+
+| Was | Now |
+|---|---|
+| Seed is a fallback | Seed is the primary demo. Sandbox mode dates itself by its latest transaction (the feed ends June 2026). |
+| Status `posted/pending`, key on `id` | Rho `settled/pending/failed/awaiting_approval` are mapped; failed rows are dropped; the key is `(account_id, id)`; card repayments count as transfers |
+| Hand-rolled OpenAI loop | Copilot on Vercel AI SDK v7. Autopilot is a fixed plan-then-execute pipeline (prompt-injection defence). |
+| `runs` table | OTel-shaped `agent_runs` / `agent_steps` with integer micro-dollar cost |
+| Findings without idempotency | `unique(org_id, fingerprint)` on findings and actions; a trigger keeps agent actions draft-only |
+| Pitch: "we find subscriptions" | Pitch: "we price waste in runway and turn it into owned tickets" (rhodesk already did subscription renegotiation) |
+
+**Next, in order:**
+1. With network and keys in the new session:
+   - Verify the Rho sandbox mapping live.
+   - Smoke-test Copilot with `OPENAI_API_KEY`.
+   - Wire Supabase persistence (findings status, actions, agent runs).
+2. Add the LLM fallback for unknown vendors (`gpt-6-luna`, cached by merchant key).
+3. Add the renewal calendar and AI-spend tracker (cheap wins from the research).
+4. Deploy to Vercel and record the Loom video.
+5. Stretch: cached Apify pricing comparison, then Jira on a real Atlassian site.
+
+**Note on dependencies:** packages are pinned to versions published at least 2 weeks before kickoff. The one exception is `next@16.4.1` (Oct 14), taken to patch critical remote-code-execution advisories in 16.4.0.
+
+---
+
 ## 0. How we win: the judging criteria mapped to features
 
 The judges say they score "real, working systems, not slide decks or simple API wrappers," across three things: **the live demo at the table, the Loom video, and the codebase.**

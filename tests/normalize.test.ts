@@ -56,3 +56,12 @@ describe("resolveVendor", () => {
     expect(resolveVendor("#123 ***").key).toBe("unknown");
   });
 });
+
+describe("jobLabel", () => {
+  it("turns job keys into readable labels", async () => {
+    const { jobLabel } = await import("@/lib/vendors/catalog");
+    expect(jobLabel("crm")).toBe("CRM");
+    expect(jobLabel("docs_wiki")).toBe("docs & wiki");
+    expect(jobLabel("some_new_job")).toBe("some new job");
+  });
+});

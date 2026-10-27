@@ -1,5 +1,6 @@
 import { AVG_DAYS_PER_MONTH, daysBetween } from "../dates";
 import { formatCents } from "../money";
+import { jobLabel } from "../vendors/catalog";
 import { coefficientOfVariation, median } from "../stats";
 import type { Category, EnrichedTxn, Finding, IsoDate, RecurringStream } from "../types";
 import { CADENCE_DAYS, SAME_EVENT_DAYS, detectStreams, isOutflow } from "./recurring";
@@ -39,7 +40,7 @@ function duplicateTools(streams: readonly RecurringStream[]): Finding[] {
       return {
         id: `duplicate_tools:${job}`,
         kind: "duplicate_tools" as const,
-        title: `${group.length} tools for ${job.replaceAll("_", " ")}: ${names(sorted)}`,
+        title: `${group.length} tools for ${jobLabel(job)}: ${names(sorted)}`,
         detail: `You pay for ${names(sorted)}, which do the same job. Keeping ${keep.vendorName} and cancelling ${names(cut)} saves ${formatCents(savings)}/month.`,
         vendorKeys: sorted.map((s) => s.vendorKey),
         monthlySavingsCents: savings,

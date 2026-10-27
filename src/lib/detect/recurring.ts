@@ -5,13 +5,20 @@ import type { Cadence, EnrichedTxn, IsoDate, RecurringStream } from "../types";
 interface CadenceRule {
   cadence: Cadence;
   nominalDays: number;
+  /** Allowed distance of each gap from nominalDays (gap agreement) and of the typical gap. */
   tolerance: number;
   minOccurrences: number;
+  /**
+   * Which typical gap to test. Semi-monthly billing (1st and 15th) alternates 14- and 17-day
+   * gaps, so its median looks biweekly; its mean (≈15.2) separates it cleanly.
+   */
+  center?: { by: "mean"; tolerance: number };
 }
 
 /** Gap windows follow common practice (Plaid-style): monthly is 30±5 days, annual 365±15. */
 const CADENCES: readonly CadenceRule[] = [
   { cadence: "weekly", nominalDays: 7, tolerance: 2, minOccurrences: 3 },
+  { cadence: "semimonthly", nominalDays: 365.25 / 24, tolerance: 2.5, minOccurrences: 3, center: { by: "mean", tolerance: 0.6 } },
   { cadence: "biweekly", nominalDays: 14, tolerance: 2, minOccurrences: 3 },
   { cadence: "monthly", nominalDays: AVG_DAYS_PER_MONTH, tolerance: 5, minOccurrences: 3 },
   { cadence: "quarterly", nominalDays: 91.3125, tolerance: 10, minOccurrences: 2 },
@@ -47,9 +54,11 @@ export function billingEventsByVendor(txns: readonly EnrichedTxn[]): Map<string,
 
 function matchCadence(gaps: readonly number[], occurrences: number): CadenceRule | null {
   const typical = median(gaps);
+  const meanGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
   for (const rule of CADENCES) {
     const within = (g: number) => Math.abs(g - rule.nominalDays) <= rule.tolerance;
-    if (!within(typical) || occurrences < rule.minOccurrences) continue;
+    const centered = rule.center ? Math.abs(meanGap - rule.nominalDays) <= rule.center.tolerance : within(typical);
+    if (!centered || occurrences < rule.minOccurrences) continue;
     if (gaps.filter(within).length / gaps.length >= MIN_GAP_AGREEMENT) return rule;
   }
   return null;

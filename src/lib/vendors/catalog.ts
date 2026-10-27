@@ -70,3 +70,16 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   { key: "stripe", name: "Stripe payouts", category: "revenue", job: null, aliases: ["stripe"] },
   { key: "bank_fees", name: "Bank fees", category: "fees", job: null, aliases: ["wire fee", "service fee", "foreign transaction fee"] },
 ];
+
+const JOB_LABELS: Readonly<Record<string, string>> = {
+  crm: "CRM",
+  docs_wiki: "docs & wiki",
+  email_docs: "email & docs",
+  esign: "e-signature",
+  password_mgr: "password management",
+};
+
+/** Human-readable job-to-be-done, e.g. "video_meetings" → "video meetings". */
+export function jobLabel(job: string): string {
+  return JOB_LABELS[job] ?? job.replaceAll("_", " ");
+}

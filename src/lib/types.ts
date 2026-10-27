@@ -58,7 +58,7 @@ export interface EnrichedTxn extends Txn {
   vendor: VendorInfo;
 }
 
-export type Cadence = "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
+export type Cadence = "weekly" | "biweekly" | "semimonthly" | "monthly" | "quarterly" | "annual";
 
 export interface RecurringStream {
   vendorKey: string;

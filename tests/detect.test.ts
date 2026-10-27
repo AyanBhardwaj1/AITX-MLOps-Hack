@@ -125,3 +125,18 @@ describe("detectFindings", () => {
     expect(detectFindings([], AS_OF)).toEqual([]);
   });
 });
+
+describe("semi-monthly cadence", () => {
+  it("prices payroll on the 1st and 15th as twice a month, not every two weeks", () => {
+    const dates = ["2026-07-01", "2026-07-15", "2026-08-01", "2026-08-15", "2026-09-01", "2026-09-15", "2026-10-01", "2026-10-15"];
+    const [s] = detectStreams(dates.map((d) => charge("GUSTO PAYROLL", d, 1000)), AS_OF);
+    expect(s!.cadence).toBe("semimonthly");
+    expect(s!.monthlyCostCents).toBe(200_000);
+  });
+
+  it("still recognises true every-two-weeks billing", () => {
+    const dates = ["2026-08-07", "2026-08-21", "2026-09-04", "2026-09-18", "2026-10-02", "2026-10-16"];
+    const [s] = detectStreams(dates.map((d) => charge("GUSTO PAYROLL", d, 1000)), AS_OF);
+    expect(s!.cadence).toBe("biweekly");
+  });
+});
