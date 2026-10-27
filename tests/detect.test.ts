@@ -82,6 +82,12 @@ describe("detectFindings", () => {
     expect(creep!.monthlySavingsCents).toBe(70_000);
   });
 
+  it("does not treat varying airfare on regular trips as price creep", () => {
+    const fares = [420, 410, 430, 415, 590, 610];
+    const txns = fares.map((f, i) => charge("UNITED AIRLINES", addMonths("2025-07-12", i * 3), f));
+    expect(detectFindings(txns, "2026-10-20").filter((f) => f.kind === "price_creep")).toEqual([]);
+  });
+
   it("ignores small price moves below the threshold", () => {
     const txns = monthly("NOTION LABS", (i) => (i < 4 ? 100 : 105), 8);
     expect(detectFindings(txns, AS_OF).filter((f) => f.kind === "price_creep")).toEqual([]);
@@ -103,6 +109,11 @@ describe("detectFindings", () => {
     const dup = detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_charge");
     expect(dup).toHaveLength(1);
     expect(dup[0]!.oneTimeCents).toBe(11_999);
+  });
+
+  it("does not call two people's identical purchases a double charge", () => {
+    const txns = [charge("DOORDASH", "2026-09-10", 52, "Maya Thompson"), charge("DOORDASH", "2026-09-11", 52, "Sofia Martin")];
+    expect(detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_charge")).toEqual([]);
   });
 
   it("gives findings stable ids so dismissals survive a re-run", () => {

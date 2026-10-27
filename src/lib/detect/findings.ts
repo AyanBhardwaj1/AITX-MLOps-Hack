@@ -11,8 +11,10 @@ const CREEP_MIN_OCCURRENCES = 4;
 const CREEP_RECENT_CHARGES = 2;
 const CREEP_BASELINE_CHARGES = 3;
 const STABLE_BASELINE_CV = 0.15;
-/** Usage-based bills grow with usage; that is not a price increase. */
-const USAGE_BASED: ReadonlySet<Category> = new Set(["cloud", "ai_api"]);
+/** Spend that varies by nature (usage, fares, headcount); a higher bill is not a price increase. */
+const VARIABLE_BY_NATURE: ReadonlySet<Category> = new Set([
+  "cloud", "ai_api", "travel", "meals", "marketing", "hardware", "payroll", "contractors",
+]);
 /** A cardholder with no non-subscription spend for this long has probably left. */
 const ZOMBIE_IDLE_DAYS = 60;
 
@@ -51,7 +53,7 @@ function duplicateTools(streams: readonly RecurringStream[]): Finding[] {
 function priceCreep(streams: readonly RecurringStream[], txnsById: ReadonlyMap<string, EnrichedTxn>): Finding[] {
   const findings: Finding[] = [];
   for (const s of streams) {
-    if (!s.active || USAGE_BASED.has(s.category) || s.occurrences < CREEP_MIN_OCCURRENCES) continue;
+    if (!s.active || VARIABLE_BY_NATURE.has(s.category) || s.occurrences < CREEP_MIN_OCCURRENCES) continue;
     const amounts = s.txnIds.map((id) => -txnsById.get(id)!.amountCents);
     // Baseline is the earliest charges: "what you signed up at", before any later increases.
     const baselineAmounts = amounts.slice(0, Math.min(CREEP_BASELINE_CHARGES, amounts.length - CREEP_RECENT_CHARGES));
@@ -111,10 +113,12 @@ function zombies(streams: readonly RecurringStream[], txns: readonly EnrichedTxn
 
 function duplicateCharges(txns: readonly EnrichedTxn[]): Finding[] {
   const sorted = txns.filter(isOutflow).sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
-  const lastByVendor = new Map<string, EnrichedTxn>();
+  // Same vendor AND same card: two people buying the same thing is not a double charge.
+  const lastByVendorCard = new Map<string, EnrichedTxn>();
   const findings: Finding[] = [];
   for (const t of sorted) {
-    const prev = lastByVendor.get(t.vendor.key);
+    const key = `${t.vendor.key}|${t.accountId}|${t.cardholder ?? ""}`;
+    const prev = lastByVendorCard.get(key);
     if (prev && prev.amountCents === t.amountCents && daysBetween(prev.postedAt, t.postedAt) <= SAME_EVENT_DAYS) {
       const amount = -t.amountCents;
       findings.push({
@@ -129,7 +133,7 @@ function duplicateCharges(txns: readonly EnrichedTxn[]): Finding[] {
         evidenceTxnIds: [prev.id, t.id],
       });
     }
-    lastByVendor.set(t.vendor.key, t);
+    lastByVendorCard.set(key, t);
   }
   return findings;
 }
