@@ -105,6 +105,12 @@ describe("goalSeek", () => {
     expect(plan.reachesTarget).toBe(false);
   });
 
+  it("never picks one-time items that do not reduce monthly burn", () => {
+    const s = computeSnapshot({ cashCents: 96_000_000, txns: TXNS, asOf: "2026-10-20" });
+    const refund = { ...finding("refund", 0), kind: "duplicate_charge" as const, oneTimeCents: 50_000 };
+    expect(goalSeek(s, [refund, finding("a", 100_000)], 40).chosen.map((f) => f.id)).toEqual(["a"]);
+  });
+
   it("chooses nothing when the target is already met", () => {
     const s = computeSnapshot({ cashCents: 96_000_000, txns: TXNS, asOf: "2026-10-20" });
     expect(goalSeek(s, [finding("a", 100_000)], 6).chosen).toEqual([]);

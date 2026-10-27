@@ -98,7 +98,9 @@ export interface GoalSeekResult {
 
 /** Greedy plan: take the largest confidence-weighted savings first until runway reaches the target. */
 export function goalSeek(snapshot: Snapshot, findings: readonly Finding[], targetMonths: number): GoalSeekResult {
-  const ranked = [...findings].sort(
+  const ranked = findings
+    .filter((f) => f.monthlySavingsCents > 0)
+    .sort(
     (a, b) => b.monthlySavingsCents * b.confidence - a.monthlySavingsCents * a.confidence,
   );
   const chosen: Finding[] = [];
