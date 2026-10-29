@@ -4,6 +4,7 @@ import { createRhoClient } from "../rho/client";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
 import type { VendorInfo } from "../types";
 import { generateDemoCompany } from "../seed/demo-company";
+import { assertSafeToServe } from "../access";
 import { unknownMerchants } from "../enrich/vendor-labels";
 import { env, hasOpenAI } from "./env";
 import { labelUnknownVendors } from "./vendor-llm";
@@ -29,8 +30,9 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
     const demo = generateDemoCompany();
     return { accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, label: "demo" };
   }
-  if (sandboxCache && Date.now() - sandboxCache.at < SANDBOX_CACHE_MS) return sandboxCache.data;
   const e = env();
+  assertSafeToServe({ rhoBaseUrl: e.RHO_BASE_URL, appPassword: e.APP_PASSWORD });
+  if (sandboxCache && Date.now() - sandboxCache.at < SANDBOX_CACHE_MS) return sandboxCache.data;
   const client = createRhoClient({ baseUrl: e.RHO_BASE_URL, token: e.RHO_API_TOKEN });
   const [accounts, transactions] = await Promise.all([client.listAccounts(), client.listTransactions()]);
   // No asOf: the sandbox is a static feed, so the analysis dates itself by its latest transaction.

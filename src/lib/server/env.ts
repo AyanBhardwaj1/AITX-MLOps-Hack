@@ -20,6 +20,8 @@ const schema = z.object({
   APP_PASSWORD: z.string().min(8).optional(),
   /** Vercel Cron sends this as a bearer token to /api/cron/autopilot. */
   CRON_SECRET: z.string().min(16).optional(),
+  /** Which data the daily Autopilot reviews: the demo company or the configured Rho feed. */
+  AUTOPILOT_CRON_MODE: z.enum(["demo", "sandbox"]).default("demo"),
 });
 
 export type Env = z.infer<typeof schema>;
