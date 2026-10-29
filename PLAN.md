@@ -10,7 +10,19 @@
 
 ---
 
-## Status (updated Tue Oct 27, early morning)
+## Status (updated Wed Oct 28, evening)
+
+**Added Wednesday:**
+- Monte Carlo cash forecast with P10–P90 band and a revenue −30% stress line.
+- Renewals calendar with "decide" flags.
+- AI-spend tracker.
+- LLM fallback for unknown vendors.
+- Fixes for both independent review rounds (savings no longer double-counted, per-card streams, abuse limits).
+- Submission kit in [SUBMISSION.md](SUBMISSION.md).
+
+Still needs keys or network: a live Copilot test, live Rho sandbox verification, Supabase wiring.
+
+## Status (Tue Oct 27, early morning)
 
 **Built and tested** (83 unit tests, eval at 100% precision and recall across 10 seeded runs, `npm run test:db` green, production build passing):
 - Rho client and mapper, applying lessons from earlier Rho hackathon projects ([docs/prior-art.md](docs/prior-art.md)).
