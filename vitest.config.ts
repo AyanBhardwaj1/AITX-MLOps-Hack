@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   test: {
     include: ["tests/**/*.test.ts"],
+    exclude: ["tests/integration/**", "node_modules/**"],
     coverage: { include: ["src/lib/**"], reporter: ["text-summary", "text"] },
   },
 });
