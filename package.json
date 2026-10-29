@@ -13,7 +13,9 @@
     "test:coverage": "vitest run --coverage",
     "eval": "tsx scripts/eval.ts",
     "test:db": "bash scripts/test-db.sh",
-    "test:integration": "bash scripts/test-integration.sh"
+    "test:integration": "bash scripts/test-integration.sh",
+    "verify:live": "NODE_USE_ENV_PROXY=1 node --disable-warning=UNDICI-EHPA --env-file-if-exists=.env.local --import tsx scripts/verify-live.ts",
+    "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/db-migrate.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.91",

@@ -23,6 +23,14 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
 - **AI & LLM spend tracker.** Monthly API spend, compound growth rate, share of spend and a 12-month projection: the fastest-growing line item at AI startups.
 - **Copilot** (chat agent): "Get me to 14 months without touching payroll." It plans with tools over the same math and drafts cancellation emails, downgrade requests and Jira tickets. Drafts are never sent automatically.
 - **Autopilot** (autonomous agent): one click, or a schedule, runs the monthly review end to end: pull from Rho → analyze → price each fix in runway → write the Runway Review memo → file a task per finding. Every step is logged with timings.
+- **Inbox: a person approves every action.** Copilot and Autopilot drafts (vendor cancellation emails, downgrade requests, card-limit checklists, tickets) wait in an Inbox. Approving a ticket files it in Jira, and approved emails are ready to copy and send.
+- **Decisions that stick.**
+  - Mark a finding "Act on this" or **Dismiss** it.
+  - Dismissals survive later detector runs, and Autopilot skips dismissed findings.
+  - Every decision lands in an append-only audit log.
+- **Runs on its own.**
+  - Autopilot also runs daily via Vercel Cron.
+  - Each run's steps and memo are kept as history.
 - **Read-only by design.** Rho's API can't move money, and neither can Runway. Agents can only create drafts; the database refuses anything else.
 
 ## Quick start
@@ -39,7 +47,10 @@ The dashboard, what-if, detectors and Autopilot all work with **no keys at all**
 |---|---|
 | `npm test` | Unit tests (vitest) |
 | `npm run eval` | Scores the detectors against planted waste across 5 seeds × 2 noise levels (`-- --write` updates `docs/eval-results.md`) |
-| `npm run test:db` | Applies the Supabase migration to a throwaway local Postgres and checks tenant isolation, draft-only actions and the audit trail |
+| `npm run test:db` | Applies the Supabase migrations to a throwaway local Postgres and checks tenant isolation, draft-only actions and the audit trail |
+| `npm run test:integration` | Runs the same persistence contract the unit tests use, against real Postgres (throwaway database) |
+| `npm run db:migrate` | Applies `supabase/migrations` to `DATABASE_URL`, once each (safe to re-run) |
+| `npm run verify:live` | Checks every configured integration (Rho, OpenAI, database, Jira) against the real services: PASS / FAIL / SKIP |
 | `npm run typecheck` / `npm run lint` / `npm run build` | Static checks and production build |
 
 ## Reproducing the demo
@@ -49,15 +60,7 @@ The dashboard, what-if, detectors and Autopilot all work with **no keys at all**
 3. Open **Autopilot** → **Run now** to get the step log, the Runway Review memo and the task list.
 4. With `OPENAI_API_KEY` set, open **Copilot** and click "Get me to 14 months of runway without touching payroll".
 
-Environment variables (see `.env.example`):
-
-| Variable | Needed for | Default |
-|---|---|---|
-| `OPENAI_API_KEY` | Copilot chat, LLM-written memo, labelling unknown vendors | unset: Copilot disabled, template memo, rules-only vendors |
-| `OPENAI_MODEL_AGENT` / `OPENAI_MODEL_FAST` | Model choice | `gpt-6.1-sol` / `gpt-6-luna` |
-| `RHO_BASE_URL` / `RHO_API_TOKEN` | Rho feed | sandbox URL / `sandbox` |
-| `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | Filing real Jira tickets from Autopilot | unset: tickets stay as drafts |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Persistence (schema in `supabase/migrations`) | not yet wired; see limitations |
+Every credential is optional, and each one switches on one more piece: GPT features, permanent storage, a password, your real Rho account, the daily schedule, Jira. **[DEPLOY.md](DEPLOY.md)** lists where each value comes from and the exact setup steps. `.env.example` has the full list.
 
 ## Stack and architecture
 
@@ -129,17 +132,17 @@ The eval and two independent code reviews caught real bugs during development, e
 
 ## Known limitations and next steps
 
-- **No user authentication yet.** The app serves one demo tenant, so **don't point `RHO_API_TOKEN` at a real account on a public deploy**. Before real customer data it needs:
-  - Supabase Auth
-  - per-org Rho tokens from Vault
-  - an org-keyed cache
+- **There's one shared password, not per-user accounts.**
+  - With `APP_PASSWORD` set, every page and API needs it.
+  - The app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
+  - Multi-company use still needs Supabase Auth, per-org Rho tokens from Vault and an org-keyed cache. The schema already has `org_id` and RLS on every table.
 - **Basic abuse protection is in place:**
   - Agent routes are rate-limited per IP, but per server instance; production needs a shared store.
   - Copilot accepts only user/assistant text, capped in size, so clients can't inject system prompts or forge tool results.
   - Output tokens are capped.
   - Also set a monthly spend limit on the OpenAI project.
 - **Jira filing checks for an existing issue first**, by the finding's label via `POST /rest/api/3/search/jql`, and fails closed if that check errors. The endpoint name changed in 2025, so verify it against your Atlassian site.
-- **Supabase persistence is designed and tested** (migration plus `npm run test:db`) but not yet wired into the app. Analysis currently runs in memory per request.
+- **Without `DATABASE_URL`, decisions live in the server's memory.** On serverless hosts that memory can reset at any time. Set `DATABASE_URL` for permanent storage.
 - **The LLM paths are built but haven't been run against the live OpenAI API** (no key in the build environment):
   - Copilot
   - the memo writer
