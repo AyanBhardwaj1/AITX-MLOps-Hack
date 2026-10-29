@@ -7,9 +7,11 @@ import type { Forecast } from "@/lib/finance/forecast";
 import type { MonthHistory } from "@/lib/finance/history";
 import type { Renewal } from "@/lib/finance/renewals";
 import { formatCents, formatDollars } from "@/lib/money";
+import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
 import { AutopilotPanel } from "./autopilot-panel";
 import { CopilotPanel } from "./copilot-panel";
+import { InboxPanel } from "./inbox-panel";
 import { ForecastChart } from "./forecast-chart";
 import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { RunwayChart } from "./runway-chart";
@@ -31,7 +33,7 @@ export interface DashboardData {
   timingsMs: Record<string, number>;
   snapshot: Snapshot;
   history: MonthHistory[];
-  findings: (Finding & { evidence: EvidenceRow[] })[];
+  findings: (Finding & { evidence: EvidenceRow[]; status: FindingStatus })[];
   streams: {
     vendorKey: string;
     vendorName: string;
@@ -45,7 +47,7 @@ export interface DashboardData {
   forecast: Forecast;
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
-  capabilities: { copilot: boolean; jira: boolean };
+  capabilities: { copilot: boolean; jira: boolean; persistence: "postgres" | "memory"; storeOk: boolean };
 }
 
 const KIND_LABEL: Record<Finding["kind"], string> = {
@@ -59,23 +61,43 @@ const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 const STRESS_REVENUE_DROP = 0.3;
 
 export function Dashboard({ data, notice }: { data: DashboardData; notice?: string }) {
-  const monthly = data.findings.filter((f) => f.monthlySavingsCents > 0);
+  const [statuses, setStatuses] = useState<Record<string, FindingStatus>>(() =>
+    Object.fromEntries(data.findings.map((f) => [f.id, f.status])),
+  );
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [showDismissed, setShowDismissed] = useState(false);
+  const live = data.findings.filter((f) => statuses[f.id] !== "dismissed");
+  const dismissed = data.findings.filter((f) => statuses[f.id] === "dismissed");
+  const monthly = live.filter((f) => f.monthlySavingsCents > 0);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
-  const [tab, setTab] = useState<"copilot" | "autopilot">("copilot");
+  const [tab, setTab] = useState<"copilot" | "autopilot" | "inbox">("copilot");
   const [chartView, setChartView] = useState<"forecast" | "history">("forecast");
 
-  const savings = useMemo(
-    () => monthly.filter((f) => selected.has(f.id)).reduce((s, f) => s + f.monthlySavingsCents, 0),
-    [monthly, selected],
-  );
-  const sim = useMemo(() => simulateSavings(data.snapshot, savings), [data.snapshot, savings]);
-  const allSim = useMemo(
-    () => simulateSavings(data.snapshot, monthly.reduce((s, f) => s + f.monthlySavingsCents, 0)),
-    [data.snapshot, monthly],
-  );
+  // Cheap pure math over a handful of findings; no memoization needed.
+  const savings = monthly.filter((f) => selected.has(f.id)).reduce((s, f) => s + f.monthlySavingsCents, 0);
+  const sim = simulateSavings(data.snapshot, savings);
+  const allSim = simulateSavings(data.snapshot, monthly.reduce((s, f) => s + f.monthlySavingsCents, 0));
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
-  const oneTime = data.findings.reduce((s, f) => s + f.oneTimeCents, 0);
+  const oneTime = live.reduce((s, f) => s + f.oneTimeCents, 0);
   const totalAnalysisMs = Object.values(data.timingsMs).reduce((s, v) => s + v, 0);
+
+  async function setStatus(id: string, status: FindingStatus) {
+    const previous = statuses[id] ?? "open";
+    setStatuses((s) => ({ ...s, [id]: status }));
+    if (status === "dismissed") setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
+    try {
+      const res = await fetch("/api/findings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: data.mode, fingerprint: id, status }),
+      });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Save failed (${res.status})`);
+      setStatusError(null);
+    } catch (err) {
+      setStatuses((s) => ({ ...s, [id]: previous }));
+      setStatusError(err instanceof Error ? err.message : "Couldn't save that");
+    }
+  }
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -207,14 +229,41 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 {oneTime > 0 && <p className="text-xs text-muted">+ {formatCents(oneTime)} to reclaim</p>}
               </div>
             </div>
-            {data.findings.length === 0 ? (
-              <p className="px-5 py-8 text-center text-sm text-muted">No waste detected in this feed.</p>
+            {statusError && <p className="mx-5 mt-3 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{statusError}</p>}
+            {live.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-muted">{data.findings.length ? "Everything here has been dismissed." : "No waste detected in this feed."}</p>
             ) : (
               <ul className="divide-y divide-line">
-                {data.findings.map((f) => (
-                  <FindingRow key={f.id} finding={f} checked={selected.has(f.id)} onToggle={() => toggle(f.id)} />
+                {live.map((f) => (
+                  <FindingRow
+                    key={f.id}
+                    finding={f}
+                    status={statuses[f.id] ?? "open"}
+                    checked={selected.has(f.id)}
+                    onToggle={() => toggle(f.id)}
+                    onStatus={(st) => void setStatus(f.id, st)}
+                  />
                 ))}
               </ul>
+            )}
+            {dismissed.length > 0 && (
+              <div className="border-t border-line px-5 py-2 text-xs text-muted">
+                <button type="button" onClick={() => setShowDismissed((v) => !v)} className="font-medium hover:underline">
+                  {showDismissed ? "Hide" : "Show"} {dismissed.length} dismissed
+                </button>
+                {showDismissed && (
+                  <ul className="mt-2 space-y-1">
+                    {dismissed.map((f) => (
+                      <li key={f.id} className="flex items-center justify-between gap-2">
+                        <span className="truncate">{f.title}</span>
+                        <button type="button" onClick={() => void setStatus(f.id, "open")} className="shrink-0 text-brand hover:underline">
+                          Restore
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </section>
 
@@ -236,7 +285,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.streams.map((s) => (
-                    <tr key={s.vendorKey}>
+                    <tr key={`${s.vendorKey}|${s.cardholders.join(",")}`}>
                       <td className="px-5 py-2">
                         {s.vendorName} <span className="text-xs text-muted">{s.category}</span>
                       </td>
@@ -255,23 +304,26 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         <aside className="min-w-0 lg:col-span-2">
           <div className="sticky top-4 rounded-xl border border-line bg-panel">
             <div className="flex border-b border-line text-sm">
-              {(["copilot", "autopilot"] as const).map((t) => (
+              {(["copilot", "autopilot", "inbox"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setTab(t)}
                   className={`flex-1 px-4 py-2.5 font-medium ${tab === t ? "border-b-2 border-brand text-ink" : "text-muted"}`}
                 >
-                  {t === "copilot" ? "Copilot" : "Autopilot"}
+                  {t === "copilot" ? "Copilot" : t === "autopilot" ? "Autopilot" : "Inbox"}
                 </button>
               ))}
             </div>
-            {/* Both stay mounted so switching tabs keeps the chat and the last run. */}
+            {/* Panels stay mounted so switching tabs keeps the chat and the last run. */}
             <div className={tab === "copilot" ? "" : "hidden"}>
               <CopilotPanel mode={data.mode} enabled={data.capabilities.copilot} />
             </div>
             <div className={tab === "autopilot" ? "" : "hidden"}>
-              <AutopilotPanel mode={data.mode} jira={data.capabilities.jira} llm={data.capabilities.copilot} />
+              <AutopilotPanel mode={data.mode} llm={data.capabilities.copilot} onOpenInbox={() => setTab("inbox")} />
+            </div>
+            <div className={tab === "inbox" ? "" : "hidden"}>
+              <InboxPanel mode={data.mode} jira={data.capabilities.jira} active={tab === "inbox"} />
             </div>
           </div>
         </aside>
@@ -282,7 +334,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           {data.transactionCount.toLocaleString()} transactions analyzed in {totalAnalysisMs.toFixed(1)} ms (map {data.timingsMs.map} · runway{" "}
           {data.timingsMs.snapshot} · detectors {data.timingsMs.detect} ms). No LLM in the math.
         </span>
-        <span>Burn = average of the last {data.snapshot.months.length} complete months.</span>
+        <span>
+          Burn = average of the last {data.snapshot.months.length} complete months · decisions saved to{" "}
+          {data.capabilities.persistence === "postgres" ? "the database" : "this server's memory"}
+          {data.capabilities.storeOk ? "" : " (database unreachable right now)"}
+        </span>
       </footer>
     </div>
   );
@@ -298,7 +354,19 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
   );
 }
 
-function FindingRow({ finding: f, checked, onToggle }: { finding: DashboardData["findings"][number]; checked: boolean; onToggle: () => void }) {
+function FindingRow({
+  finding: f,
+  status,
+  checked,
+  onToggle,
+  onStatus,
+}: {
+  finding: DashboardData["findings"][number];
+  status: FindingStatus;
+  checked: boolean;
+  onToggle: () => void;
+  onStatus: (status: FindingStatus) => void;
+}) {
   const [open, setOpen] = useState(false);
   const monthly = f.monthlySavingsCents > 0;
   return (
@@ -316,11 +384,26 @@ function FindingRow({ finding: f, checked, onToggle }: { finding: DashboardData[
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded bg-canvas px-1.5 py-0.5 text-[11px] font-medium text-muted">{KIND_LABEL[f.kind]}</span>
             <span className="font-medium">{f.title}</span>
+            {status === "accepted" && <span className="rounded bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand">✓ Acting on it</span>}
           </div>
           <p className="mt-1 text-sm text-muted">{f.detail}</p>
-          <button type="button" onClick={() => setOpen((o) => !o)} className="mt-1 text-xs font-medium text-brand hover:underline">
-            {open ? "Hide" : "Show"} {f.evidence.length} transactions
-          </button>
+          <div className="mt-1 flex flex-wrap gap-3 text-xs font-medium">
+            <button type="button" onClick={() => setOpen((o) => !o)} className="text-brand hover:underline">
+              {open ? "Hide" : "Show"} {f.evidence.length} transactions
+            </button>
+            {status !== "accepted" ? (
+              <button type="button" onClick={() => onStatus("accepted")} className="text-ink hover:underline">
+                Act on this
+              </button>
+            ) : (
+              <button type="button" onClick={() => onStatus("open")} className="text-muted hover:underline">
+                Undo
+              </button>
+            )}
+            <button type="button" onClick={() => onStatus("dismissed")} className="text-muted hover:underline">
+              Dismiss
+            </button>
+          </div>
           {open && (
             <table className="mt-2 w-full text-xs">
               <tbody className="divide-y divide-line">

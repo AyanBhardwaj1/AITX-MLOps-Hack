@@ -2,7 +2,8 @@ import { upcomingRenewals } from "../finance/renewals";
 import { formatCents, formatDollars } from "../money";
 import { analyze, type Analysis } from "../pipeline";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
-import type { VendorInfo } from "../types";
+import type { FindingStatus } from "../store/types";
+import type { Finding, VendorInfo } from "../types";
 import { draftAction, simulatePlan, type ActionDraft } from "./tools";
 
 /**
@@ -50,6 +51,8 @@ export interface AutopilotDeps {
   }>;
   /** Optional LLM memo writer. Without it, the template memo is used. */
   writeMemo?: (facts: MemoFacts) => Promise<{ text: string; model: string; inputTokens?: number; outputTokens?: number }>;
+  /** Optional: people's decisions on findings (dismissed ones are skipped). Also persists new findings. */
+  getFindingStatuses?: (findings: Finding[]) => Promise<ReadonlyMap<string, FindingStatus>>;
   /** Optional Jira (or other tracker) filing. Without it, tickets stay as drafts. */
   fileTicket?: (draft: ActionDraft) => Promise<{ externalRef: string }>;
 }
@@ -71,6 +74,8 @@ export interface AutopilotRun {
   asOf: string | null;
   steps: StepRecord[];
   findingsCount: number;
+  /** The findings this run produced, so callers can persist them before linking tickets. */
+  findings: Finding[];
   memo: { text: string; source: "llm" | "template"; model?: string };
   memoFacts: MemoFacts;
   tickets: Ticket[];
@@ -173,9 +178,21 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
 
     const a = await step("analyze", async () => {
       const result = analyze({ accounts: data.accounts, transactions: data.transactions, asOf: data.asOf, vendorLabels: data.vendorLabels });
+      // Respect people's decisions: a dismissed finding is out of the plan, the memo and the tickets.
+      let kept = result.findings;
+      let lookup: Record<string, unknown> = {};
+      if (deps.getFindingStatuses) {
+        try {
+          const statuses = await deps.getFindingStatuses(result.findings);
+          kept = result.findings.filter((f) => statuses.get(f.id) !== "dismissed");
+          lookup = { dismissed: result.findings.length - kept.length };
+        } catch (err) {
+          lookup = { statusLookupFailed: true, error: err instanceof Error ? err.message : String(err) };
+        }
+      }
       return {
-        value: result,
-        detail: { asOf: result.asOf, streams: result.streams.length, findings: result.findings.length, timingsMs: result.timingsMs },
+        value: { ...result, findings: kept },
+        detail: { asOf: result.asOf, streams: result.streams.length, findings: kept.length, ...lookup, timingsMs: result.timingsMs },
       };
     });
 
@@ -234,7 +251,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
       return { value: results, detail: { filed: results.length - failed, failed, jira: "configured" } };
     });
 
-    return { status: "succeeded", label, asOf: a.asOf, steps, findingsCount: a.findings.length, memo, memoFacts: facts, tickets };
+    return { status: "succeeded", label, asOf: a.asOf, steps, findingsCount: a.findings.length, findings: a.findings, memo, memoFacts: facts, tickets };
   } catch (err) {
     return {
       status: "failed",
@@ -242,6 +259,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
       asOf: null,
       steps,
       findingsCount: 0,
+      findings: [],
       memo: { text: "", source: "template" },
       memoFacts: emptyFacts,
       tickets: [],

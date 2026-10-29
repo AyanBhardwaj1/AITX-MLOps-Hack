@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sanitizeChatMessages } from "@/lib/agent/chat-input";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { createCopilot } from "@/lib/server/copilot";
+import { createCopilot, type SaveDraft } from "@/lib/server/copilot";
+import { scopeFor } from "@/lib/server/scope";
+import { getStore } from "@/lib/server/store";
 import { loadAnalysis } from "@/lib/server/data";
 import { hasOpenAI } from "@/lib/server/env";
 
@@ -40,5 +42,14 @@ export async function POST(request: Request) {
   if (!messages.ok) return NextResponse.json({ error: messages.error }, { status: 400 });
 
   const { analysis } = await loadAnalysis(parsed.data.mode);
-  return createAgentUIStreamResponse({ agent: createCopilot(analysis), uiMessages: messages.messages });
+  const store = getStore(scopeFor(parsed.data.mode));
+  // Findings must exist in the store so drafts can link to them; a database hiccup shouldn't block chat.
+  await store.syncFindings(analysis.findings).catch((err) => console.error("[copilot] finding sync failed", err));
+  const saveDraft: SaveDraft = async (d) => {
+    const [saved] = await store.saveDrafts([
+      { fingerprint: d.fingerprint, findingFingerprint: d.findingId, kind: d.kind, title: d.title, body: d.body, createdBy: "copilot" },
+    ]);
+    return { id: saved!.id, status: saved!.status };
+  };
+  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft), uiMessages: messages.messages });
 }

@@ -97,3 +97,22 @@ describe("memo renewals", () => {
     expect(checkMemoNumbers(run.memo.text, run.memoFacts).ok).toBe(true);
   });
 });
+
+describe("respecting people's decisions", () => {
+  it("leaves dismissed findings out of the plan, memo and tickets", async () => {
+    const getFindingStatuses = vi.fn(async (findings: { id: string }[]) =>
+      new Map(findings.map((f) => [f.id, f.id.startsWith("duplicate_charge") ? ("dismissed" as const) : ("open" as const)])),
+    );
+    const run = await runAutopilot({ loadData, getFindingStatuses });
+    expect(getFindingStatuses).toHaveBeenCalledOnce();
+    expect(run.tickets.some((t) => t.findingId.startsWith("duplicate_charge"))).toBe(false);
+    expect(run.memo.text).not.toContain("Canva");
+    expect(run.steps.find((s) => s.name === "analyze")!.detail).toMatchObject({ dismissed: 1 });
+  });
+
+  it("still runs if the decision lookup fails", async () => {
+    const run = await runAutopilot({ loadData, getFindingStatuses: async () => Promise.reject(new Error("db down")) });
+    expect(run.status).toBe("succeeded");
+    expect(run.tickets.length).toBe(run.findingsCount);
+  });
+});

@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { runAutopilot } from "@/lib/agent/autopilot";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { loadLabelledDataset } from "@/lib/server/data";
-import { hasJira, hasOpenAI } from "@/lib/server/env";
-import { fileJiraTicket } from "@/lib/server/jira-client";
-import { writeMemoWithLLM } from "@/lib/server/llm";
+import { executeAutopilot } from "@/lib/server/autopilot-service";
+import { parseMode } from "@/lib/server/data";
+import { scopeFor } from "@/lib/server/scope";
+import { getStore } from "@/lib/server/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const RECENT_RUNS = 10;
 const allow = createRateLimiter({ limit: 5, windowMs: 60_000 });
 const body = z.object({ mode: z.enum(["demo", "sandbox"]).default("demo") });
 
@@ -19,28 +19,17 @@ export async function POST(request: Request) {
   }
   const parsed = body.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  const { mode } = parsed.data;
-  const run = await runAutopilot({
-    loadData: () => loadLabelledDataset(mode),
-    writeMemo: hasOpenAI() ? writeMemoWithLLM : undefined,
-    fileTicket: hasJira() ? fileJiraTicket : undefined,
-  });
+  const run = await executeAutopilot(parsed.data.mode, "manual");
+  return NextResponse.json(run, { status: run.status === "failed" ? 502 : 200 });
+}
 
-  // Full details stay in server logs; the browser gets step names and statuses only.
-  const failedSteps = run.steps.filter((s) => s.status === "failed" || "error" in s.detail);
-  const failedTickets = run.tickets.filter((t) => t.error);
-  if (failedSteps.length || failedTickets.length) {
-    console.error("[autopilot] errors", { mode, steps: failedSteps, tickets: failedTickets.map((t) => ({ fingerprint: t.fingerprint, error: t.error })), error: run.error });
+/** Recent runs, newest first, for the Autopilot history list. */
+export async function GET(request: Request) {
+  const mode = parseMode(new URL(request.url).searchParams.get("mode"));
+  try {
+    return NextResponse.json({ runs: await getStore(scopeFor(mode)).listRuns(RECENT_RUNS) });
+  } catch (err) {
+    console.error("[autopilot] history failed", err);
+    return NextResponse.json({ error: "Couldn't load run history." }, { status: 500 });
   }
-  const { memoFacts: _facts, ...publicRun } = run;
-  const redacted = {
-    ...publicRun,
-    error: run.error ? "Autopilot couldn't finish. Check the server logs." : undefined,
-    tickets: run.tickets.map(({ error: _e, ...t }) => t),
-    steps: run.steps.map((s) => {
-      const { error: _e, ...detail } = s.detail;
-      return { ...s, detail };
-    }),
-  };
-  return NextResponse.json(redacted, { status: run.status === "failed" ? 502 : 200 });
 }

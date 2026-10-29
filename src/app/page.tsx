@@ -5,6 +5,9 @@ import { monthlyHistory } from "@/lib/finance/history";
 import { upcomingRenewals } from "@/lib/finance/renewals";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { hasJira, hasOpenAI } from "@/lib/server/env";
+import { scopeFor } from "@/lib/server/scope";
+import { getStore, hasDatabase } from "@/lib/server/store";
+import type { FindingStatus } from "@/lib/store/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +24,19 @@ function forecastHorizon(runwayMonths: number): number {
 }
 const MAX_EVIDENCE_ROWS = 12;
 
+async function findingStatuses(mode: DataMode, findings: Parameters<ReturnType<typeof getStore>["syncFindings"]>[0]) {
+  try {
+    return { statuses: await getStore(scopeFor(mode)).syncFindings(findings), storeOk: true };
+  } catch (err) {
+    // The dashboard still works without the database; decisions just can't be saved right now.
+    console.error("[page] couldn't sync findings with the store", err);
+    return { statuses: new Map<string, FindingStatus>(), storeOk: false };
+  }
+}
+
 async function buildData(mode: DataMode): Promise<DashboardData> {
   const { dataset, analysis: a } = await loadAnalysis(mode);
+  const { statuses, storeOk } = await findingStatuses(mode, a.findings);
   const byId = new Map(a.txns.map((t) => [t.id, t]));
   const history = monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS);
   return {
@@ -36,6 +50,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     history,
     findings: a.findings.map((f) => ({
       ...f,
+      status: statuses.get(f.id) ?? "open",
       evidence: f.evidenceTxnIds
         .slice(-MAX_EVIDENCE_ROWS)
         .map((id) => byId.get(id))
@@ -63,7 +78,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     }),
     renewals: upcomingRenewals(a.streams, a.asOf),
     aiSpend: aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS),
-    capabilities: { copilot: hasOpenAI(), jira: hasJira() },
+    capabilities: { copilot: hasOpenAI(), jira: hasJira(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
   };
 }
 

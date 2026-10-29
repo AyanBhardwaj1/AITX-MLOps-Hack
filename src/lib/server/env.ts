@@ -12,6 +12,14 @@ const schema = z.object({
   JIRA_EMAIL: z.string().min(1).optional(),
   JIRA_API_TOKEN: z.string().min(1).optional(),
   JIRA_PROJECT_KEY: z.string().regex(/^[A-Z][A-Z0-9]{1,9}$/).optional(),
+  /** Postgres connection string (Supabase: Connect → Transaction pooler). Unset = in-memory store. */
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//).optional(),
+  /** Supabase's CA certificate (PEM), so TLS to the database is verified rather than skipped. */
+  DATABASE_CA_CERT: z.string().includes("BEGIN CERTIFICATE").optional(),
+  /** When set, the whole app asks for this password (HTTP Basic). Required to serve a real Rho account. */
+  APP_PASSWORD: z.string().min(8).optional(),
+  /** Vercel Cron sends this as a bearer token to /api/cron/autopilot. */
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof schema>;
