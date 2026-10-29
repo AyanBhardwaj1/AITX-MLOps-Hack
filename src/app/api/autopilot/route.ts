@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAutopilot } from "@/lib/agent/autopilot";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { loadDataset } from "@/lib/server/data";
+import { loadLabelledDataset } from "@/lib/server/data";
 import { hasJira, hasOpenAI } from "@/lib/server/env";
 import { fileJiraTicket } from "@/lib/server/jira-client";
 import { writeMemoWithLLM } from "@/lib/server/llm";
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const { mode } = parsed.data;
   const run = await runAutopilot({
-    loadData: () => loadDataset(mode),
+    loadData: () => loadLabelledDataset(mode),
     writeMemo: hasOpenAI() ? writeMemoWithLLM : undefined,
     fileTicket: hasJira() ? fileJiraTicket : undefined,
   });

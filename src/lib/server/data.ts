@@ -2,8 +2,11 @@ import "server-only";
 import { analyze, type Analysis } from "../pipeline";
 import { createRhoClient } from "../rho/client";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
+import type { VendorInfo } from "../types";
 import { generateDemoCompany } from "../seed/demo-company";
-import { env } from "./env";
+import { unknownMerchants } from "../enrich/vendor-labels";
+import { env, hasOpenAI } from "./env";
+import { labelUnknownVendors } from "./vendor-llm";
 
 export type DataMode = "demo" | "sandbox";
 
@@ -36,7 +39,20 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
   return data;
 }
 
-export async function loadAnalysis(mode: DataMode): Promise<{ dataset: Dataset; analysis: Analysis }> {
+export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo> };
+
+/** The dataset plus LLM labels for vendors the rules couldn't place (when OpenAI is configured). */
+export async function loadLabelledDataset(mode: DataMode): Promise<LabelledDataset> {
   const dataset = await loadDataset(mode);
+  if (!hasOpenAI()) return dataset;
+  const unknown = unknownMerchants(analyze(dataset).txns);
+  if (unknown.length === 0) return dataset;
+  // Rules first; only vendors they couldn't place go to the cheap model (cached per vendor).
+  const vendorLabels = await labelUnknownVendors(unknown);
+  return vendorLabels.size ? { ...dataset, vendorLabels } : dataset;
+}
+
+export async function loadAnalysis(mode: DataMode): Promise<{ dataset: Dataset; analysis: Analysis }> {
+  const dataset = await loadLabelledDataset(mode);
   return { dataset, analysis: analyze(dataset) };
 }

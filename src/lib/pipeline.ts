@@ -1,9 +1,10 @@
 import { detectFindings } from "./detect/findings";
+import { applyVendorLabels } from "./enrich/vendor-labels";
 import { detectStreams } from "./detect/recurring";
 import { computeSnapshot, type Snapshot } from "./finance/runway";
 import { cashBalanceCents, mapTransaction } from "./rho/map";
 import type { RhoAccount, RhoTransaction } from "./rho/schema";
-import type { EnrichedTxn, Finding, IsoDate, RecurringStream } from "./types";
+import type { EnrichedTxn, Finding, IsoDate, RecurringStream, VendorInfo } from "./types";
 
 export interface Analysis {
   asOf: IsoDate;
@@ -21,6 +22,8 @@ export interface AnalyzeInput {
   transactions: readonly RhoTransaction[];
   /** Defaults to the latest transaction date, so a stale feed still has recent "complete months". */
   asOf?: IsoDate;
+  /** LLM labels for vendors the catalog doesn't know (see enrich/vendor-labels). */
+  vendorLabels?: ReadonlyMap<string, VendorInfo>;
 }
 
 function timed<T>(fn: () => T): [T, number] {
@@ -30,8 +33,11 @@ function timed<T>(fn: () => T): [T, number] {
 }
 
 /** Rho data in, runway and findings out. Pure and deterministic: no network, no LLM. */
-export function analyze({ accounts, transactions, asOf }: AnalyzeInput): Analysis {
-  const [txns, mapMs] = timed(() => transactions.map(mapTransaction).filter((t): t is EnrichedTxn => t !== null));
+export function analyze({ accounts, transactions, asOf, vendorLabels }: AnalyzeInput): Analysis {
+  const [txns, mapMs] = timed(() => {
+    const mapped = transactions.map(mapTransaction).filter((t): t is EnrichedTxn => t !== null);
+    return vendorLabels?.size ? applyVendorLabels(mapped, vendorLabels) : mapped;
+  });
   const latest = txns.reduce<IsoDate>((max, t) => (t.postedAt > max ? t.postedAt : max), "0000-00-00");
   const effectiveAsOf = asOf ?? latest;
   const [snapshot, snapMs] = timed(() => computeSnapshot({ cashCents: cashBalanceCents(accounts), txns, asOf: effectiveAsOf }));

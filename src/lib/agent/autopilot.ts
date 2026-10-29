@@ -2,6 +2,7 @@ import { upcomingRenewals } from "../finance/renewals";
 import { formatCents, formatDollars } from "../money";
 import { analyze, type Analysis } from "../pipeline";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
+import type { VendorInfo } from "../types";
 import { draftAction, simulatePlan, type ActionDraft } from "./tools";
 
 /**
@@ -40,7 +41,13 @@ export interface MemoFacts {
 }
 
 export interface AutopilotDeps {
-  loadData: () => Promise<{ accounts: RhoAccount[]; transactions: RhoTransaction[]; asOf?: string; label: string }>;
+  loadData: () => Promise<{
+    accounts: RhoAccount[];
+    transactions: RhoTransaction[];
+    asOf?: string;
+    label: string;
+    vendorLabels?: ReadonlyMap<string, VendorInfo>;
+  }>;
   /** Optional LLM memo writer. Without it, the template memo is used. */
   writeMemo?: (facts: MemoFacts) => Promise<{ text: string; model: string; inputTokens?: number; outputTokens?: number }>;
   /** Optional Jira (or other tracker) filing. Without it, tickets stay as drafts. */
@@ -165,7 +172,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
     });
 
     const a = await step("analyze", async () => {
-      const result = analyze({ accounts: data.accounts, transactions: data.transactions, asOf: data.asOf });
+      const result = analyze({ accounts: data.accounts, transactions: data.transactions, asOf: data.asOf, vendorLabels: data.vendorLabels });
       return {
         value: result,
         detail: { asOf: result.asOf, streams: result.streams.length, findings: result.findings.length, timingsMs: result.timingsMs },
