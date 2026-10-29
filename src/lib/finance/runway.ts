@@ -39,7 +39,7 @@ function runwayFrom(cashCents: Cents, netBurnCents: Cents): number {
 /** Beyond a century of runway a calendar date is meaningless (and overflows Date). */
 const MAX_DATED_RUNWAY_MONTHS = 1_200;
 
-function zeroCashDate(asOf: IsoDate, runwayMonths: number): IsoDate | null {
+export function zeroCashDate(asOf: IsoDate, runwayMonths: number): IsoDate | null {
   return runwayMonths <= MAX_DATED_RUNWAY_MONTHS ? addDays(asOf, runwayMonths * AVG_DAYS_PER_MONTH) : null;
 }
 
