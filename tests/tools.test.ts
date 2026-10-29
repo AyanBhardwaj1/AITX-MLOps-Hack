@@ -65,3 +65,18 @@ describe("agent tools", () => {
     expect(draftAction(a, { findingId: "missing", kind: "jira_ticket" })).toHaveProperty("error");
   });
 });
+
+describe("insight tools", () => {
+  it("reports runway percentiles from the forecast", async () => {
+    const { getForecast } = await import("@/lib/agent/tools");
+    const f = getForecast(a);
+    expect(f.runwayMonths.p10!).toBeLessThanOrEqual(f.runwayMonths.p50!);
+    expect(f.zeroCashDates.p50).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("lists upcoming renewals and AI spend", async () => {
+    const { getUpcomingRenewals, getAiSpend } = await import("@/lib/agent/tools");
+    expect(getUpcomingRenewals(a, { days: 60 }).renewals.some((r) => r.vendorKey === "carta")).toBe(true);
+    expect(getAiSpend(a).latestMonthCents).toBeGreaterThan(0);
+  });
+});

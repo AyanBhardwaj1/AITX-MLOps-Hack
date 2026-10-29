@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { goalSeek, simulateSavings } from "../finance/runway";
+import { aiSpendTrend } from "../finance/ai-spend";
+import { forecastCash } from "../finance/forecast";
+import { monthlyHistory } from "../finance/history";
+import { upcomingRenewals } from "../finance/renewals";
+import { goalSeek, simulateSavings, stressRunway } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 
@@ -28,6 +32,7 @@ export function getFinancialSnapshot(a: Analysis) {
     netBurnCentsPerMonth: s.netBurnCents,
     runwayMonths: round1(s.runwayMonths),
     zeroCashDate: s.zeroCashDate,
+    runwayMonthsIfRevenueFalls30Pct: round1(stressRunway(s, 0.3).runwayMonths),
     lookbackMonths: s.months.map((m) => m.month),
     avgMonthlySpendByCategoryCents: Object.fromEntries(
       [...byCategory].sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round(v / s.months.length)]),
@@ -140,5 +145,41 @@ export function draftAction(a: Analysis, input: z.infer<typeof draftActionInput>
     status: "draft",
     title: `${f.title}`,
     body: bodies[input.kind],
+  };
+}
+
+const FORECAST_HISTORY_MONTHS = 12;
+const AI_TREND_MONTHS = 6;
+
+export const forecastInput = z.object({});
+/** Monte Carlo runway range: p10 is the pessimistic case (1-in-10 chance of running out sooner). */
+export function getForecast(a: Analysis) {
+  const f = forecastCash({
+    cashCents: a.snapshot.cashCents,
+    history: monthlyHistory(a.txns, a.asOf, FORECAST_HISTORY_MONTHS),
+    netBurnCents: a.snapshot.netBurnCents,
+    asOf: a.asOf,
+  });
+  return {
+    runwayMonths: { p10: round1(f.runwayMonths.p10), p50: round1(f.runwayMonths.p50), p90: round1(f.runwayMonths.p90) },
+    zeroCashDates: f.zeroCashDates,
+    method: `${f.simulations} bootstrap simulations of ${f.sampledMonths} months of the company's own cash-flow swings`,
+  };
+}
+
+export const renewalsInput = z.object({ days: z.number().int().min(1).max(365).default(60) });
+export function getUpcomingRenewals(a: Analysis, input: z.infer<typeof renewalsInput>) {
+  const renewals = upcomingRenewals(a.streams, a.asOf, input.days);
+  return { windowDays: input.days, totalCents: renewals.reduce((s, r) => s + r.amountCents, 0), renewals };
+}
+
+export const aiSpendInput = z.object({});
+export function getAiSpend(a: Analysis) {
+  const t = aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS);
+  if (!t) return { latestMonthCents: 0, note: "No AI/LLM API spend found." };
+  return {
+    ...t,
+    monthlyGrowthPct: t.monthlyGrowth === null ? null : Math.round(t.monthlyGrowth * 1000) / 10,
+    shareOfGrossBurnPct: Math.round((t.latestMonthCents / Math.max(1, a.snapshot.grossBurnCents)) * 1000) / 10,
   };
 }

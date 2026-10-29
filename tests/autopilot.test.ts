@@ -88,3 +88,12 @@ describe("checkMemoNumbers", () => {
     expect(checkMemoNumbers("Net burn is -$5,000 as of 2026-10-26.", facts).ok).toBe(true);
   });
 });
+
+describe("memo renewals", () => {
+  it("tells the founder which big renewals to decide on before they hit", async () => {
+    const run = await runAutopilot({ loadData });
+    expect(run.memo.text).toContain("Decide before it renews");
+    expect(run.memo.text).toContain("Carta");
+    expect(checkMemoNumbers(run.memo.text, run.memoFacts).ok).toBe(true);
+  });
+});

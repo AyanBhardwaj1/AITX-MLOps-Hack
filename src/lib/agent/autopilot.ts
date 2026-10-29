@@ -1,3 +1,4 @@
+import { upcomingRenewals } from "../finance/renewals";
 import { formatCents, formatDollars } from "../money";
 import { analyze, type Analysis } from "../pipeline";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
@@ -32,6 +33,8 @@ export interface MemoFacts {
   newRunwayText: string;
   addedMonthsText: string;
   findings: { title: string; savingsText: string }[];
+  /** Annual or large renewals due soon: decide before they hit. */
+  renewals: { vendorName: string; dueDate: string; amountText: string; cadence: string }[];
   allowedMoney: string[];
   allowedMonths: string[];
 }
@@ -103,6 +106,9 @@ export function buildMemoFacts(a: Analysis, company: string): MemoFacts {
       title: f.title,
       savingsText: f.monthlySavingsCents > 0 ? `${formatCents(f.monthlySavingsCents)}/month` : `${formatCents(f.oneTimeCents)} one-time`,
     })),
+    renewals: upcomingRenewals(a.streams, a.asOf)
+      .filter((r) => r.decide)
+      .map((r) => ({ vendorName: r.vendorName, dueDate: r.dueDate, amountText: formatCents(r.amountCents), cadence: r.cadence })),
     allowedMoney: [...new Set(cents.flatMap((c) => [formatCents(c), formatDollars(c)]))],
     allowedMonths: [...new Set([s.runwayMonths, plan.newRunwayMonths ?? 0, plan.addedMonths ?? 0].map(oneDecimal))],
   };
@@ -122,6 +128,9 @@ export function templateMemo(f: MemoFacts): string {
     f.newRunwayText === "unlimited months"
       ? `Monthly savings of ${f.monthlySavingsText} would make the company cash-flow positive. One-time refunds to claim: ${f.oneTimeText}.`
       : `Monthly savings of ${f.monthlySavingsText} take runway to ${f.newRunwayText} (+${f.addedMonthsText}). One-time refunds to claim: ${f.oneTimeText}.`,
+    ...(f.renewals.length
+      ? ["", "## Decide before it renews", ...f.renewals.map((r) => `- ${r.vendorName} (${r.cadence}): ${r.amountText} on ${r.dueDate}`)]
+      : []),
     "",
     "Each finding has a ticket below. Nothing is cancelled or paid until a person approves it.",
   ].join("\n");
@@ -144,7 +153,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
 
   const emptyFacts: MemoFacts = {
     company: "", asOf: "", cashText: "", netBurnText: "", runwayMonthsText: "", zeroCashDate: null, monthlySavingsText: "",
-    oneTimeText: "", newRunwayText: "", addedMonthsText: "", findings: [], allowedMoney: [], allowedMonths: [],
+    oneTimeText: "", newRunwayText: "", addedMonthsText: "", findings: [], renewals: [], allowedMoney: [], allowedMonths: [],
   };
   let label = "unknown";
 

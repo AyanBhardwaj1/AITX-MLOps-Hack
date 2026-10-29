@@ -1,12 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { simulateSavings, type Snapshot } from "@/lib/finance/runway";
+import { simulateSavings, stressRunway, type Snapshot } from "@/lib/finance/runway";
+import type { AiSpendTrend } from "@/lib/finance/ai-spend";
+import type { Forecast } from "@/lib/finance/forecast";
 import type { MonthHistory } from "@/lib/finance/history";
+import type { Renewal } from "@/lib/finance/renewals";
 import { formatCents, formatDollars } from "@/lib/money";
 import type { Finding } from "@/lib/types";
 import { AutopilotPanel } from "./autopilot-panel";
 import { CopilotPanel } from "./copilot-panel";
+import { ForecastChart } from "./forecast-chart";
+import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { RunwayChart } from "./runway-chart";
 
 export interface EvidenceRow {
@@ -37,6 +42,9 @@ export interface DashboardData {
     nextExpected: string;
     cardholders: string[];
   }[];
+  forecast: Forecast;
+  renewals: Renewal[];
+  aiSpend: AiSpendTrend | null;
   capabilities: { copilot: boolean; jira: boolean };
 }
 
@@ -48,11 +56,13 @@ const KIND_LABEL: Record<Finding["kind"], string> = {
 };
 
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
+const STRESS_REVENUE_DROP = 0.3;
 
 export function Dashboard({ data, notice }: { data: DashboardData; notice?: string }) {
   const monthly = data.findings.filter((f) => f.monthlySavingsCents > 0);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [tab, setTab] = useState<"copilot" | "autopilot">("copilot");
+  const [chartView, setChartView] = useState<"forecast" | "history">("forecast");
 
   const savings = useMemo(
     () => monthly.filter((f) => selected.has(f.id)).reduce((s, f) => s + f.monthlySavingsCents, 0),
@@ -63,6 +73,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
     () => simulateSavings(data.snapshot, monthly.reduce((s, f) => s + f.monthlySavingsCents, 0)),
     [data.snapshot, monthly],
   );
+  const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
   const oneTime = data.findings.reduce((s, f) => s + f.oneTimeCents, 0);
   const totalAnalysisMs = Object.values(data.timingsMs).reduce((s, v) => s + v, 0);
 
@@ -119,6 +130,18 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </div>
           <p className="mt-2 text-sm text-muted">
             Cash runs out around <span className="font-medium text-ink">{sim.zeroCashDate ?? "never at this burn"}</span>
+            {savings === 0 && Number.isFinite(data.forecast.runwayMonths.p50) && (
+              <>
+                {" "}
+                · likely range {months(data.forecast.runwayMonths.p10)}–{months(data.forecast.runwayMonths.p90)} months
+              </>
+            )}
+            {savings === 0 && Number.isFinite(stressed.runwayMonths) && (
+              <>
+                {" "}
+                · <span className="text-warn">{months(stressed.runwayMonths)} months if revenue falls 30%</span>
+              </>
+            )}
             {savings === 0 && monthly.length > 0 && (
               <>
                 {" "}
@@ -136,12 +159,40 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
       </section>
 
       <section className="mb-6 rounded-xl border border-line bg-panel p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold">Cash in and out</h2>
-          <span className="text-xs text-muted">Internal transfers and card repayments excluded</span>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex overflow-hidden rounded-lg border border-line text-sm">
+            {(["forecast", "history"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setChartView(v)}
+                className={`px-3 py-1 ${chartView === v ? "bg-ink text-white" : "text-muted hover:bg-canvas"}`}
+              >
+                {v === "forecast" ? "Cash forecast" : "Cash in and out"}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-muted">
+            {chartView === "forecast"
+              ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString()} simulations replaying your own month-to-month swings`
+              : "Internal transfers and card repayments excluded"}
+          </span>
         </div>
-        <RunwayChart history={data.history} />
+        {chartView === "forecast" ? (
+          <ForecastChart
+            points={data.forecast.points}
+            monthlySavingsCents={savings > 0 ? savings : allSim.monthlySavingsCents}
+            stressExtraBurnCents={stressed.netBurnCents - data.snapshot.netBurnCents}
+          />
+        ) : (
+          <RunwayChart history={data.history} />
+        )}
       </section>
+
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        <RenewalsCard renewals={data.renewals} />
+        <AiSpendCard trend={data.aiSpend} grossBurnCents={data.snapshot.grossBurnCents} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="min-w-0 space-y-6 lg:col-span-3">

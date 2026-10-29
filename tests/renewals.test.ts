@@ -57,3 +57,11 @@ describe("upcomingRenewals", () => {
     expect(carta).toMatchObject({ cadence: "annual", decide: true });
   });
 });
+
+describe("decide flag", () => {
+  it("does not ask for a decision on an ordinary monthly bill, even a sizeable one", () => {
+    const insurance = Array.from({ length: 6 }, (_, i) => charge("VOUCH INSURANCE", addMonths("2026-05-04", i), 1_100));
+    const [r] = upcomingRenewals(detectStreams(insurance, AS_OF), AS_OF, 60);
+    expect(r!.decide).toBe(false);
+  });
+});

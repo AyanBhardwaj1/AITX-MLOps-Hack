@@ -4,8 +4,8 @@ import type { Cadence, Category, Cents, IsoDate, RecurringStream } from "../type
 /** Subscription-style spend. Payroll, rent and usage-based bills aren't "renewals" to decide on. */
 const RENEWAL_CATEGORIES: ReadonlySet<Category> = new Set(["software", "insurance", "legal_accounting", "other"]);
 const LUMPY_CADENCES: ReadonlySet<Cadence> = new Set(["quarterly", "annual"]);
-/** A single charge this big deserves a decision before it lands. */
-const DECIDE_MIN_CENTS = 100_000;
+/** A single charge this big ($5k+) deserves a decision before it lands, whatever its cadence. */
+const DECIDE_MIN_CENTS = 500_000;
 export const DEFAULT_RENEWAL_WINDOW_DAYS = 60;
 
 export interface Renewal {

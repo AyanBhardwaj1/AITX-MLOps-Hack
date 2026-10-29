@@ -61,6 +61,7 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   { key: "vouch", name: "Vouch Insurance", category: "insurance", job: null, aliases: ["vouch"] },
   { key: "pilot", name: "Pilot (bookkeeping)", category: "legal_accounting", job: null, aliases: ["pilot.com"] },
   { key: "carta", name: "Carta", category: "legal_accounting", job: null, aliases: ["carta"] },
+  { key: "wilson_sonsini", name: "Wilson Sonsini (legal)", category: "legal_accounting", job: null, aliases: ["wilson sonsini"] },
   // Travel and meals
   { key: "united", name: "United Airlines", category: "travel", job: null, aliases: ["united airlines", "united air"] },
   { key: "uber", name: "Uber", category: "travel", job: null, aliases: ["uber trip", "uber"] },

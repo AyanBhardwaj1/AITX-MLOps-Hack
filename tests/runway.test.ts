@@ -125,3 +125,20 @@ describe("extreme runway", () => {
     expect(s.zeroCashDate).toBeNull();
   });
 });
+
+describe("stressRunway", () => {
+  it("recomputes runway if revenue falls by a share", async () => {
+    const { stressRunway } = await import("@/lib/finance/runway");
+    const s = computeSnapshot({ cashCents: 96_000_000, txns: TXNS, asOf: "2026-10-20" });
+    // Inflow averages $20k/mo; a 50% drop adds $10k of burn: 96M / 9M ≈ 10.67 months.
+    const stressed = stressRunway(s, 0.5);
+    expect(stressed.netBurnCents).toBe(9_000_000);
+    expect(stressed.runwayMonths).toBeCloseTo(96 / 9, 5);
+  });
+
+  it("rejects drops outside 0–100%", async () => {
+    const { stressRunway } = await import("@/lib/finance/runway");
+    const s = computeSnapshot({ cashCents: 96_000_000, txns: TXNS, asOf: "2026-10-20" });
+    expect(() => stressRunway(s, 1.5)).toThrow(/between 0 and 1/);
+  });
+});

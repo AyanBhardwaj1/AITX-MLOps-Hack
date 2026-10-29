@@ -122,3 +122,12 @@ export function goalSeek(snapshot: Snapshot, findings: readonly Finding[], targe
     reachesTarget: projectedRunwayMonths >= targetMonths,
   };
 }
+
+/** Runway if money coming in falls by `revenueDrop` (0.3 = 30%) while spending stays the same. */
+export function stressRunway(snapshot: Snapshot, revenueDrop: number): Omit<Simulation, "monthlySavingsCents" | "deltaMonths"> {
+  if (!(revenueDrop >= 0 && revenueDrop <= 1)) throw new Error("revenue drop must be between 0 and 1");
+  const avgInflow = snapshot.months.reduce((s, m) => s + m.inflowCents, 0) / Math.max(1, snapshot.months.length);
+  const netBurnCents = Math.round(snapshot.netBurnCents + avgInflow * revenueDrop);
+  const runwayMonths = runwayFrom(snapshot.cashCents, netBurnCents);
+  return { netBurnCents, runwayMonths, zeroCashDate: zeroCashDate(snapshot.asOf, runwayMonths) };
+}

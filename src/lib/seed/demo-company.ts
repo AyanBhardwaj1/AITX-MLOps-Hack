@@ -86,7 +86,7 @@ export const DEMO_CATEGORY_LABELS: Record<string, Category> = {
   hubspot: "software", salesforce: "software", intercom: "software", one_password: "software", docusign: "software",
   canva: "software", aws: "cloud", openai: "ai_api", gusto: "payroll", brazos_properties: "rent",
   vouch: "insurance", pilot: "legal_accounting", stripe: "revenue", uber: "travel", doordash: "meals",
-  united: "travel", bank_fees: "fees", blue_bottle: "meals", teamline_software: "software", carta: "legal_accounting",
+  united: "travel", apple: "hardware", wilson_sonsini: "legal_accounting", bank_fees: "fees", blue_bottle: "meals", teamline_software: "software", carta: "legal_accounting",
 };
 
 const dollarsToCents = (d: number) => Math.round(d * 100);
@@ -141,9 +141,10 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 2
     push(day(4), -dollarsToCents(1_100), "VOUCH INSURANCE", "ach_debit", CHECKING);
     push(day(12), -dollarsToCents(900), "PILOT.COM BOOKKEEPING", "ach_debit", CHECKING);
 
-    // Revenue: weekly Stripe payouts, growing.
+    // Revenue: weekly Stripe payouts, growing, with real-world month-to-month swings (±20%).
+    const revenueSwing = 0.8 + rng.next() * 0.4;
     for (const d of [3, 10, 17, 24]) {
-      push(day(d), dollarsToCents(Math.max(1_500, 4_000 + j * 250) + rng.int(-400, 400)), "STRIPE TRANSFER", "ach_credit", CHECKING);
+      push(day(d), dollarsToCents(Math.round(Math.max(1_500, 4_000 + j * 250) * revenueSwing) + rng.int(-400, 400)), "STRIPE TRANSFER", "ach_credit", CHECKING);
     }
 
     // Usage-based cloud and AI spend: grows, but is NOT price creep (negative control).
@@ -163,6 +164,9 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 2
       if (rng.chance(0.4)) card(day(rng.int(5, 25)), rng.int(15, 45), "UBER TRIP", holder);
     }
     if (i % 3 === 1) card(day(rng.int(6, 20)), rng.int(380, 640), "UNITED AIRLINES", rng.pick(TEAM_TRAVEL));
+    // Lumpy one-offs at irregular times (no cadence, so they never look like subscriptions).
+    if (rng.chance(0.3)) card(day(rng.int(5, 25)), rng.int(2_500, 6_000), "APPLE STORE R102", "Maya Thompson");
+    if (rng.chance(0.25)) push(day(rng.int(5, 25)), -dollarsToCents(rng.int(4_000, 9_000)), "WILSON SONSINI LEGAL", "ach_debit", CHECKING);
     if (i === months - 6) card(day(22), 7.85, "BLUE BOTTLE COFFEE", "Priya Shah");
 
     // Planted double charge: Canva charged twice in one month.
