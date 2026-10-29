@@ -8,7 +8,7 @@ Due **Thursday Oct 29, 5:00 PM CT** on the hackathon Airtable form. Submitting t
 |---|---|---|
 | Project title | Runway for Rho | ✅ |
 | Tracks (max 2) | Rho Fintech + Antler Agents | ✅ |
-| Repo link (public) | https://github.com/AyanBhardwaj1/AITX-MLOps-Hack (merge the working branch into `main` first, so judges land on the finished code) | ⬜ merge |
+| Repo link (public) | https://github.com/AyanBhardwaj1/AITX-MLOps-Hack (code is on `main`; set `main` as the default branch in repo Settings → General) | ✅ merged |
 | Deployed URL | Vercel: import the repo, no env vars needed for the demo | ⬜ deploy |
 | Loom video (3–5 min) | Record with the script below | ⬜ record |
 | Write-up (150–300 words) | Below | ✅ |
