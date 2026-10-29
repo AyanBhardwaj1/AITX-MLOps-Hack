@@ -44,8 +44,8 @@ interface Sub {
   cardholder: string;
   dollars: (monthIndex: number, monthsTotal: number) => number;
   day: number;
-  /** Months (0-based from start) when the subscription bills; default all. */
-  activeFrom?: number;
+  /** Plan started this many months before asOf; default: billed for the whole history. */
+  startedMonthsAgo?: number;
   annualMonth?: number;
 }
 
@@ -56,7 +56,7 @@ const SUBSCRIPTIONS: readonly Sub[] = [
   { descriptor: "LOOM.COM", cardholder: "Maya Thompson", dollars: () => 60, day: 11 },
   { descriptor: "GOOGLE *GSUITE_tacorobotics", cardholder: "Maya Thompson", dollars: () => 864, day: 1 },
   { descriptor: "NOTION LABS", cardholder: "Daniel Rivera", dollars: () => 96, day: 14 },
-  { descriptor: "ATLASSIAN *CONFLUENCE", cardholder: "Daniel Rivera", dollars: () => 57, day: 15, activeFrom: 4 },
+  { descriptor: "ATLASSIAN *CONFLUENCE", cardholder: "Daniel Rivera", dollars: () => 57, day: 15, startedMonthsAgo: 8 },
   { descriptor: "LINEAR", cardholder: "Daniel Rivera", dollars: () => 64, day: 7 },
   { descriptor: "GITHUB.COM", cardholder: "Daniel Rivera", dollars: () => 210, day: 2 },
   { descriptor: "DATADOG INC", cardholder: "Daniel Rivera", dollars: (i, n) => (i < n - 4 ? 2_400 : 3_600), day: 6 },
@@ -67,14 +67,16 @@ const SUBSCRIPTIONS: readonly Sub[] = [
   { descriptor: "CALENDLY", cardholder: "Priya Shah", dollars: () => 48, day: 20 },
   { descriptor: "HUBSPOT INC", cardholder: "Sofia Martin", dollars: () => 800, day: 8 },
   { descriptor: "INTERCOM", cardholder: "Sofia Martin", dollars: () => 395, day: 10 },
-  { descriptor: "SALESFORCE.COM", cardholder: "Sofia Martin", dollars: () => 1_650, day: 13, activeFrom: 3 },
+  { descriptor: "SALESFORCE.COM", cardholder: "Sofia Martin", dollars: () => 1_650, day: 13, startedMonthsAgo: 9 },
   { descriptor: "1PASSWORD", cardholder: "Maya Thompson", dollars: () => 48, day: 21 },
   { descriptor: "DOCUSIGN", cardholder: "Sofia Martin", dollars: () => 600, day: 2, annualMonth: 5 },
+  // Annual plan renewing next month: shows up in the renewals calendar as a decision to make.
+  { descriptor: "CARTA INC", cardholder: "Sofia Martin", dollars: () => 2_800, day: 15, annualMonth: 1 },
 ];
 
 const TEAM_TRAVEL = ["Maya Thompson", "Daniel Rivera", "Sofia Martin", "Andrew Collins"] as const;
-/** Priya's last non-subscription purchase is in this month (0-based); afterwards her card only pays SaaS. */
-const PRIYA_LAST_ACTIVE_MONTH = 7;
+/** Priya's last non-subscription purchase was this many months before asOf; afterwards her card only pays SaaS. */
+const PRIYA_IDLE_MONTHS = 5;
 const NOISE_PREFIXES = ["SQ *", "TST* ", "PAYPAL *", "SP * "];
 
 export const DEMO_CATEGORY_LABELS: Record<string, Category> = {
@@ -84,12 +86,12 @@ export const DEMO_CATEGORY_LABELS: Record<string, Category> = {
   hubspot: "software", salesforce: "software", intercom: "software", one_password: "software", docusign: "software",
   canva: "software", aws: "cloud", openai: "ai_api", gusto: "payroll", brazos_properties: "rent",
   vouch: "insurance", pilot: "legal_accounting", stripe: "revenue", uber: "travel", doordash: "meals",
-  united: "travel", bank_fees: "fees", blue_bottle: "meals", teamline_software: "software",
+  united: "travel", bank_fees: "fees", blue_bottle: "meals", teamline_software: "software", carta: "legal_accounting",
 };
 
 const dollarsToCents = (d: number) => Math.round(d * 100);
 
-export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 12, noise = "clean" }: DemoOptions = {}): DemoCompany {
+export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 24, noise = "clean" }: DemoOptions = {}): DemoCompany {
   const rng = createRng(seed);
   const rows: RhoTransaction[] = [];
   const startMonth = shiftMonth(monthKey(asOf), -months);
@@ -122,6 +124,8 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 1
 
   for (let i = 0; i <= months; i++) {
     const month = shiftMonth(startMonth, i);
+    // Months relative to a year before asOf, so growth (and the recent economics) don't depend on history length.
+    const j = i - (months - 12);
     const day = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
     let cardTotal = 0;
     const card = (d: string, dollars: number, raw: string, holder: string) => {
@@ -139,27 +143,27 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 1
 
     // Revenue: weekly Stripe payouts, growing.
     for (const d of [3, 10, 17, 24]) {
-      push(day(d), dollarsToCents(4_000 + i * 250 + rng.int(-400, 400)), "STRIPE TRANSFER", "ach_credit", CHECKING);
+      push(day(d), dollarsToCents(Math.max(1_500, 4_000 + j * 250) + rng.int(-400, 400)), "STRIPE TRANSFER", "ach_credit", CHECKING);
     }
 
     // Usage-based cloud and AI spend: grows, but is NOT price creep (negative control).
-    card(day(3), 3_000 + i * 150 + rng.int(-120, 120), "AWS EMEA", "Daniel Rivera");
-    card(day(4), 400 + i * 110 + rng.int(-60, 60), "OPENAI *CHATGPT API", "Daniel Rivera");
+    card(day(3), Math.max(800, 3_000 + j * 150) + rng.int(-120, 120), "AWS EMEA", "Daniel Rivera");
+    card(day(4), Math.max(120, 400 + j * 110) + rng.int(-60, 60), "OPENAI *CHATGPT API", "Daniel Rivera");
 
     for (const s of SUBSCRIPTIONS) {
-      if (s.activeFrom !== undefined && i < s.activeFrom) continue;
+      if (s.startedMonthsAgo !== undefined && i < months - s.startedMonthsAgo) continue;
       if (s.annualMonth !== undefined && i % 12 !== s.annualMonth) continue;
       card(addDays(day(s.day), rng.int(-1, 1)), s.dollars(i, months), s.descriptor, s.cardholder);
     }
 
     // Everyday card spend for active people. Priya stops after PRIYA_LAST_ACTIVE_MONTH.
-    const travellers = i <= PRIYA_LAST_ACTIVE_MONTH ? [...TEAM_TRAVEL, "Priya Shah"] : [...TEAM_TRAVEL];
+    const travellers = i <= months - PRIYA_IDLE_MONTHS ? [...TEAM_TRAVEL, "Priya Shah"] : [...TEAM_TRAVEL];
     for (const holder of travellers) {
       card(day(rng.int(5, 25)), rng.int(18, 60), "DOORDASH", holder);
       if (rng.chance(0.4)) card(day(rng.int(5, 25)), rng.int(15, 45), "UBER TRIP", holder);
     }
     if (i % 3 === 1) card(day(rng.int(6, 20)), rng.int(380, 640), "UNITED AIRLINES", rng.pick(TEAM_TRAVEL));
-    if (i === 6) card(day(22), 7.85, "BLUE BOTTLE COFFEE", "Priya Shah");
+    if (i === months - 6) card(day(22), 7.85, "BLUE BOTTLE COFFEE", "Priya Shah");
 
     // Planted double charge: Canva charged twice in one month.
     if (i === months - 2) {
