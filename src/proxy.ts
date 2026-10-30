@@ -3,7 +3,8 @@ import { checkBasicAuth } from "./lib/access";
 
 /**
  * Optional site-wide password (HTTP Basic). Off unless APP_PASSWORD is set; required before a
- * real Rho account can be shown. The cron route is excluded because it has its own secret.
+ * real Rho account can be shown. The cron route (own secret), the health check and the
+ * link-preview image are excluded.
  */
 export function proxy(request: NextRequest) {
   const password = process.env.APP_PASSWORD;
@@ -16,5 +17,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/cron/|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/cron/|api/health|_next/static|_next/image|favicon.ico|icon.svg|opengraph-image).*)"],
 };

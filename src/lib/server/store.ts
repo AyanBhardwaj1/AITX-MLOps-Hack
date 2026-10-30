@@ -49,3 +49,20 @@ export function getStore(scope: string): Store {
   }
   return store;
 }
+
+const PING_TIMEOUT_MS = 3_000;
+
+/** For the health check: can we reach the database right now? */
+export async function pingDatabase(): Promise<"ok" | "unreachable" | "not_configured"> {
+  if (!hasDatabase()) return "not_configured";
+  try {
+    await Promise.race([
+      getPool().query("select 1"),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), PING_TIMEOUT_MS)),
+    ]);
+    return "ok";
+  } catch (err) {
+    console.error("[store] health ping failed", err);
+    return "unreachable";
+  }
+}

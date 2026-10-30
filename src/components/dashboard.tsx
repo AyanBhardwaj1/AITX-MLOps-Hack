@@ -59,6 +59,9 @@ const KIND_LABEL: Record<Finding["kind"], string> = {
 
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 const STRESS_REVENUE_DROP = 0.3;
+const TABS = ["copilot", "autopilot", "inbox"] as const;
+type Tab = (typeof TABS)[number];
+const TAB_LABELS: Record<Tab, string> = { copilot: "Copilot", autopilot: "Autopilot", inbox: "Inbox" };
 
 export function Dashboard({ data, notice }: { data: DashboardData; notice?: string }) {
   const [statuses, setStatuses] = useState<Record<string, FindingStatus>>(() =>
@@ -70,7 +73,15 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const dismissed = data.findings.filter((f) => statuses[f.id] === "dismissed");
   const monthly = live.filter((f) => f.monthlySavingsCents > 0);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
-  const [tab, setTab] = useState<"copilot" | "autopilot" | "inbox">("copilot");
+  const [tab, setTab] = useState<Tab>("copilot");
+  /** Arrow keys move between agent tabs, as screen-reader users expect from a tablist. */
+  const onTabKey = (e: React.KeyboardEvent) => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    const next = TABS[(TABS.indexOf(tab) + step + TABS.length) % TABS.length]!;
+    setTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
   const [chartView, setChartView] = useState<"forecast" | "history">("forecast");
 
   // Cheap pure math over a handful of findings; no memoization needed.
@@ -303,26 +314,31 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
         <aside className="min-w-0 lg:col-span-2">
           <div className="sticky top-4 rounded-xl border border-line bg-panel">
-            <div className="flex border-b border-line text-sm">
-              {(["copilot", "autopilot", "inbox"] as const).map((t) => (
+            <div role="tablist" aria-label="Agents" className="flex border-b border-line text-sm" onKeyDown={onTabKey}>
+              {TABS.map((t) => (
                 <button
                   key={t}
+                  id={`tab-${t}`}
                   type="button"
+                  role="tab"
+                  aria-selected={tab === t}
+                  aria-controls={`panel-${t}`}
+                  tabIndex={tab === t ? 0 : -1}
                   onClick={() => setTab(t)}
-                  className={`flex-1 px-4 py-2.5 font-medium ${tab === t ? "border-b-2 border-brand text-ink" : "text-muted"}`}
+                  className={`flex-1 px-4 py-2.5 font-medium ${tab === t ? "border-b-2 border-brand text-ink" : "text-muted hover:text-ink"}`}
                 >
-                  {t === "copilot" ? "Copilot" : t === "autopilot" ? "Autopilot" : "Inbox"}
+                  {TAB_LABELS[t]}
                 </button>
               ))}
             </div>
             {/* Panels stay mounted so switching tabs keeps the chat and the last run. */}
-            <div className={tab === "copilot" ? "" : "hidden"}>
+            <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" hidden={tab !== "copilot"}>
               <CopilotPanel mode={data.mode} enabled={data.capabilities.copilot} />
             </div>
-            <div className={tab === "autopilot" ? "" : "hidden"}>
+            <div id="panel-autopilot" role="tabpanel" aria-labelledby="tab-autopilot" hidden={tab !== "autopilot"}>
               <AutopilotPanel mode={data.mode} llm={data.capabilities.copilot} onOpenInbox={() => setTab("inbox")} />
             </div>
-            <div className={tab === "inbox" ? "" : "hidden"}>
+            <div id="panel-inbox" role="tabpanel" aria-labelledby="tab-inbox" hidden={tab !== "inbox"}>
               <InboxPanel mode={data.mode} jira={data.capabilities.jira} active={tab === "inbox"} />
             </div>
           </div>
