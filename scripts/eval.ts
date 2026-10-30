@@ -88,3 +88,11 @@ if (process.argv.includes("--write")) {
   writeFileSync(new URL("../docs/eval-results.md", import.meta.url), `${report}\n`);
   console.log("\nWrote docs/eval-results.md");
 }
+
+// CI gate: fail the build if detector quality regresses.
+const GATE = 0.95;
+const worst = Math.min(mean(runs.map((r) => r.precision)), mean(runs.map((r) => r.recall)));
+if (worst < GATE) {
+  console.error(`\nEval gate failed: precision or recall ${(worst * 100).toFixed(1)}% is below ${GATE * 100}%.`);
+  process.exitCode = 1;
+}
