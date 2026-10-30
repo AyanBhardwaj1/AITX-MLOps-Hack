@@ -73,8 +73,9 @@ function InstantCopilot({ mode }: { mode: "demo" | "sandbox" }) {
   };
 
   return (
-    <div className="flex h-[560px] flex-col">
-      <div ref={scroller} className="relative flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+    // Grows with the conversation up to a cap, so the empty state has no dead space.
+    <div className="flex max-h-[640px] flex-col">
+      <div ref={scroller} className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
         <p className="rounded-lg bg-canvas px-3 py-2 text-xs text-muted">
           AI chat is off on this server (no <code>OPENAI_API_KEY</code>). Pick a question: Copilot&apos;s own tools answer it, written up from a
           template instead of by AI. Every number is the same as the dashboard&apos;s.
@@ -105,13 +106,14 @@ function InstantCopilot({ mode }: { mode: "demo" | "sandbox" }) {
         ))}
       </div>
       <div className="space-y-1.5 border-t border-line p-3">
+        {entries.length < INSTANT.length && <p className="px-1 pb-0.5 text-xs font-medium text-muted">{entries.length ? "Ask another" : "Try asking"}</p>}
         {INSTANT.filter((q) => !entries.some((e) => e.id === q.id)).map((q) => (
           <button
             key={q.id}
             type="button"
             disabled={busy}
             onClick={() => void ask(q.id, q.text)}
-            className="block w-full rounded-lg border border-line px-3 py-2 text-left text-sm hover:border-brand hover:bg-brand-soft/40 disabled:opacity-50"
+            className="block w-full rounded-lg border border-line px-3 py-2 text-left text-sm transition-colors hover:border-brand hover:bg-brand-soft/40 active:translate-y-px disabled:cursor-wait disabled:opacity-50"
           >
             {q.text}
           </button>
@@ -149,7 +151,7 @@ export function CopilotPanel({ mode, enabled }: { mode: "demo" | "sandbox"; enab
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="block w-full rounded-lg border border-line px-3 py-2 text-left text-sm hover:border-brand hover:bg-brand-soft/40"
+                className="block w-full rounded-lg border border-line px-3 py-2 text-left text-sm transition-colors hover:border-brand hover:bg-brand-soft/40 active:translate-y-px"
               >
                 {s}
               </button>
@@ -179,18 +181,21 @@ export function CopilotPanel({ mode, enabled }: { mode: "demo" | "sandbox"; enab
         }}
       >
         <input
+          name="message"
+          aria-label="Message Copilot"
+          autoComplete="off"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask Copilot…"
           maxLength={500}
-          className="flex-1 rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand"
+          className="min-w-0 flex-1 rounded-lg border border-line px-3 py-2 text-sm transition-colors focus-visible:border-brand"
         />
         {busy ? (
-          <button type="button" onClick={() => void stop()} className="rounded-lg border border-line px-3 text-sm">
+          <button type="button" onClick={() => void stop()} className="rounded-lg border border-line px-3 text-sm transition-colors hover:bg-canvas">
             Stop
           </button>
         ) : (
-          <button type="submit" className="rounded-lg bg-brand px-4 text-sm font-medium text-white disabled:opacity-50" disabled={!input.trim()}>
+          <button type="submit" className="rounded-lg bg-brand px-4 text-sm font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50" disabled={!input.trim()}>
             Send
           </button>
         )}

@@ -1,6 +1,7 @@
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
 import type { Renewal } from "@/lib/finance/renewals";
-import { formatCents, formatDollars } from "@/lib/money";
+import { formatDate, formatMonth, formatMoney } from "@/lib/format";
+import { formatDollars } from "@/lib/money";
 
 const MAX_ROWS = 7;
 
@@ -23,8 +24,11 @@ export function RenewalsCard({ renewals }: { renewals: Renewal[] }) {
                 {r.decide && <span className="mr-1.5 rounded bg-warn-soft px-1.5 py-0.5 text-[11px] font-medium text-warn">Decide</span>}
                 {r.vendorName} <span className="text-xs text-muted">{r.cadence}</span>
               </span>
-              <span className="tabular shrink-0 text-muted">
-                {formatCents(r.amountCents)} · {r.daysAway === 0 ? "today" : `in ${r.daysAway}d`}
+              <span className="tabular shrink-0">
+                {formatMoney(r.amountCents)}{" "}
+                <time dateTime={r.dueDate} title={formatDate(r.dueDate)} className="inline-block w-20 text-right text-muted">
+                  {r.daysAway === 0 ? "today" : r.daysAway === 1 ? "tomorrow" : `in ${r.daysAway} days`}
+                </time>
               </span>
             </li>
           ))}
@@ -60,13 +64,30 @@ export function AiSpendCard({ trend, grossBurnCents }: { trend: AiSpendTrend | n
           </span>
         )}
       </div>
-      <p className="tabular mt-1 text-2xl font-semibold">{formatDollars(trend.latestMonthCents)}<span className="text-sm font-normal text-muted">/mo</span></p>
-      <div className="mt-3 flex h-12 items-end gap-1" aria-hidden>
-        {trend.months.map((m) => (
-          <div key={m.month} className="flex-1 rounded-t bg-warn/70" style={{ height: `${Math.max(4, (m.cents / max) * 100)}%` }} title={`${m.month}: ${formatDollars(m.cents)}`} />
-        ))}
-      </div>
-      <p className="mt-3 text-xs text-muted">
+      <p className="tabular mt-1 text-3xl font-semibold tracking-tight">{formatDollars(trend.latestMonthCents)}<span className="text-sm font-normal text-muted">/mo</span></p>
+      <figure className="mt-4">
+        <div className="flex h-20 items-end gap-1.5" aria-hidden>
+          {trend.months.map((m, i) => (
+            <div
+              key={m.month}
+              className={`flex-1 rounded-t-md ${i === trend.months.length - 1 ? "bg-warn" : "bg-warn/45"}`}
+              style={{ height: `${Math.max(4, (m.cents / max) * 100)}%` }}
+              title={`${formatMonth(m.month)}: ${formatDollars(m.cents)}`}
+            />
+          ))}
+        </div>
+        <div className="mt-1 flex gap-1.5 text-[11px] text-muted" aria-hidden>
+          {trend.months.map((m) => (
+            <span key={m.month} className="flex-1 text-center">
+              {formatMonth(m.month).slice(0, 3)}
+            </span>
+          ))}
+        </div>
+        <figcaption className="sr-only">
+          Monthly AI spend: {trend.months.map((m) => `${formatMonth(m.month)} ${formatDollars(m.cents)}`).join(", ")}.
+        </figcaption>
+      </figure>
+      <p className="mt-4 text-xs text-muted">
         {share.toFixed(1)}% of spend · {trend.vendors.map((v) => v.vendorName).join(", ")}. At this pace: {formatDollars(trend.projectedNext12MonthsCents)} over the next 12 months.
       </p>
     </section>

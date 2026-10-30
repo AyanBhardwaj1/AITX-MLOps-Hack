@@ -5,6 +5,8 @@ import type { PublicRun } from "@/lib/server/autopilot-service";
 import type { StoredRun } from "@/lib/store/types";
 import { Markdown } from "./markdown";
 
+const RUN_TIME = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
+
 const STEP_LABEL: Record<string, string> = {
   sync: "Pull transactions from Rho",
   analyze: "Find recurring charges and waste",
@@ -75,7 +77,7 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: "demo" | "san
           type="button"
           onClick={start}
           disabled={running}
-          className="shrink-0 rounded-lg bg-brand px-4 py-2 font-medium text-white disabled:opacity-60"
+          className="shrink-0 rounded-lg bg-brand px-4 py-2 font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:cursor-wait disabled:opacity-60"
         >
           {running ? "Running…" : "Run now"}
         </button>
@@ -90,7 +92,11 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: "demo" | "san
             {run.steps.map((s) => (
               <li key={s.seq} className="flex items-center justify-between rounded-md border border-line px-3 py-1.5">
                 <span>
-                  {s.status === "succeeded" ? "✓" : "✗"} {STEP_LABEL[s.name] ?? s.name}
+                  <span aria-hidden className={`mr-1.5 font-semibold ${s.status === "succeeded" ? "text-brand" : "text-warn"}`}>
+                    {s.status === "succeeded" ? "✓" : "✗"}
+                  </span>
+                  <span className="sr-only">{s.status === "succeeded" ? "Done: " : "Failed: "}</span>
+                  {STEP_LABEL[s.name] ?? s.name}
                   {s.name === "memo" && s.detail.llmRejected === true && (
                     <span className="ml-2 text-xs text-warn">LLM memo rejected (unverified numbers); used template</span>
                   )}
@@ -112,7 +118,7 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: "demo" | "san
               <span>
                 {run.tickets.length} tasks drafted{waiting ? `, ${waiting} waiting for approval` : ""}
               </span>
-              <button type="button" onClick={onOpenInbox} className="text-xs font-medium text-brand hover:underline">
+              <button type="button" onClick={onOpenInbox} className="rounded-md px-1 py-0.5 text-xs font-medium text-brand transition-colors hover:bg-brand-soft/60">
                 Open Inbox →
               </button>
             </div>
@@ -127,9 +133,17 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: "demo" | "san
           <ul className="space-y-1.5">
             {history.slice(0, HISTORY_SHOWN).map((h) => (
               <li key={h.id} className="rounded-md border border-line px-3 py-1.5">
-                <button type="button" onClick={() => setOpenRun(openRun === h.id ? null : h.id)} className="flex w-full items-center justify-between text-left">
+                <button
+                  type="button"
+                  aria-expanded={openRun === h.id}
+                  onClick={() => setOpenRun(openRun === h.id ? null : h.id)}
+                  className="flex w-full items-center justify-between gap-2 text-left"
+                >
                   <span>
-                    {h.status === "succeeded" ? "✓" : "✗"} {new Date(h.startedAt).toLocaleString()} · {h.trigger === "cron" ? "scheduled" : "manual"}
+                    <span aria-hidden className={h.status === "succeeded" ? "text-brand" : "text-warn"}>
+                      {h.status === "succeeded" ? "✓" : "✗"}
+                    </span>{" "}
+                    {RUN_TIME.format(new Date(h.startedAt))} · {h.trigger === "cron" ? "scheduled" : "manual"}
                   </span>
                   <span className="text-xs text-muted">{h.findingsCount} findings</span>
                 </button>

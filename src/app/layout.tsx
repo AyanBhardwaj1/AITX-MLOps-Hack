@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 
 const title = "Runway for Rho";
@@ -21,13 +23,21 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f766e",
+  themeColor: "#f6f7f9",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">{children}</body>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="font-sans antialiased">
+        <a
+          href="#main"
+          className="sr-only rounded-md bg-ink px-3 py-2 text-sm text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50"
+        >
+          Skip to content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

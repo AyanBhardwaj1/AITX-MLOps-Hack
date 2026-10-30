@@ -8,15 +8,15 @@ const STEPS = [
 /** A four-step tour for first-time visitors; collapsible so it stays out of the way. */
 export function HowItWorks() {
   return (
-    <details open className="group mb-6 rounded-xl border border-line bg-panel">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 text-sm font-semibold">
+    <details open className="group mb-6 overflow-hidden rounded-xl border border-line bg-panel">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 text-sm font-semibold transition-colors hover:bg-canvas">
         How Runway works
         <span className="text-xs font-normal text-muted group-open:hidden">Show</span>
         <span className="hidden text-xs font-normal text-muted group-open:inline">Hide</span>
       </summary>
       <ol className="grid gap-px border-t border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((s, i) => (
-          <li key={s.title} className="bg-panel px-5 py-4">
+          <li key={s.title} className="bg-panel px-5 py-3.5">
             <p className="text-sm font-medium">
               <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-soft text-xs text-brand">{i + 1}</span>
               {s.title}

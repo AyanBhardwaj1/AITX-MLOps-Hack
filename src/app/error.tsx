@@ -8,7 +8,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
     console.error("[ui] page error", error.digest ?? error.message);
   }, [error]);
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">
+    <main id="main" className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">
       <h1 className="text-xl font-semibold">Something went wrong</h1>
       <p className="mt-2 text-sm text-muted">
         Runway couldn&apos;t load this page. Nothing was changed or sent.{error.digest ? ` Reference: ${error.digest}` : ""}

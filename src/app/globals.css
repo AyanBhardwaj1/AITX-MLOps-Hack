@@ -1,17 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --color-ink: #0f172a;
   --color-muted: #5b6779;
   --color-line: #e2e8f0;
   --color-panel: #ffffff;
   --color-canvas: #f6f7f9;
   --color-brand: #0f766e;
+  --color-brand-strong: #115e59;
   --color-brand-soft: #ccfbf1;
   --color-warn: #b45309;
   --color-warn-soft: #fef3c7;
+}
+
+html {
+  /* Light-only design: keep native controls and scrollbars light even in OS dark mode. */
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -20,6 +27,40 @@ body {
   color: var(--color-ink);
 }
 
+button,
+a,
+input,
+summary {
+  touch-action: manipulation;
+}
+
+/* One consistent, visible keyboard focus ring; none on mouse click. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

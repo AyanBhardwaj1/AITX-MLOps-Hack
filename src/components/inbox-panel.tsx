@@ -10,6 +10,8 @@ const KIND_LABEL: Record<StoredAction["kind"], string> = {
   jira_ticket: "Ticket",
 };
 
+const COPIED_MS = 2_000;
+
 const STATUS_STYLE: Record<StoredAction["status"], string> = {
   draft: "bg-warn-soft text-warn",
   approved: "bg-brand-soft text-brand",
@@ -30,6 +32,7 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   // Refresh whenever the tab is opened, so drafts made by Copilot or Autopilot show up.
   useEffect(() => {
@@ -84,7 +87,12 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
         {actions?.map((a) => (
           <li key={a.id} className="rounded-lg border border-line p-3">
             <div className="flex items-start justify-between gap-2">
-              <button type="button" onClick={() => setOpen(open === a.id ? null : a.id)} className="min-w-0 text-left">
+              <button
+                type="button"
+                aria-expanded={open === a.id}
+                onClick={() => setOpen(open === a.id ? null : a.id)}
+                className="min-w-0 rounded text-left transition-colors hover:text-brand"
+              >
                 <span className="block truncate font-medium">{a.title}</span>
                 <span className="text-xs text-muted">
                   {KIND_LABEL[a.kind]} · from {a.createdBy}
@@ -101,7 +109,7 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
                     type="button"
                     disabled={busy === a.id}
                     onClick={() => void decide(a.id, "approved")}
-                    className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                    className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50"
                   >
                     {a.kind === "jira_ticket" && jira ? "Approve & file" : "Approve"}
                   </button>
@@ -109,7 +117,7 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
                     type="button"
                     disabled={busy === a.id}
                     onClick={() => void decide(a.id, "rejected")}
-                    className="rounded-md border border-line px-3 py-1 text-xs disabled:opacity-50"
+                    className="rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-canvas active:translate-y-px disabled:opacity-50"
                   >
                     Reject
                   </button>
@@ -118,10 +126,15 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
               {a.status === "approved" && (
                 <button
                   type="button"
-                  onClick={() => void navigator.clipboard?.writeText(`${a.title}\n\n${a.body}`)}
-                  className="rounded-md border border-line px-3 py-1 text-xs"
+                  onClick={() =>
+                    void navigator.clipboard?.writeText(`${a.title}\n\n${a.body}`).then(() => {
+                      setCopied(a.id);
+                      setTimeout(() => setCopied((c) => (c === a.id ? null : c)), COPIED_MS);
+                    })
+                  }
+                  className="rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-canvas"
                 >
-                  Copy text
+                  <span aria-live="polite">{copied === a.id ? "Copied" : "Copy text"}</span>
                 </button>
               )}
             </div>

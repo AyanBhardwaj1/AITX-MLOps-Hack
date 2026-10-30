@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { categoryName } from "../format";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
@@ -26,8 +27,6 @@ const RENEWAL_DAYS = 60;
 const MAX_LISTED = 6;
 /** Spend we never suggest cutting unprompted. */
 const PROTECTED = new Set(["payroll", "rent", "revenue", "transfer"]);
-const CATEGORY_NAMES: Record<string, string> = { ai_api: "AI APIs", legal_accounting: "legal & accounting" };
-const categoryName = (c: string) => CATEGORY_NAMES[c] ?? c;
 const months = (n: number | null) => (n === null ? "unlimited" : `${n.toFixed(1)} months`);
 const range = (lo: number | null, hi: number | null) => (lo === null || hi === null ? `${months(lo)} to ${months(hi)}` : `${lo.toFixed(1)} to ${hi.toFixed(1)} months`);
 
