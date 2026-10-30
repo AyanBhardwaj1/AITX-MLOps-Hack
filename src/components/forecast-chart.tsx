@@ -4,6 +4,9 @@ import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, 
 import type { ForecastPoint } from "@/lib/finance/forecast";
 import { formatDollars } from "@/lib/money";
 
+/** Legend labels in readable ink; the series colour stays on the dot (light fills fail contrast as text). */
+const legendText = (value: string) => <span style={{ color: "#334155" }}>{value}</span>;
+
 const COLORS = { band: "#99f6e4", base: "#0f172a", act: "#0f766e", stress: "#b45309" };
 
 /** Cash projection: Monte Carlo P10–P90 band, today's-burn line, "if you act" line and a revenue-drop stress line. */
@@ -39,7 +42,7 @@ export function ForecastChart({
             formatter={(v, name) => (name === "Likely range (P10–P90)" ? null : formatDollars(Number(v) * 100))}
             labelFormatter={(l) => `Month ${String(l)}`}
           />
-          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={legendText} />
           <Area dataKey="floor" stackId="band" stroke="none" fill="transparent" legendType="none" isAnimationActive={false} />
           <Area dataKey="band" name="Likely range (P10–P90)" stackId="band" stroke="none" fill={COLORS.band} fillOpacity={0.9} isAnimationActive={false} />
           <Line dataKey="base" name="At today's burn" stroke={COLORS.base} strokeWidth={2} dot={false} isAnimationActive={false} />

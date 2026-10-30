@@ -119,7 +119,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
     });
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-brand text-lg font-bold text-white">R</div>
@@ -283,7 +283,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               <h2 className="font-semibold">Recurring charges ({data.streams.length})</h2>
               <p className="text-xs text-muted">Detected from billing cadence. No setup or receipts needed.</p>
             </div>
-            <div className="max-h-96 overflow-auto">
+            <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="Recurring charges">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-panel text-left text-xs text-muted">
                   <tr>
@@ -356,7 +356,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           {data.capabilities.storeOk ? "" : " (database unreachable right now)"}
         </span>
       </footer>
-    </div>
+    </main>
   );
 }
 

@@ -4,6 +4,9 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, T
 import type { MonthHistory } from "@/lib/finance/history";
 import { formatDollars } from "@/lib/money";
 
+/** Legend labels in readable ink; the series colour stays on the dot (light fills fail contrast as text). */
+const legendText = (value: string) => <span style={{ color: "#334155" }}>{value}</span>;
+
 const COLORS = { inflow: "#0f766e", other: "#cbd5e1", software: "#f59e0b", net: "#0f172a" };
 
 export function RunwayChart({ history }: { history: MonthHistory[] }) {
@@ -22,7 +25,7 @@ export function RunwayChart({ history }: { history: MonthHistory[] }) {
           <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
           <YAxis tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} tickLine={false} axisLine={false} fontSize={12} width={48} />
           <Tooltip formatter={(v) => formatDollars(Number(v) * 100)} />
-          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={legendText} />
           <Bar dataKey="inflow" name="Money in" fill={COLORS.inflow} radius={[3, 3, 0, 0]} isAnimationActive={false} />
           <Bar dataKey="other" name="Spend" stackId="out" fill={COLORS.other} isAnimationActive={false} />
           <Bar dataKey="software" name="Software & cloud" stackId="out" fill={COLORS.software} radius={[3, 3, 0, 0]} isAnimationActive={false} />
