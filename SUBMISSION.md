@@ -9,7 +9,7 @@ Due **Thursday Oct 29, 5:00 PM CT** on the hackathon Airtable form. Submitting t
 | Project title | Runway for Rho | ✅ |
 | Tracks (max 2) | Rho Fintech + Antler Agents | ✅ |
 | Repo link (public) | https://github.com/AyanBhardwaj1/AITX-MLOps-Hack (code is on `main`; set `main` as the default branch in repo Settings → General) | ✅ merged |
-| Deployed URL | Vercel: import the repo. No env vars are needed for the demo; DEPLOY.md covers the optional ones | ⬜ deploy |
+| Deployed URL | Click **Deploy with Vercel** in the README (or vercel.com/new → import the repo). No env vars are needed for the demo; DEPLOY.md covers the optional ones | ⬜ deploy |
 | Loom video (3–5 min) | Record with the script below | ⬜ record |
 | Write-up (150–300 words) | Below | ✅ |
 | Team roster | Fill in the README "Team" table (names, roles, contacts) | ⬜ add contact |
@@ -27,9 +27,9 @@ README requirements (quick start, stack and architecture, reproducing the demo w
 > **Impact.** On our seeded demo company, Runway found:
 > - $2,570/month of waste (+0.4 months of runway) and a $119.99 refund.
 > - An annual renewal to decide on before it hits.
-> - AI spend growing 7.3% a month.
+> - AI spend growing 8.5% a month.
 >
-> It showed runway falling from 12.2 to 11.0 months if revenue drops 30%, and analyzed about 970 transactions in under 10 ms. Our eval scores 100% precision and recall on planted waste across 10 seeded companies. A founder could connect it today and act on it tomorrow.
+> It showed runway falling from 12.2 to 11.0 months if revenue drops 30%, and analyzed about 950 transactions in under 10 ms. Our eval scores 100% precision and recall on planted waste across 10 seeded companies. A founder could connect it today and act on it tomorrow.
 
 ## Loom script (about 4 minutes)
 
@@ -42,20 +42,20 @@ README requirements (quick start, stack and architecture, reproducing the demo w
    - Walk through the findings: Salesforce + HubSpot, Datadog up 50%, and three tools still billing Priya's card 156 days after her last purchase.
    - Click "Show transactions" for the evidence.
    - Tick findings and watch runway and the "if you act" line move.
-4. **Coming up and AI spend (2:00–2:30).** Carta's $2,800 annual renewal is in 20 days, flagged "Decide". AI spend is up 7.3% a month.
+4. **Coming up and AI spend (2:00–2:30).** Carta's $2,800 annual renewal is in 20 days, flagged "Decide". AI spend is up 8.5% a month.
 5. **Autopilot and the Inbox (2:30–3:20).**
    - Click Run now. Walk the step log: sync, analyze, plan, memo, tasks.
    - Read the memo, including the "Decide before it renews" section.
    - Open the **Inbox**: one ticket draft per finding.
    - Approve one (with Jira configured it's filed there) and reject one.
    - Mention that it also runs every morning on a schedule, and that dismissed findings stay dismissed.
-6. **Copilot (3:20–3:50, if `OPENAI_API_KEY` is set).** Ask "Get me to 14 months without touching payroll". It calls `plan_to_target` and says honestly how much more needs cutting.
+6. **Copilot (3:20–3:50).** Ask "Get me to 14 months without touching payroll". It calls `plan_to_target` and says honestly how much more needs cutting. Without `OPENAI_API_KEY` the same question gets an instant, template-written answer from the same tools (labelled "no AI"); with a key, the agent plans live.
 7. **Not a wrapper (3:50–4:20).**
    - Show `npm run eval`: 100% precision and recall, with negative controls.
-   - Mention 146 tests (plus Postgres integration tests), tenant-ready Supabase schema with RLS, and the memo number check.
+   - Mention 150 tests plus Postgres integration tests, all run by CI on every push, tenant-ready Supabase schema with RLS, and the memo number check.
    - Close: "Every founder at Antler should have this the day they open a bank account."
 
-If Copilot isn't live, skip step 6 and spend the time on Autopilot. Everything else works with no keys.
+Everything works with no keys; a key only upgrades Copilot from instant answers to open-ended chat and the memo from a template to GPT-written.
 
 ## X post (2 free Community Choice votes)
 

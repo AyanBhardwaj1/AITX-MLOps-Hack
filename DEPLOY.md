@@ -1,5 +1,14 @@
 # Going live: credentials and deployment
 
+## Put it on Vercel (5 minutes, no credentials needed)
+
+1. On GitHub, open the repo → **Settings → General → Default branch** and make sure it's `main`.
+2. Click **Deploy with Vercel** at the top of the README, or go to [vercel.com/new](https://vercel.com/new) and import `AyanBhardwaj1/AITX-MLOps-Hack`.
+3. Keep the defaults (Framework: Next.js; no environment variables needed) and click **Deploy**.
+4. When it finishes, open the URL. The demo company, Autopilot, the Inbox and Copilot's instant answers all work straight away. `https://<your-app>.vercel.app/api/health` should return `{"status":"ok",...}`.
+
+After that, every push to `main` redeploys automatically and other branches get preview URLs. The rest of this page switches on the optional pieces.
+
 The app runs with no credentials at all (demo company, in-memory decisions, template memos). Each credential below switches on one more piece. Add them in two places:
 - **Vercel** → Project → Settings → Environment Variables, then **Redeploy**.
 - **`.env.local`** on your machine, for `npm run verify:live` and `npm run db:migrate`.
@@ -37,6 +46,7 @@ Never commit `.env.local`; it's gitignored.
    - Add the same variables, then **Redeploy**.
    - The daily cron in `vercel.json` registers automatically on deploy. It only runs if `CRON_SECRET` is set.
 4. **Smoke test on the live URL:**
+   - `/api/health` returns `"status":"ok"` and `"database":"ok"` (or `"not_configured"` without `DATABASE_URL`).
    - The dashboard loads.
    - **Autopilot → Run now** produces a memo and drafts in the **Inbox**.
    - Approving a ticket files it in Jira, if configured.

@@ -2,6 +2,8 @@
 
 **Finds the wasted spend in a startup's Rho account and turns it into months of runway.**
 
+[![CI](https://github.com/AyanBhardwaj1/AITX-MLOps-Hack/actions/workflows/ci.yml/badge.svg)](https://github.com/AyanBhardwaj1/AITX-MLOps-Hack/actions/workflows/ci.yml) [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAyanBhardwaj1%2FAITX-MLOps-Hack&project-name=runway-for-rho)
+
 Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–29, 2026). Tracks: 💳 Rho Fintech and 🤖 Antler Agents.
 
 ![Runway dashboard](docs/screenshot.png)
@@ -21,7 +23,7 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
   - A stress line shows what happens if revenue falls 30%.
 - **Renewals calendar.** Every subscription charge due in the next 60 days, with annual, quarterly or $5k+ renewals flagged as decisions to make *before* they renew.
 - **AI & LLM spend tracker.** Monthly API spend, compound growth rate, share of spend and a 12-month projection: the fastest-growing line item at AI startups.
-- **Copilot** (chat agent): "Get me to 14 months without touching payroll." It plans with tools over the same math and drafts cancellation emails, downgrade requests and Jira tickets. Drafts are never sent automatically.
+- **Copilot** (chat agent): "Get me to 14 months without touching payroll." It plans with tools over the same math and drafts cancellation emails, downgrade requests and Jira tickets. Drafts are never sent automatically. With no OpenAI key, its suggested questions are still answered instantly by the same tools through a fixed template, labelled as not AI-written.
 - **Autopilot** (autonomous agent): one click, or a schedule, runs the monthly review end to end: pull from Rho → analyze → price each fix in runway → write the Runway Review memo → file a task per finding. Every step is logged with timings.
 - **Inbox: a person approves every action.** Copilot and Autopilot drafts (vendor cancellation emails, downgrade requests, card-limit checklists, tickets) wait in an Inbox. Approving a ticket files it in Jira, and approved emails are ready to copy and send.
 - **Decisions that stick.**
@@ -58,7 +60,7 @@ The dashboard, what-if, detectors and Autopilot all work with **no keys at all**
 1. `npm install && npm run dev`, then open http://localhost:3000. The demo company loads by default.
 2. Tick findings in **Waste found** to see the runway change, and click **Show N transactions** for the evidence.
 3. Open **Autopilot** → **Run now** to get the step log, the Runway Review memo and the task list.
-4. With `OPENAI_API_KEY` set, open **Copilot** and click "Get me to 14 months of runway without touching payroll".
+4. Open **Copilot** and click "Get me to 14 months of runway without touching payroll". Without `OPENAI_API_KEY` you get the instant (template) answer; with it, the agent plans live and you can ask anything.
 
 Every credential is optional, and each one switches on one more piece: GPT features, permanent storage, a password, your real Rho account, the daily schedule, Jira. **[DEPLOY.md](DEPLOY.md)** lists where each value comes from and the exact setup steps. `.env.example` has the full list.
 
@@ -95,6 +97,18 @@ Design choices worth knowing:
   - Status changes go through RPCs that write an append-only audit log.
   - Agent runs and steps are logged in OpenTelemetry GenAI shape with integer costs.
 
+## Production readiness
+
+- **CI on every push** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+  - typecheck, lint, 150 unit tests and a production build;
+  - the detector eval, which fails the build below 95% precision or recall;
+  - `npm audit`;
+  - schema tests and the Postgres store contract against a real Postgres service.
+- **Security headers:** strict Content-Security-Policy (no third-party scripts or connections), HSTS, `X-Frame-Options: DENY`, `nosniff`, a tight referrer and permissions policy, and no `X-Powered-By`.
+- **Health check:** `GET /api/health` reports whether the database is reachable (and the deployed commit). It never returns configuration values and sits outside the password gate so uptime monitors can reach it.
+- **Accessibility:** zero axe-core violations (WCAG 2.1 AA rules plus best practices) across all three agent tabs. The agent tabs are a keyboard-navigable ARIA tablist.
+- **Failure handling:** if the Rho feed or the database is down, the dashboard falls back to the demo company or in-memory decisions and says so. Friendly error, not-found and loading pages, plus link-preview cards for sharing.
+
 ## Evaluation
 
 `npm run eval` (latest run, also in [docs/eval-results.md](docs/eval-results.md)):
@@ -108,7 +122,7 @@ Design choices worth knowing:
 
 - **Dollar-weighted recall:** 100%.
 - **Rules-only vendor categorization:** 97.1%. The one miss is an unknown coffee shop, which the LLM fallback handles.
-- **Speed:** full analysis of ~970 transactions in about 7–10 ms. The forecast's 1,000 simulations add about 10 ms.
+- **Speed:** full analysis of ~950 transactions in about 7–10 ms. The forecast's 1,000 simulations add about 10 ms.
 
 Each company also contains negative controls that must not be flagged: usage-based AWS/OpenAI growth, Slack + Zoom + Loom, AWS + Vercel, varying airfare, and irregular one-offs (laptops, legal bills).
 
