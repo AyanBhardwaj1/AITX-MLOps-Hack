@@ -10,6 +10,7 @@ import { formatCents, formatDollars } from "@/lib/money";
 import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
 import { AutopilotPanel } from "./autopilot-panel";
+import { HowItWorks } from "./how-it-works";
 import { CopilotPanel } from "./copilot-panel";
 import { InboxPanel } from "./inbox-panel";
 import { ForecastChart } from "./forecast-chart";
@@ -148,6 +149,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
       </header>
 
       {notice && <div className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">{notice}</div>}
+
+      <HowItWorks />
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-line bg-panel p-5 lg:col-span-2">
