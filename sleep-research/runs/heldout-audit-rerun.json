@@ -1,0 +1,410 @@
+{
+  "generatedAt": "2026-10-31T09:41:00.091Z",
+  "results": {
+    "usage_mild_hubspot_slack_notion": {
+      "failureMode": "usage_priced",
+      "expectation": "HubSpot, Slack and Notion bills grow 1%/month compounding (today's bill at list price) with ±5% per-charge noise. Smooth usage growth, not price creep: no price_creep on hubspot/slack/notion. Truth unchanged.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "usage_heavy_gworkspace_github_loom": {
+      "failureMode": "usage_priced",
+      "expectation": "Google Workspace, GitHub and Loom bills grow 6%/month compounding (~4x over two years, today's bill at list price) with ±25% per-charge noise. Noisy usage growth, not price creep: no price_creep on google_workspace/github/loom. Truth unchanged.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "usage_noise_on_datadog_step": {
+      "failureMode": "usage_priced",
+      "expectation": "RECALL: ±12% per-charge usage noise layered on Datadog's real $2,400 → $3,600 step. The step is still a price step: price_creep datadog must still be found. Truth unchanged (keeps price_creep datadog, $1,200/mo nominal).",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "real_step_on_flat_vendor": {
+      "failureMode": "usage_priced",
+      "expectation": "RECALL: a flat vendor picked per seed (Slack $480, Google Workspace $864 or Zoom $149.90) raises its list price +25% from 4 months before asOf and stays there (>= 20% and >= $25/mo). Truth ADDS price_creep [vendor] with monthlyCents = new - old ($120, $216 or $37.48).",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 80,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "sub_floor_step_on_small_vendor": {
+      "failureMode": "usage_priced",
+      "expectation": "Linear ($64 → $80) or 1Password ($48 → $60), per seed, +25% from 4 months before asOf: >= 20% but below the $25/month floor, so NOT price creep. Truth unchanged.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "seat_steps_slack": {
+      "failureMode": "usage_priced",
+      "expectation": "Slack as 12 seats x $40; one seat (+$40) added every 3-5 months (per seed) across the history, each step < 10%. Seat growth is not price creep, so truth is unchanged, but this is expected to remain a limitation (bank data can't distinguish a seat step from a price step); a price_creep slack false positive here is a known limitation, not a regression.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "split_ws_notion_daniel": {
+      "failureMode": "split_workspaces",
+      "expectation": "Second Notion workspace on Daniel's (active) card: same amount, same day, every month of the history. Intentional, recurring: no duplicate_charge notion, no price_creep notion. Truth unchanged.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "split_ws_recent_start_linear": {
+      "failureMode": "split_workspaces",
+      "expectation": "Second Linear workspace on Daniel's card, same amount and day, started 2, 4 or 8 months before asOf (per seed). Recurring pair, not a one-off error: no duplicate_charge linear. Each charge's price is unchanged (a second stream, not a step), so no price_creep linear. Truth unchanged.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "split_ws_slack_different_amount": {
+      "failureMode": "split_workspaces",
+      "expectation": "Second Slack workspace on Maya's card at a different fixed amount ($96, $180 or $260 per seed), same day, every month. Different amounts and recurring: no duplicate_charge slack, no price_creep slack. Truth unchanged.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "split_ws_intercom_next_day": {
+      "failureMode": "split_workspaces",
+      "expectation": "Second Intercom workspace on Sofia's card, same amount, billed one day after the first, every month. Recurring pair one day apart, not a one-off error: no duplicate_charge intercom. Truth unchanged (Canva double charge still planted).",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "split_ws_idle_card_figma": {
+      "failureMode": "split_workspaces",
+      "expectation": "Second Figma workspace on Priya's idle card at a different amount ($75, $144 or $180 per seed), two days after the first, every month. Subscription, not other spend: zombie [calendly, figma, miro] still found, no duplicate_charge figma. Truth: zombie monthlyCents += the second workspace amount.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "refund_next_day": {
+      "failureMode": "refunded_double_charge",
+      "expectation": "Canva refunds the full duplicated amount one day after the second charge, same descriptor. Nothing to recover: no duplicate_charge canva. Truth drops duplicate_charge canva.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "refund_20_days_across_month_end": {
+      "failureMode": "refunded_double_charge",
+      "expectation": "The Canva double charge is moved to the 24th/25th of its month and fully refunded 20 days after the second charge, landing in the next month. No duplicate_charge canva. Truth drops duplicate_charge canva.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "refund_different_descriptor": {
+      "failureMode": "refunded_double_charge",
+      "expectation": "Full refund 2-12 days after the second charge under a different descriptor ('CANVA REFUND' or 'CANVA PTY LTD CR', per seed; both resolve to canva). No duplicate_charge canva. Truth drops duplicate_charge canva.",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    },
+    "refund_partial_half": {
+      "failureMode": "refunded_double_charge",
+      "expectation": "Canva refunds 50% of the duplicated amount 4 days after the second charge. Decided in advance: still flagged, since half is unrecovered. Truth keeps duplicate_charge canva with oneTimeCents = charge - refund ($59.99 of $119.99).",
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "examples": []
+    }
+  }
+}
