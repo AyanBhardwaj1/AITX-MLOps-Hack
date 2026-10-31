@@ -5,6 +5,8 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { importCsv } from "../src/lib/csv/import";
+import { HELD_OUT } from "../src/lib/eval/heldout";
+import { PERTURBATIONS, perturb } from "../src/lib/eval/perturb";
 import { scoreFindings } from "../src/lib/eval/score";
 import { analyze } from "../src/lib/pipeline";
 import { cashBalanceCents } from "../src/lib/rho/map";
@@ -60,6 +62,33 @@ for (const noise of NOISE) {
   }
 }
 
+// Part 2 (plan review): CSV vs API *findings* on every perturbed ledger, not just planted truth.
+// Idle-card findings need a cardholder column; generic layouts can't have them (a stated limit), so compare without them too.
+const findingSet = (fs: readonly { kind: string; vendorKeys: string[] }[], withoutIdleCards = false) =>
+  new Set(fs.filter((f) => !withoutIdleCards || f.kind !== "zombie").map((f) => `${f.kind}|${[...f.vendorKeys].sort().join(",")}`));
+const sameSet = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every((x) => b.has(x));
+const SETTINGS: { name: string; apply: (c: ReturnType<typeof generateDemoCompany>, seed: number) => ReturnType<typeof generateDemoCompany> }[] = [
+  ...PERTURBATIONS.map((p) => ({ name: p, apply: (c: ReturnType<typeof generateDemoCompany>, seed: number) => perturb(c, p, seed) })),
+  ...HELD_OUT.map((h) => ({ name: `heldout:${h.name}`, apply: h.apply })),
+];
+const agreement: Record<string, Record<string, { same: number; runs: number; maxRunwayDelta: number }>> = {};
+for (const st of SETTINGS) {
+  agreement[st.name] = Object.fromEntries(LAYOUTS.map((l) => [l, { same: 0, runs: 0, maxRunwayDelta: 0 }]));
+  for (const seed of SEEDS.slice(0, 10)) {
+    const c = st.apply(generateDemoCompany({ seed }), seed);
+    const api = analyze({ accounts: c.accounts, transactions: c.transactions, asOf: c.asOf });
+    const accounts: RhoAccount[] = [{ id: "upload", account_type: "checking", account_name: "Upload", balance: { amount: cashBalanceCents(c.accounts), currency: "USD" } }];
+    for (const layout of LAYOUTS) {
+      const a = analyze({ accounts, transactions: importCsv(exportCsv(c.transactions, layout), { accountId: "upload" }).transactions, asOf: c.asOf });
+      const r = agreement[st.name]![layout]!;
+      r.runs += 1;
+      const noIdle = layout.startsWith("generic");
+      if (sameSet(findingSet(a.findings, noIdle), findingSet(api.findings, noIdle))) r.same += 1;
+      r.maxRunwayDelta = Math.max(r.maxRunwayDelta, Math.abs(a.snapshot.runwayMonths - api.snapshot.runwayMonths));
+    }
+  }
+}
+
 const ratio = (n: number, d: number) => (d === 0 ? null : n / d);
 const fmt = (x: number | null) => (x === null ? "n/a" : `${(x * 100).toFixed(0)}%`);
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
@@ -75,7 +104,15 @@ const md = [
   `|---|${KINDS.map(() => "---").join("|")}|---|---|---|`,
   ...rows,
 ].join("\n");
-console.log(md);
+const agreementMd = [
+  "",
+  "CSV vs API findings on perturbed ledgers (10 seeds, clean): share of runs where the CSV path finds exactly the same set of findings as the API path (generic layouts compared without idle-card findings, which need a cardholder column); max runway Δ in months.",
+  "",
+  `| Setting | ${LAYOUTS.join(" | ")} |`,
+  `|---|${LAYOUTS.map(() => "---").join("|")}|`,
+  ...Object.entries(agreement).map(([name, byLayout]) => `| ${name} | ${LAYOUTS.map((l) => `${Math.round((byLayout[l]!.same / byLayout[l]!.runs) * 100)}% (Δ ${byLayout[l]!.maxRunwayDelta.toFixed(2)})`).join(" | ")} |`),
+].join("\n");
+console.log(md + agreementMd);
 mkdirSync(new URL("../sleep-research/runs/", import.meta.url), { recursive: true });
-writeFileSync(new URL("../sleep-research/runs/csv-parity.json", import.meta.url), `${JSON.stringify({ generatedAt: new Date().toISOString(), seeds: SEEDS, noise: NOISE, results: out }, null, 2)}\n`);
-writeFileSync(new URL("../sleep-research/runs/csv-parity.md", import.meta.url), `${md}\n`);
+writeFileSync(new URL("../sleep-research/runs/csv-parity.json", import.meta.url), `${JSON.stringify({ generatedAt: new Date().toISOString(), seeds: SEEDS, noise: NOISE, results: out, agreement }, null, 2)}\n`);
+writeFileSync(new URL("../sleep-research/runs/csv-parity.md", import.meta.url), `${md}${agreementMd}\n`);

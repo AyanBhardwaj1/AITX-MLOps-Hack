@@ -52,7 +52,8 @@ export const RECURRING_REPEAT_MIN_CYCLES = 2;
 export function billingEventsByStream(txns: readonly EnrichedTxn[]): Map<string, EnrichedTxn[]> {
   const byStream = new Map<string, EnrichedTxn[]>();
   const repeats = new Map<string, EnrichedTxn[]>();
-  const sorted = txns.filter(isOutflow).sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
+  // Same-day charges: the larger one is the main subscription, so the result never depends on id order.
+  const sorted = txns.filter(isOutflow).sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.amountCents - b.amountCents || a.id.localeCompare(b.id));
   for (const t of sorted) {
     const key = `${t.vendor.key}|${t.cardholder ?? ""}`;
     const list = byStream.get(key) ?? [];

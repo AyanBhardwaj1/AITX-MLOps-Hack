@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T09:09:30.040Z",
+  "generatedAt": "2026-10-31T09:34:38.229Z",
   "seeds": [
     1,
     38,
@@ -462,6 +462,602 @@
         0
       ],
       "skipped": 0
+    }
+  },
+  "agreement": {
+    "billing_day_drift": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.04388818799094274
+      }
+    },
+    "harsh_day_jitter": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.051406066229283454
+      }
+    },
+    "vendor_rename": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.044993441221528485
+      }
+    },
+    "refunds": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.16628636881787884
+      }
+    },
+    "shared_card": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.044993441221528485
+      }
+    },
+    "seat_cards": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.062459079400076334
+      }
+    },
+    "annual_billing": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.1643791434228863
+      }
+    },
+    "usage_priced": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.08317027247034048
+      }
+    },
+    "split_workspaces": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.06274405397652849
+      }
+    },
+    "refunded_double_charge": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.05126884474722182
+      }
+    },
+    "unaliased_rename": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.044993441221528485
+      }
+    },
+    "short_history": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.044993441221528485
+      }
+    },
+    "heldout:usage_mild_hubspot_slack_notion": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.05348717183698781
+      }
+    },
+    "heldout:usage_heavy_gworkspace_github_loom": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.06538640710426691
+      }
+    },
+    "heldout:usage_noise_on_datadog_step": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.09240886090358202
+      }
+    },
+    "heldout:real_step_on_flat_vendor": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.08009372243776625
+      }
+    },
+    "heldout:sub_floor_step_on_small_vendor": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.04304804304343257
+      }
+    },
+    "heldout:seat_steps_slack": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.08123754158152785
+      }
+    },
+    "heldout:split_ws_notion_daniel": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.05504484324851511
+      }
+    },
+    "heldout:split_ws_recent_start_linear": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.04907854238598475
+      }
+    },
+    "heldout:split_ws_slack_different_amount": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.06516088960812283
+      }
+    },
+    "heldout:split_ws_intercom_next_day": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.09754828600585874
+      }
+    },
+    "heldout:split_ws_idle_card_figma": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.06017463265957623
+      }
+    },
+    "heldout:refund_next_day": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.05126884474722182
+      }
+    },
+    "heldout:refund_20_days_across_month_end": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.05126884474722182
+      }
+    },
+    "heldout:refund_different_descriptor": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.05126884474722182
+      }
+    },
+    "heldout:refund_partial_half": {
+      "rho_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "mercury_csv": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_all_accounts": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
+      },
+      "generic_checking_only": {
+        "same": 0,
+        "runs": 10,
+        "maxRunwayDelta": 0.04813033754254015
+      }
     }
   }
 }
