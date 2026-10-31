@@ -2,6 +2,17 @@
 
 Run: runway-market-wedge-20261031 · Reviewer route: **same-family (provisional)** — no Codex/Gemini or other non-Claude reviewer is available in this sandbox, so every verdict comes from a fresh Claude subagent given file paths only. Treat verdicts as provisional.
 
+## Executive summary
+
+Five lens agents generated 25 ideas, merged to 18. A cold triage picked three pilots:
+- **Detector stress test (positive).** It found three real detector failures on realistic ledger shapes.
+- **CSV runway grader (positive with limits).** Runway parity with the API path.
+- **Advisor portfolio triage (inconclusive, test design).**
+
+The chosen direction is **trust-hardened detectors plus a free, browser-only CSV Runway Grader**. It is built, judged on a held-out set written blind to the code (100% after fixes vs 0–50% before on the affected detectors), reviewed twice (5/10 → 6/10, "almost") and claims-audited (`CLAIMS.md`). Two honesty results changed the product's wording:
+- The forecast band is far too narrow.
+- SaaS waste is never the biggest runway lever in the demo cohort.
+
 ## Brief (Stage 0)
 
 **Direction (user, verbatim):** "do this for market research then /anthropic-skills:ai-engineer all that u research into product".

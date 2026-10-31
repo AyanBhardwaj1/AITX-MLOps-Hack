@@ -103,9 +103,14 @@
     },
     {
       "name": "report",
-      "status": "pending",
-      "accepted": false
+      "status": "done",
+      "accepted": true,
+      "at": "2026-10-31T10:26:03+00:00",
+      "artifact": "sleep-research/MORNING_SUMMARY.md",
+      "verdict": "sleep-research/CLAIMS.md (claims judge traces/claims/round1.md)",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T10:26:03+00:00"
     }
   ],
-  "updated": "2026-10-31T10:25:07+00:00"
+  "updated": "2026-10-31T10:26:03+00:00"
 }
