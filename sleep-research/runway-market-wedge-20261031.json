@@ -1,0 +1,69 @@
+{
+  "run_id": "runway-market-wedge-20261031",
+  "created": "2026-10-31T08:48:53+00:00",
+  "phases": [
+    {
+      "name": "brief",
+      "status": "done",
+      "accepted": true,
+      "at": "2026-10-31T08:49:52+00:00",
+      "artifact": "sleep-research/IDEA_REPORT.md",
+      "verdict": "sleep-research/IDEA_REPORT.md#brief (deterministic: brief recorded)",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T08:49:52+00:00"
+    },
+    {
+      "name": "literature",
+      "status": "done",
+      "accepted": false,
+      "at": "2026-10-31T08:49:53+00:00",
+      "artifact": "sleep-research/IDEA_REPORT.md"
+    },
+    {
+      "name": "ideas",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "triage",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "pilots",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "plan",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "implement",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "audit",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "review",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "claims",
+      "status": "pending",
+      "accepted": false
+    },
+    {
+      "name": "report",
+      "status": "pending",
+      "accepted": false
+    }
+  ],
+  "updated": "2026-10-31T08:49:53+00:00"
+}
