@@ -34,8 +34,11 @@ function importTwoFiles(rows: readonly RhoTransaction[]): RhoTransaction[] {
 
 /** Review round 2: a Mercury-style checking export whose debit-card purchases carry a name, with credit-card payoffs. */
 function importNamedDebits(rows: readonly RhoTransaction[]): RhoTransaction[] {
-  const checking = rows.filter((t) => t.account_type === "checking").map((t, i) => (i % 25 === 0 && t.amount.amount < 0 && t.transaction_type === "ach_debit" ? { ...t, user_full_name: "Maya Thompson" } : t));
-  return importCsv(exportCsv(checking, "mercury_csv"), { accountId: "upload" }).transactions;
+  // Realistic debit-card purchases on the checking account (a lunch a month, named), not renamed ACH bills.
+  const checking = rows.filter((t) => t.account_type === "checking");
+  const months = [...new Set(checking.map((t) => dateOf(t).slice(0, 7)))];
+  const lunches: RhoTransaction[] = months.map((m, i) => ({ ...checking[0]!, id: `debit_${i}`, money_movement_id: null, transaction_type: "card_debit", counterparty_name: "DOORDASH", amount: { amount: -(3_000 + i * 37), currency: "USD" }, initiated_at: `${m}-14T15:00:00Z`, posted_at: `${m}-14T18:00:00Z`, user_full_name: "Maya Thompson" }));
+  return importCsv(exportCsv([...checking, ...lunches], "mercury_csv"), { accountId: "upload" }).transactions;
 }
 
 /** Review round 2: one account's history exported as two date ranges and uploaded together. */

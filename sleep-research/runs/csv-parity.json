@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T10:15:00.609Z",
+  "generatedAt": "2026-10-31T10:23:48.663Z",
   "seeds": [
     1,
     38,
@@ -586,7 +586,7 @@
         },
         "zombie": {
           "tp": 0,
-          "fp": 2,
+          "fp": 0,
           "fn": 40
         },
         "duplicate_charge": {
@@ -596,88 +596,88 @@
         }
       },
       "runwayDelta": [
-        0,
-        0.04018622439812525,
-        0,
-        0.04133219830298529,
-        0.04388818799094274,
-        0.04404739908832944,
-        0.039096899988321,
-        0,
-        0,
-        0.044993441221528485,
-        0.03903659549308003,
-        0.04833991950798833,
-        0,
-        0.04216763440701676,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0.04469222167707976,
-        0,
-        0,
-        0.0443733186827977,
-        0.038213137146970055,
-        0.042814252443482914,
-        0,
-        0,
-        0.043233473828564684,
-        0,
-        0,
-        0,
-        0.043831615184799944,
-        0.03986356511458666,
-        0,
-        0.048316401577675805,
-        0,
-        0,
-        0,
-        0,
-        0
+        0.005018026514266083,
+        0.03484822418472078,
+        0.005125535322553887,
+        0.0358417415644805,
+        0.049676401922774005,
+        0.04985656723908427,
+        0.04425440699072425,
+        0.005948973679451797,
+        0.006024188042392353,
+        0.050927115801842504,
+        0.03385152815573633,
+        0.0547139511518111,
+        0.005091527528595208,
+        0.03656602792148256,
+        0.005651654891570601,
+        0.006062540385176618,
+        0.005339035742768061,
+        0.005729958797145329,
+        0.004868496251679844,
+        0.05058625433999886,
+        0.005590678799277882,
+        0.005851765499906847,
+        0.038478234744941275,
+        0.043254284701870205,
+        0.0484611165407447,
+        0.006126218282350493,
+        0.005915967804082101,
+        0.048935516516671385,
+        0.005422864557818485,
+        0.0054298511794499404,
+        0.005262325835561299,
+        0.049612383354380896,
+        0.045122007825650456,
+        0.005916219983960858,
+        0.05468733888884536,
+        0.00534361250505988,
+        0.006319221620334048,
+        0.006051016621768213,
+        0.00544004420232902,
+        0.00537442381627784
       ],
       "burnDeltaPct": [
-        0,
-        -0.0034800025520018716,
-        0,
-        -0.003529185568130866,
-        0.003649747888595501,
-        0.0036563739739300534,
-        0.003444417388758474,
-        0,
-        0,
-        0.0036955028809524545,
-        -0.0034299503502777245,
-        0.0038307265771021512,
-        0,
-        -0.0035646109876905814,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0.00368308910914387,
-        0,
-        0,
-        -0.003656482136624709,
-        0.00340519879266785,
-        0.0036047361727389576,
-        0,
-        0,
-        0.0036223731348708882,
-        0,
-        0,
-        0,
-        0.003647390545355808,
-        0.0034780831848807725,
-        0,
-        0.003829792836133138,
-        0,
-        0,
-        0,
-        0,
-        0
+        0.00044838995206789007,
+        -0.0030191438807055126,
+        0.00045316884912103184,
+        -0.0030618135626846467,
+        0.004133086029119919,
+        0.0041405896106164845,
+        0.003900563497116975,
+        0.00048822393375105876,
+        0.0004913013637928156,
+        0.004184900380534144,
+        -0.002975720119862473,
+        0.004338031825889221,
+        0.00045166262530854927,
+        -0.00309254757425128,
+        0.0004758643569486739,
+        0.0004928631758066467,
+        0.00046251292707866453,
+        0.0004791503636404523,
+        0.0004416572406311692,
+        0.004170842646028409,
+        0.0004732897196980724,
+        0.00048421766536242754,
+        -0.003172252175892534,
+        0.0038561511605579605,
+        0.004082113386725985,
+        0.0004954454481956186,
+        0.0004868673469023033,
+        0.004102086021551359,
+        0.0004661306123885637,
+        0.0004664308585959942,
+        0.00045917750641813135,
+        0.004130416501605358,
+        0.003938687673322969,
+        0.00048687772616102273,
+        0.004336974429084936,
+        0.00046271116959771666,
+        0.0005031912537074733,
+        0.0004923944169651179,
+        0.00046686855202077333,
+        0.00046404355926033355
       ],
       "skipped": 0
     },
@@ -821,7 +821,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.04388818799094274
+        "maxRunwayDelta": 0.049676401922774005
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -858,7 +858,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.051406066229283454
+        "maxRunwayDelta": 0.05735503990873525
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -895,7 +895,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.044993441221528485
+        "maxRunwayDelta": 0.050927115801842504
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -932,7 +932,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.16628636881787884
+        "maxRunwayDelta": 0.1714438758202821
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -969,7 +969,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.044993441221528485
+        "maxRunwayDelta": 0.050927115801842504
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1006,7 +1006,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.062459079400076334
+        "maxRunwayDelta": 0.056968622661571544
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1043,7 +1043,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.1643791434228863
+        "maxRunwayDelta": 0.1703128180032003
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1080,7 +1080,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.08317027247034048
+        "maxRunwayDelta": 0.07767981573183569
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1117,7 +1117,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.06274405397652849
+        "maxRunwayDelta": 0.0572535972380237
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1154,7 +1154,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.05126884474722182
+        "maxRunwayDelta": 0.05720251932753584
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1191,7 +1191,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.044993441221528485
+        "maxRunwayDelta": 0.050927115801842504
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1228,7 +1228,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.044993441221528485
+        "maxRunwayDelta": 0.05023665514356246
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1265,7 +1265,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.05348717183698781
+        "maxRunwayDelta": 0.05942084641730183
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1302,7 +1302,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.06538640710426691
+        "maxRunwayDelta": 0.07119557525502174
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1339,7 +1339,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.09240886090358202
+        "maxRunwayDelta": 0.09821802905433685
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1376,7 +1376,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.08009372243776625
+        "maxRunwayDelta": 0.07475572222436178
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1413,7 +1413,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.04304804304343257
+        "maxRunwayDelta": 0.0484187577480224
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1450,7 +1450,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.08123754158152785
+        "maxRunwayDelta": 0.07574708484302306
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1487,7 +1487,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.05504484324851511
+        "maxRunwayDelta": 0.04955438651001032
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1524,7 +1524,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.04907854238598475
+        "maxRunwayDelta": 0.04374054217258028
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1561,7 +1561,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.06516088960812283
+        "maxRunwayDelta": 0.05982288939471836
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1598,7 +1598,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.09754828600585874
+        "maxRunwayDelta": 0.09205782926735395
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1635,7 +1635,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.06017463265957623
+        "maxRunwayDelta": 0.05483663244617176
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1672,7 +1672,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.05126884474722182
+        "maxRunwayDelta": 0.05720251932753584
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1709,7 +1709,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.05126884474722182
+        "maxRunwayDelta": 0.05720251932753584
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1746,7 +1746,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.05126884474722182
+        "maxRunwayDelta": 0.05720251932753584
       },
       "one_account_two_date_ranges": {
         "same": 10,
@@ -1783,7 +1783,7 @@
       "mercury_checking_named_debits": {
         "same": 0,
         "runs": 10,
-        "maxRunwayDelta": 0.04813033754254015
+        "maxRunwayDelta": 0.054064012122854166
       },
       "one_account_two_date_ranges": {
         "same": 10,
