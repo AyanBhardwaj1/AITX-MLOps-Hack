@@ -21,6 +21,9 @@ const json: Record<string, unknown> = {};
 for (const h of HELD_OUT) {
   const byKind = Object.fromEntries(KINDS.map((k) => [k, { tp: 0, fp: 0, fn: 0 }])) as Record<FindingKind, Tally>;
   const examples = new Set<string>();
+  // Dollar accuracy (audit follow-up): for findings that match a planted item, is the amount within 10% of truth?
+  let matched = 0;
+  let amountOk = 0;
   for (const noise of NOISE) {
     for (const seed of SEEDS) {
       const c = h.apply(generateDemoCompany({ seed, noise }), seed);
@@ -31,19 +34,30 @@ for (const h of HELD_OUT) {
         byKind[k.kind].fp += k.falsePositives;
         byKind[k.kind].fn += k.falseNegatives;
       }
+      const key = (kind: string, keys: readonly string[]) => `${kind}|${[...keys].sort().join(",")}`;
+      const truthAmount = new Map(c.truth.map((w) => [key(w.kind, w.vendorKeys), w.monthlyCents + w.oneTimeCents]));
+      for (const f of a.findings) {
+        const want = truthAmount.get(key(f.kind, f.vendorKeys));
+        if (want === undefined) continue;
+        matched += 1;
+        const got = f.monthlySavingsCents + f.oneTimeCents;
+        if (Math.abs(got - want) <= 0.1 * want) amountOk += 1;
+        else examples.add(`$ ${f.kind} ${f.vendorKeys.join(",")}: found ${got} vs truth ${want} cents`);
+      }
       for (const u of s.unexpected) examples.add(`FP ${u.kind}: ${u.title}`);
       for (const m of s.missed) examples.add(`MISS ${m.kind}: ${m.note}`);
     }
   }
   const cell = (t: Tally) => `${t.tp + t.fp === 0 ? "n/a" : `${Math.round((t.tp / (t.tp + t.fp)) * 100)}%`} / ${t.tp + t.fn === 0 ? "n/a" : `${Math.round((t.tp / (t.tp + t.fn)) * 100)}%`}`;
-  rows.push(`| ${h.name} | ${h.failureMode} | ${KINDS.map((k) => cell(byKind[k])).join(" | ")} |`);
-  json[h.name] = { failureMode: h.failureMode, expectation: h.expectation, byKind, examples: [...examples].slice(0, 5) };
+  const dollars = matched ? `${Math.round((amountOk / matched) * 100)}%` : "n/a";
+  rows.push(`| ${h.name} | ${h.failureMode} | ${KINDS.map((k) => cell(byKind[k])).join(" | ")} | ${dollars} |`);
+  json[h.name] = { failureMode: h.failureMode, expectation: h.expectation, byKind, matched, amountWithin10Pct: amountOk, examples: [...examples].slice(0, 5) };
 }
 const md = [
   `Held-out stress set (${label}): ${SEEDS.length} seeds × ${NOISE.length} noise levels per variant. Cells are precision / recall per detector.`,
   "",
-  `| Variant | Failure mode | ${KINDS.join(" | ")} |`,
-  `|---|---|${KINDS.map(() => "---").join("|")}|`,
+  `| Variant | Failure mode | ${KINDS.join(" | ")} | $ within 10% of truth |`,
+  `|---|---|${KINDS.map(() => "---").join("|")}|---|`,
   ...rows,
 ].join("\n");
 console.log(md);
