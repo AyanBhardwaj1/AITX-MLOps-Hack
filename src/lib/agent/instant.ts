@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { categoryName } from "../format";
+import { categoryName, formatDate } from "../format";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget } from "./tools";
+import { getChanges, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -110,11 +110,40 @@ function renewals(a: Analysis): InstantAnswer {
   return { question: INSTANT_QUESTIONS.renewals, tools: ["get_upcoming_renewals"], text: lines.join("\n\n") };
 }
 
+function defaultAlive(a: Analysis): InstantAnswer {
+  const s = runScenario(a, {});
+  const growth = `${s.revenueGrowthPctPerMonth.toFixed(1)}%/month`;
+  const need = s.growthNeededForDefaultAlivePctPerMonth;
+  const lines = s.defaultAlive
+    ? [
+        `**Yes, default alive.** Revenue has grown about ${growth} over the last 6 months. If that holds and spend stays flat, revenue covers expenses in **month ${s.breakEvenMonth}**, before the cash runs out.`,
+        need !== null ? `The margin: growth needs to stay above **${need.toFixed(1)}%/month**. Below that, you'd need to raise or cut.` : "",
+      ]
+    : [
+        `**No, default dead.** At ${growth} revenue growth with flat spend, cash runs out${s.zeroCashDate ? ` around ${formatDate(s.zeroCashDate)}` : ""} before revenue catches up with expenses.`,
+        need !== null
+          ? `Growth would need to reach **${need.toFixed(1)}%/month** to make it on current cash. Otherwise plan cuts or a raise now: raising usually takes 6+ months.`
+          : "Growth alone can't close the gap on current cash: plan cuts or a raise now.",
+      ];
+  lines.push("Try hires, a raise or cutting the waste in **Plan ahead** on the dashboard.");
+  return { question: INSTANT_QUESTIONS.default_alive, tools: ["plan_scenario"], text: lines.filter(Boolean).join("\n\n") };
+}
+
+function whatChanged(a: Analysis): InstantAnswer {
+  const changes = getChanges(a);
+  const text = changes.length
+    ? [`${changes.length} thing${changes.length === 1 ? "" : "s"} worth a look, most urgent first:`, changes.map((c) => `- **${c.title}**: ${c.detail}`).join("\n")].join("\n\n")
+    : "Nothing unusual: no spend spikes, new vendors, price changes, large payments or renewals due in the next 14 days.";
+  return { question: INSTANT_QUESTIONS.what_changed, tools: ["get_recent_changes"], text };
+}
+
 const ANSWERS: Record<InstantQuestion, (a: Analysis) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
   how_long: howLong,
   renewals,
+  default_alive: defaultAlive,
+  what_changed: whatChanged,
 };
 
 export function instantAnswer(a: Analysis, question: InstantQuestion): InstantAnswer {

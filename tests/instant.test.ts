@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { INSTANT_QUESTIONS, instantAnswer, instantQuestionInput, type InstantQuestion } from "@/lib/agent/instant";
-import { getFinancialSnapshot, planToTarget } from "@/lib/agent/tools";
+import { getChanges, getFinancialSnapshot, planToTarget, runScenario } from "@/lib/agent/tools";
 import { formatDollars } from "@/lib/money";
 import { analyze, type Analysis } from "@/lib/pipeline";
 import { generateDemoCompany } from "@/lib/seed/demo-company";
@@ -34,6 +34,19 @@ describe("instant answers (no LLM)", () => {
     const text = instantAnswer(a, "pay_twice").text;
     expect(text).toMatch(/Salesforce/);
     expect(text).toMatch(/refund|claim back/);
+  });
+
+  it("answers the default-alive question with the projection's own numbers", () => {
+    const s = runScenario(a, {});
+    const text = instantAnswer(a, "default_alive").text;
+    expect(text).toContain(s.defaultAlive ? "default alive" : "default dead");
+    if (s.breakEvenMonth !== null) expect(text).toContain(`month ${s.breakEvenMonth}`);
+    expect(text).toContain(`${s.revenueGrowthPctPerMonth.toFixed(1)}%/month`);
+  });
+
+  it("lists the same changes the dashboard shows", () => {
+    const text = instantAnswer(a, "what_changed").text;
+    for (const c of getChanges(a)) expect(text).toContain(c.title);
   });
 
   it("rejects unknown question ids", () => {

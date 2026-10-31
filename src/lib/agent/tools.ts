@@ -3,6 +3,8 @@ import { aiSpendTrend } from "../finance/ai-spend";
 import { forecastCash } from "../finance/forecast";
 import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
+import { projectScenario, scenarioOptions } from "../finance/scenario";
+import { detectChanges } from "../insights/changes";
 import { goalSeek, simulateSavings, stressRunway } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
@@ -182,4 +184,29 @@ export function getAiSpend(a: Analysis) {
     monthlyGrowthPct: t.monthlyGrowth === null ? null : Math.round(t.monthlyGrowth * 1000) / 10,
     shareOfGrossBurnPct: Math.round((t.latestMonthCents / Math.max(1, a.snapshot.grossBurnCents)) * 1000) / 10,
   };
+}
+
+const SCENARIO_POINTS_SHOWN = 24;
+
+export const scenarioInput = scenarioOptions;
+/** Default-alive projection; month-by-month points are trimmed to keep the tool result small. */
+export function runScenario(a: Analysis, input: z.input<typeof scenarioOptions>) {
+  const s = projectScenario({ ...input, asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, FORECAST_HISTORY_MONTHS) });
+  return {
+    defaultAlive: s.defaultAlive,
+    revenueGrowthPctPerMonth: Math.round(s.revenueGrowth * 1000) / 10,
+    growthNeededForDefaultAlivePctPerMonth: s.growthNeededForDefaultAlive === null ? null : Math.round(s.growthNeededForDefaultAlive * 1000) / 10,
+    breakEvenMonth: s.breakEvenMonth,
+    runOutMonths: round1(s.runOutMonths ?? Number.POSITIVE_INFINITY),
+    zeroCashDate: s.zeroCashDate,
+    baseRevenueCentsPerMonth: s.baseRevenueCents,
+    baseExpensesCentsPerMonth: s.baseExpensesCents,
+    points: s.points.slice(0, SCENARIO_POINTS_SHOWN).map((p) => ({ month: p.month, cashCents: p.cashCents, revenueCents: p.revenueCents, expensesCents: p.expensesCents })),
+  };
+}
+
+export const changesInput = z.object({});
+/** Recent alerts: burn spikes, large one-offs, price changes, new vendors, renewals due, low runway. */
+export function getChanges(a: Analysis) {
+  return detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths });
 }

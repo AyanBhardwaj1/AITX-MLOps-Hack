@@ -24,6 +24,8 @@ const TOOL_LABEL: Record<string, string> = {
   get_runway_forecast: "Ran the forecast",
   get_upcoming_renewals: "Checked renewals",
   get_ai_spend: "Checked AI spend",
+  plan_scenario: "Ran the default-alive test",
+  get_recent_changes: "Checked what changed",
 };
 
 const INSTANT = Object.entries(INSTANT_QUESTIONS).map(([id, text]) => ({ id: id as InstantQuestion, text }));

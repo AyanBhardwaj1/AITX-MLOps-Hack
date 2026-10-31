@@ -4,5 +4,7 @@ export const INSTANT_QUESTIONS = {
   pay_twice: "What are we paying for twice?",
   how_long: "How long do we really have?",
   renewals: "What renews in the next 60 days?",
+  default_alive: "Are we default alive?",
+  what_changed: "What changed this week?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;
