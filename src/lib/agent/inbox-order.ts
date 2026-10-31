@@ -2,7 +2,7 @@ import type { StoredAction } from "../store/types";
 
 /**
  * Inbox order that respects limited attention: drafts awaiting a decision come first, biggest
- * dollar impact first (monthly savings plus any one-time amount of the linked finding), so the
+ * dollar impact first (the caller passes each finding's first-year value: 12 × monthly + one-time), so the
  * few items someone approves each week are the ones that matter. Decided items follow, newest first.
  */
 export function orderInbox(actions: readonly StoredAction[], impactByFinding: Readonly<Record<string, number>>): StoredAction[] {

@@ -38,7 +38,7 @@ export function InboxPanel({
   mode: "demo" | "sandbox";
   jira: boolean;
   active: boolean;
-  /** Dollar impact (cents) of each finding, so the biggest decisions come first. */
+  /** First-year value (cents) of each finding, so the biggest decisions come first. */
   impactByFinding: Record<string, number>;
 }) {
   const [actions, setActions] = useState<StoredAction[] | null>(null);
@@ -110,7 +110,7 @@ export function InboxPanel({
                 <span className="block truncate font-medium">{a.title}</span>
                 <span className="text-xs text-muted">
                   {KIND_LABEL[a.kind]} · from {a.createdBy}
-                  {a.findingFingerprint && impactByFinding[a.findingFingerprint] ? ` · ${formatMoney(impactByFinding[a.findingFingerprint]!)} at stake` : ""}
+                  {a.findingFingerprint && impactByFinding[a.findingFingerprint] ? ` · ${formatMoney(impactByFinding[a.findingFingerprint]!)} first-year value` : ""}
                   {a.externalRef ? ` · ${a.externalRef}` : ""}
                 </span>
               </button>

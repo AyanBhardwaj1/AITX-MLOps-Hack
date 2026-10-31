@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T09:32:30.809Z",
+  "generatedAt": "2026-10-31T10:01:48.744Z",
   "seeds": [
     1,
     38,
@@ -848,7 +848,7 @@
         0.5539016873668675
       ],
       "examples": [
-        "FP price_creep: Ddog Billing price up 50%",
+        "FP price_creep: Ddog Billing bill up 50%",
         "MISS price_creep: Datadog $2,400 → $3,600"
       ]
     },

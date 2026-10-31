@@ -87,4 +87,14 @@ describe("importCsv", () => {
   it("rejects files it can't recognise", () => {
     expect(() => importCsv("foo,bar\n1,2\n", { accountId: "a" })).toThrow(/columns/);
   });
+
+  it("skips Mercury rows that didn't go through (review round 1)", () => {
+    const csv = "Date (UTC),Description,Amount,Status,Source Account,Name On Card\n10-05-2026,FIGMA,-45.00,Sent,M,Priya Shah\n10-05-2026,FIGMA,-45.00,Failed,M,Priya Shah\n";
+    expect(importCsv(csv, { accountId: "m" }).transactions).toHaveLength(1);
+  });
+
+  it("flags a file whose charges look positive (inverted signs)", () => {
+    const csv = "date,description,amount\n2026-09-05,ZOOM.US,149.90\n2026-09-06,SLACK,480\n2026-09-07,FIGMA,45\n2026-09-08,NOTION,96\n2026-09-10,STRIPE TRANSFER,4200\n";
+    expect(importCsv(csv, { accountId: "a" }).mostlyPositive).toBe(true);
+  });
 });

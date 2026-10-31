@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T09:34:38.229Z",
+  "generatedAt": "2026-10-31T10:02:30.979Z",
   "seeds": [
     1,
     38,
@@ -462,6 +462,115 @@
         0
       ],
       "skipped": 0
+    },
+    "checking_plus_card_files": {
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "runwayDelta": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "burnDeltaPct": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "skipped": 0
     }
   },
   "agreement": {
@@ -485,6 +594,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.04388818799094274
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "harsh_day_jitter": {
@@ -507,6 +621,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.051406066229283454
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "vendor_rename": {
@@ -529,6 +648,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.044993441221528485
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "refunds": {
@@ -551,6 +675,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.16628636881787884
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "shared_card": {
@@ -573,6 +702,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.044993441221528485
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "seat_cards": {
@@ -595,6 +729,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.062459079400076334
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "annual_billing": {
@@ -617,6 +756,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.1643791434228863
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "usage_priced": {
@@ -639,6 +783,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.08317027247034048
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "split_workspaces": {
@@ -661,6 +810,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.06274405397652849
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "refunded_double_charge": {
@@ -683,6 +837,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.05126884474722182
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "unaliased_rename": {
@@ -705,6 +864,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.044993441221528485
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "short_history": {
@@ -727,6 +891,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.044993441221528485
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:usage_mild_hubspot_slack_notion": {
@@ -749,6 +918,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.05348717183698781
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:usage_heavy_gworkspace_github_loom": {
@@ -771,6 +945,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.06538640710426691
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:usage_noise_on_datadog_step": {
@@ -793,6 +972,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.09240886090358202
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:real_step_on_flat_vendor": {
@@ -815,6 +999,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.08009372243776625
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:sub_floor_step_on_small_vendor": {
@@ -837,6 +1026,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.04304804304343257
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:seat_steps_slack": {
@@ -859,6 +1053,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.08123754158152785
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:split_ws_notion_daniel": {
@@ -881,6 +1080,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.05504484324851511
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:split_ws_recent_start_linear": {
@@ -903,6 +1107,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.04907854238598475
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:split_ws_slack_different_amount": {
@@ -925,6 +1134,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.06516088960812283
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:split_ws_intercom_next_day": {
@@ -947,6 +1161,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.09754828600585874
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:split_ws_idle_card_figma": {
@@ -969,6 +1188,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.06017463265957623
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:refund_next_day": {
@@ -991,6 +1215,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.05126884474722182
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:refund_20_days_across_month_end": {
@@ -1013,6 +1242,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.05126884474722182
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:refund_different_descriptor": {
@@ -1035,6 +1269,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.05126884474722182
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     },
     "heldout:refund_partial_half": {
@@ -1057,6 +1296,11 @@
         "same": 0,
         "runs": 10,
         "maxRunwayDelta": 0.04813033754254015
+      },
+      "checking_plus_card_files": {
+        "same": 10,
+        "runs": 10,
+        "maxRunwayDelta": 0
       }
     }
   }

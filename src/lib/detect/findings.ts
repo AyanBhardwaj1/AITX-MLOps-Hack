@@ -3,7 +3,7 @@ import { formatCents } from "../money";
 import { coefficientOfVariation, median } from "../stats";
 import type { Category, EnrichedTxn, Finding, IsoDate, RecurringStream } from "../types";
 import { jobLabel } from "../vendors/catalog";
-import { CADENCE_DAYS, RECURRING_REPEAT_MIN_CYCLES, SAME_EVENT_DAYS, detectStreams, isOutflow } from "./recurring";
+import { CADENCE_DAYS, SAME_EVENT_DAYS, detectStreams, isOutflow } from "./recurring";
 
 /** Price creep thresholds: at least +10% and +$20/month, sustained for the last two charges. */
 const CREEP_MIN_RATIO = 0.1;
@@ -14,6 +14,8 @@ const CREEP_BASELINE_CHARGES = 3;
 const STABLE_BASELINE_CV = 0.15;
 /** A price increase must explain the bill at least this much better (as a step) than a steady trend does. */
 const STEP_FIT_RATIO = 0.5;
+/** Two steps (a staircase of raises) have one more free parameter, so they must fit much better than a trend. */
+const TWO_STEP_FIT_RATIO = 0.25;
 /** A refund from the vendor this soon after a double charge counts against it. */
 const REFUND_WINDOW_DAYS = 30;
 /** Spend that varies by nature (usage, fares, meals, headcount): not subscriptions. */
@@ -111,9 +113,9 @@ const sse = (xs: readonly number[], fit: (i: number) => number) => xs.reduce((su
 const mean = (xs: readonly number[]) => xs.reduce((sum, x) => sum + x, 0) / xs.length;
 
 /**
- * True when the bill is better explained by one step between two flat levels than by a steady
- * trend: a price change, not seat or usage growth. Compares the best two-level fit with a
- * least-squares line; the step must cut the unexplained variation at least in half.
+ * True when the bill is better explained by flat price levels than by a steady trend: a price change,
+ * not seat or usage growth. One step must cut the unexplained variation of a least-squares line at
+ * least in half; a staircase of two steps must cut it to a quarter (it has one more free parameter).
  */
 function hasPriceStep(amounts: readonly number[]): boolean {
   const n = amounts.length;
@@ -122,16 +124,17 @@ function hasPriceStep(amounts: readonly number[]): boolean {
   const yMean = mean(amounts);
   const slope = amounts.reduce((acc, y, i) => acc + (i - xMean) * (y - yMean), 0) / amounts.reduce((acc, _, i) => acc + (i - xMean) ** 2, 0);
   const lineError = sse(amounts, (i) => yMean + slope * (i - xMean));
-  let best = Number.POSITIVE_INFINITY;
-  let bestRise = 0;
+  const flat = (xs: readonly number[]) => sse(xs, () => mean(xs));
+  let oneStep = Number.POSITIVE_INFINITY;
+  let twoStep = Number.POSITIVE_INFINITY;
+  let rise = 0;
   for (let k = 1; k < n; k++) {
-    const before = amounts.slice(0, k);
-    const after = amounts.slice(k);
-    const [mb, ma] = [mean(before), mean(after)];
-    const error = sse(before, () => mb) + sse(after, () => ma);
-    if (error < best) [best, bestRise] = [error, ma / mb - 1];
+    const error = flat(amounts.slice(0, k)) + flat(amounts.slice(k));
+    if (error < oneStep) [oneStep, rise] = [error, mean(amounts.slice(k)) / mean(amounts.slice(0, k)) - 1];
+    for (let j = k + 1; j < n; j++) twoStep = Math.min(twoStep, flat(amounts.slice(0, k)) + flat(amounts.slice(k, j)) + flat(amounts.slice(j)));
   }
-  return bestRise >= CREEP_MIN_RATIO && best <= STEP_FIT_RATIO * lineError;
+  const overallRise = mean(amounts.slice(-2)) / mean(amounts.slice(0, 2)) - 1;
+  return (rise >= CREEP_MIN_RATIO && oneStep <= STEP_FIT_RATIO * lineError) || (overallRise >= CREEP_MIN_RATIO && twoStep <= TWO_STEP_FIT_RATIO * lineError);
 }
 
 function priceCreep(streams: readonly RecurringStream[], txnsById: ReadonlyMap<string, EnrichedTxn>, claimed: ReadonlySet<string>): Finding[] {
@@ -154,8 +157,9 @@ function priceCreep(streams: readonly RecurringStream[], txnsById: ReadonlyMap<s
     findings.push({
       id: `price_creep:${s.vendorKey}${whose}`,
       kind: "price_creep",
-      title: `${s.vendorName} price up ${pct}%`,
-      detail: `${s.vendorName} went from ${formatCents(baseline)} to ${formatCents(median(recent))} per charge (+${formatCents(monthlyIncrease)}/month). Negotiate back or downgrade the plan.`,
+      title: `${s.vendorName} bill up ${pct}%`,
+      // Bank data shows the bill, not the price list: a step can be a price rise or added seats.
+      detail: `${s.vendorName} went from ${formatCents(baseline)} to ${formatCents(median(recent))} per charge (+${formatCents(monthlyIncrease)}/month). If you didn't add seats, negotiate back or downgrade the plan.`,
       vendorKeys: [s.vendorKey],
       monthlySavingsCents: monthlyIncrease,
       oneTimeCents: 0,
@@ -166,7 +170,7 @@ function priceCreep(streams: readonly RecurringStream[], txnsById: ReadonlyMap<s
   return findings;
 }
 
-function duplicateCharges(txns: readonly EnrichedTxn[]): Finding[] {
+function duplicateCharges(txns: readonly EnrichedTxn[], streams: readonly RecurringStream[]): Finding[] {
   const sorted = txns
     .filter((t) => isOutflow(t) && !VARIABLE_BY_NATURE.has(t.vendor.category) && -t.amountCents >= DOUBLE_CHARGE_MIN_CENTS)
     .sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
@@ -179,15 +183,15 @@ function duplicateCharges(txns: readonly EnrichedTxn[]): Finding[] {
     if (prev && prev.amountCents === t.amountCents && daysBetween(prev.postedAt, t.postedAt) <= SAME_EVENT_DAYS) pairs.push([prev, t]);
     lastByVendorCard.set(cardKey(t), t);
   }
-  // A pair that recurs cycle after cycle is a second seat or workspace, not a billing error.
-  const pairCount = new Map<string, number>();
-  for (const [, t] of pairs) pairCount.set(cardKey(t), (pairCount.get(cardKey(t)) ?? 0) + 1);
+  // A repeat that is part of a detected recurring stream is a second seat or workspace billed on a
+  // schedule, not a billing error. Two one-off repeats months apart are still two double charges.
+  const recurring = new Set(streams.flatMap((st) => st.txnIds));
   // Refunds from the vendor after the double charge reduce what's left to recover; each counts once.
   const refunds = txns.filter((t) => t.amountCents > 0 && t.status === "posted" && t.type !== "transfer").sort((a, b) => a.postedAt.localeCompare(b.postedAt));
   const usedRefunds = new Set<string>();
   const findings: Finding[] = [];
   for (const [prev, t] of pairs) {
-    if ((pairCount.get(cardKey(t)) ?? 0) >= RECURRING_REPEAT_MIN_CYCLES) continue;
+    if (recurring.has(t.id)) continue;
     let amount = -t.amountCents;
     for (const r of refunds) {
       if (amount <= 0) break;
@@ -232,6 +236,6 @@ export function detectFindings(txns: readonly EnrichedTxn[], asOf: IsoDate): Fin
     ...dups.map(withoutClaims),
     ...idle.map(withoutClaims),
     ...priceCreep(streams, txnsById, claimed),
-    ...duplicateCharges(txns),
+    ...duplicateCharges(txns, streams),
   ].sort((a, b) => a.id.localeCompare(b.id));
 }

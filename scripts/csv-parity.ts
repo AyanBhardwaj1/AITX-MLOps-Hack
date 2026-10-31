@@ -4,7 +4,7 @@
  * Usage: npx tsx scripts/csv-parity.ts   (writes sleep-research/runs/csv-parity.json and .md)
  */
 import { mkdirSync, writeFileSync } from "node:fs";
-import { importCsv } from "../src/lib/csv/import";
+import { importCsv, resolveCardPayoffs } from "../src/lib/csv/import";
 import { HELD_OUT } from "../src/lib/eval/heldout";
 import { PERTURBATIONS, perturb } from "../src/lib/eval/perturb";
 import { scoreFindings } from "../src/lib/eval/score";
@@ -17,14 +17,27 @@ import type { FindingKind } from "../src/lib/types";
 const SEEDS = Array.from({ length: 20 }, (_, i) => i * 37 + 1);
 const NOISE = ["clean", "noisy"] as const;
 const KINDS: FindingKind[] = ["duplicate_tools", "price_creep", "zombie", "duplicate_charge"];
-const LAYOUTS = ["rho_csv", "mercury_csv", "generic_all_accounts", "generic_checking_only"] as const;
+const LAYOUTS = ["rho_csv", "mercury_csv", "generic_all_accounts", "generic_checking_only", "checking_plus_card_files"] as const;
 
 const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
 const dateOf = (t: RhoTransaction) => (t.posted_at ?? t.initiated_at).slice(0, 10);
 const usDate = (iso: string) => `${iso.slice(5, 7)}-${iso.slice(8, 10)}-${iso.slice(0, 4)}`;
 const dollars = (c: number) => (c / 100).toFixed(2);
 
-function exportCsv(rows: readonly RhoTransaction[], layout: (typeof LAYOUTS)[number]): string {
+/** Two separate uploads (generic checking export + Mercury-style card export), as the grader suggests (review round 1). */
+function importTwoFiles(rows: readonly RhoTransaction[]): RhoTransaction[] {
+  const checking = exportCsv(rows.filter((t) => t.account_type === "checking"), "generic_checking_only");
+  const card = exportCsv(rows.filter((t) => t.account_type === "credit"), "mercury_csv");
+  const merged = [checking, card].flatMap((text, i) => importCsv(text, { accountId: `upload_${i + 1}`, resolvePayoffs: false }).transactions);
+  return resolveCardPayoffs(merged).transactions;
+}
+
+function importLayout(rows: readonly RhoTransaction[], layout: (typeof LAYOUTS)[number]) {
+  if (layout === "checking_plus_card_files") return { transactions: importTwoFiles(rows), skipped: [] as number[] };
+  return importCsv(exportCsv(rows, layout), { accountId: "upload" });
+}
+
+function exportCsv(rows: readonly RhoTransaction[], layout: Exclude<(typeof LAYOUTS)[number], "checking_plus_card_files">): string {
   const settled = rows.filter((t) => t.status === "settled");
   if (layout === "rho_csv") {
     return ["Date,Description,Amount,Type,Account,Cardholder", ...settled.map((t) => [dateOf(t), t.counterparty_name, dollars(t.amount.amount), t.transaction_type, t.account_id, t.user_full_name ?? ""].map(q).join(","))].join("\n");
@@ -47,7 +60,7 @@ for (const noise of NOISE) {
     // The grader asks for today's total cash (a CSV has no balance); give it the true figure.
     const accounts: RhoAccount[] = [{ id: "upload", account_type: "checking", account_name: "Upload", balance: { amount: cashBalanceCents(c.accounts), currency: "USD" } }];
     for (const layout of LAYOUTS) {
-      const imported = importCsv(exportCsv(c.transactions, layout), { accountId: "upload" });
+      const imported = importLayout(c.transactions, layout);
       const a = analyze({ accounts, transactions: imported.transactions, asOf: c.asOf });
       const s = scoreFindings(a.findings, c.truth);
       for (const k of s.byKind) {
@@ -79,7 +92,7 @@ for (const st of SETTINGS) {
     const api = analyze({ accounts: c.accounts, transactions: c.transactions, asOf: c.asOf });
     const accounts: RhoAccount[] = [{ id: "upload", account_type: "checking", account_name: "Upload", balance: { amount: cashBalanceCents(c.accounts), currency: "USD" } }];
     for (const layout of LAYOUTS) {
-      const a = analyze({ accounts, transactions: importCsv(exportCsv(c.transactions, layout), { accountId: "upload" }).transactions, asOf: c.asOf });
+      const a = analyze({ accounts, transactions: importLayout(c.transactions, layout).transactions, asOf: c.asOf });
       const r = agreement[st.name]![layout]!;
       r.runs += 1;
       const noIdle = layout.startsWith("generic");

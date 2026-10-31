@@ -23,6 +23,11 @@ export interface CsvImport {
    * weren't in the upload (the payoff is then the only trace of that card spend).
    */
   cardSpendAsPayoffs: boolean;
+  /**
+   * More than MOSTLY_POSITIVE_SHARE of the amounts are positive: the export may list charges as
+   * positive numbers (some card exports do), which would hide spend.
+   */
+  mostlyPositive: boolean;
   /** Line numbers in the file (header = line 1) that couldn't be read, as a spreadsheet shows them. */
   skipped: number[];
 }
@@ -31,6 +36,10 @@ export interface CsvImport {
 const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT THANK YOU|ONLINE PAYMENT)\b/i;
 /** Moving money between the company's own accounts: never burn. */
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
+/** Mercury statuses for money that never moved. */
+const NOT_COMPLETED = /^(failed|cancel+ed|canceled|declined|reversed)$/i;
+const MOSTLY_POSITIVE_SHARE = 0.7;
+
 /** Payouts from revenue processors often say "TRANSFER" too; they are revenue, not internal moves. */
 const isRevenuePayout = (description: string) => resolveVendor(description).category === "revenue";
 
@@ -98,7 +107,8 @@ export function detectLayout(headers: readonly string[]): CsvLayout | null {
   return null;
 }
 
-function rowToTransaction(get: (col: string) => string, layout: CsvLayout, accountId: string, rowNo: number): RhoTransaction | null {
+function rowToTransaction(get: (col: string) => string, layout: CsvLayout, accountId: string, rowNo: number): RhoTransaction | "not_completed" | null {
+  if (layout === "mercury" && NOT_COMPLETED.test(get("status").trim())) return "not_completed";
   const date = parseDate(get(layout === "mercury" ? "date (utc)" : "date"));
   const amount = parseAmountCents(get("amount"));
   const description = get("description").trim();
@@ -138,8 +148,23 @@ function rowToTransaction(get: (col: string) => string, layout: CsvLayout, accou
   };
 }
 
+/**
+ * Card payoffs from checking are transfers when the card's own rows are also present (any row with a
+ * cardholder, or the incoming leg of a payoff); otherwise they are the only trace of that card's spend.
+ * Decide this over everything uploaded together, never file by file, or card spend gets counted twice.
+ */
+export function resolveCardPayoffs(transactions: readonly RhoTransaction[]): { transactions: RhoTransaction[]; cardSpendAsPayoffs: boolean } {
+  const payoffs = transactions.filter((t) => t.transaction_type === "credit_repayment");
+  const cardRowsPresent = transactions.some((t) => t.user_full_name) || payoffs.some((t) => t.amount.amount > 0);
+  const cardSpendAsPayoffs = payoffs.length > 0 && !cardRowsPresent;
+  return {
+    transactions: cardSpendAsPayoffs ? transactions.map((t) => (t.transaction_type === "credit_repayment" ? { ...t, transaction_type: UNITEMIZED_CARD_SPEND } : t)) : [...transactions],
+    cardSpendAsPayoffs,
+  };
+}
+
 /** Parses one exported file. Throws when the columns aren't recognised; skips (and reports) unreadable rows. */
-export function importCsv(text: string, { accountId }: { accountId: string }): CsvImport {
+export function importCsv(text: string, { accountId, resolvePayoffs = true }: { accountId: string; resolvePayoffs?: boolean }): CsvImport {
   const [header, ...rows] = parseCsv(text);
   const layout = header ? detectLayout(header) : null;
   if (!header || !layout) throw new Error("Unrecognised columns: expected at least Date, Description and Amount");
@@ -150,15 +175,12 @@ export function importCsv(text: string, { accountId }: { accountId: string }): C
     const get = (col: string) => cells[index.get(col) ?? -1] ?? "";
     const line = i + 2;
     const t = rowToTransaction(get, layout, accountId, line);
+    if (t === "not_completed") return;
     if (t) transactions.push(t);
     else skipped.push(line);
   });
-  // A payoff with no matching incoming leg means the card account wasn't uploaded: its spend only
-  // shows up as these lumps, so count them as spend instead of dropping them as transfers.
-  const payoffs = transactions.filter((t) => t.transaction_type === "credit_repayment");
-  const cardSpendAsPayoffs = layout !== "rho" && payoffs.length > 0 && !payoffs.some((t) => t.amount.amount > 0);
-  const out = cardSpendAsPayoffs
-    ? transactions.map((t) => (t.transaction_type === "credit_repayment" ? { ...t, transaction_type: UNITEMIZED_CARD_SPEND } : t))
-    : transactions;
-  return { layout, transactions: out, skipped, cardSpendAsPayoffs };
+  const mostlyPositive = transactions.length > 0 && transactions.filter((t) => t.amount.amount > 0).length / transactions.length > MOSTLY_POSITIVE_SHARE;
+  // Our own export ("rho") carries explicit types, so its payoffs are already right.
+  const resolved = resolvePayoffs && layout !== "rho" ? resolveCardPayoffs(transactions) : { transactions, cardSpendAsPayoffs: false };
+  return { layout, transactions: resolved.transactions, skipped, cardSpendAsPayoffs: resolved.cardSpendAsPayoffs, mostlyPositive };
 }

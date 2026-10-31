@@ -36,7 +36,7 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
 - **This week + Monday digest.** Deterministic alerts for spend spikes, large one-off payments, subscription price changes, new vendors, renewals due within 14 days and low runway. The same list, plus runway, the default-alive verdict and open waste, goes to Slack every Monday (incoming webhook).
 - **Plan ahead: default alive?** Paul Graham's test, computed: revenue growth is estimated from six months of the feed, and the planner projects month by month with hires, a raise, cut waste or a different growth rate. It shows break-even, the cash-out date and the minimum growth that keeps you alive.
 - **Verified savings.** After you act on a finding, Runway watches the next bills: a cancelled tool must stop charging, a price increase must drop back, a double charge needs its refund. Only verified money counts as saved, and anything still charging is flagged.
-- **Free CSV Runway Grader** (`/grader`, no signup). Drop a Rho, Mercury or generic bank export and type today's cash. You get runway, a range from past swings and the top wasted spend. It runs in your browser: a Playwright check logged zero network requests during grading. It also states plainly what a given upload can't see, such as card waste in a checking-only export.
+- **Free CSV Runway Grader** (`/grader`, no signup). Drop a bank export (a generic Date/Description/Amount CSV, or Rho- and Mercury-*style* layouts; those column layouts are our assumptions and untested on real exports) and type today's cash. You get runway, a range from past swings and the top wasted spend. It runs in your browser: a Playwright check logged zero network requests during grading. It also states plainly what a given upload can't see, such as card waste in a checking-only export.
 - **Inbox ordered by what's at stake.** Drafts waiting for approval are sorted by the dollar impact of their finding, so the few approvals you make each week are the ones that matter.
 - **Investor update.** This month's update drafted from the bank feed: revenue and month-over-month change, burn, cash, runway, default alive, software spend moves and verified cuts. Wins, misses and asks stay marked for you to write.
 - **Read-only by design.** Rho's API can't move money, and neither can Runway. Agents can only create drafts; the database refuses anything else.
@@ -106,7 +106,7 @@ Design choices worth knowing:
 ## Production readiness
 
 - **CI on every push** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
-  - typecheck, lint, 150 unit tests and a production build;
+  - typecheck, lint, the unit tests (367 at last count) and a production build;
   - the detector eval, which fails the build below 95% precision or recall;
   - `npm audit`;
   - schema tests and the Postgres store contract against a real Postgres service.
@@ -149,7 +149,12 @@ Each company also contains negative controls that must not be flagged: usage-bas
 
 The first run exposed three real defects: steady usage growth read as a price increase (43% precision), recurring second workspaces read as double charges (4%), and refunded double charges kept being flagged. To avoid grading our own homework, a separate agent wrote a **held-out** set of 15 variants without seeing the detector code (`src/lib/eval/heldout.ts`). It was frozen and run on the unfixed code, where precision on the affected detectors was 0–50%. The fixes were developed on the dev settings only. In the first committed after-fixes run of the held-out set, every detector scored 100% precision and recall wherever something was planted or found. In the three full-refund variants nothing was planted and nothing was found, which is correct.
 
+Review round 1 then found two regressions in those fixes: separate one-off double charges months apart were hidden, and a staircase of raises was missed. Both are fixed, with regression tests, and the held-out set still passes on re-check. It is no longer a blind test at that point, since it had been seen.
+
 Remaining stated limits:
+- **Bank data can't tell a price rise from added seats.** A jump from 12 to 16 Slack seats shows as "Slack bill up 33%", so findings say "bill up" and "if you didn't add seats…".
+- **A double charge that repeats in three or more consecutive months** looks exactly like a second workspace and isn't flagged.
+- Savings for a growing bill are estimated from its typical past charge, not its latest one (held-out dollar check: 85% within 10% on one usage variant).
 - Billing names the alias table doesn't know are found under the unfamiliar name.
 - With ±4-day posting jitter, recall drops to 88–98%.
 - All of this is one generated company shape (`synthetic_proxy`), not real ledgers.
@@ -200,7 +205,7 @@ The eval and two independent code reviews caught real bugs during development, e
 - **SaaS waste is one lever, not the biggest.** On the demo cohort, fixing all detected waste adds about 0.4 months of runway, while delaying one $15k/month hire by 3 months adds about 0.56 (`scripts/runway-levers.ts`; one company shape, illustrative).
 - **Not built yet** (ranked in [the product research](reports/Runway%20product%20go%20to%20market.md)):
   - Rho partner OAuth (needs Rho's partner approval) and a Mercury connector.
-  - Inbox ranking and batching by dollar impact; categorization corrections that stick.
+  - Batching low-value Inbox items (ranking by first-year value is built); categorization corrections that stick.
   - Stripe MRR for the revenue side of the default-alive test.
   - Email delivery for the digest; a multi-client view for fractional CFOs.
 - **The Rho field mapping is unverified.** It was built from Rho's public docs and earlier hackathon clients, and needs re-checking against the live sandbox and production API.

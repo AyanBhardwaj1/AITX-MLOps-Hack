@@ -208,4 +208,25 @@ describe("detectors on real-world ledger shapes (stress-test regressions)", () =
     const partial = detectFindings([...pair, refund(60, "2026-09-16")], AS_OF).find((f) => f.kind === "duplicate_charge");
     expect(partial?.oneTimeCents).toBe(5_999);
   });
+
+  it("still finds two separate double charges months apart (review round 1)", () => {
+    const n = [...monthly("NOTION LABS", 96, 12, "Daniel Rivera")];
+    const base = n.filter((t) => t.postedAt === "2026-03-05" || t.postedAt === "2026-09-05").map((t) => ({ ...t }));
+    // Two one-off repeats, each within 3 days of a regular charge, six months apart.
+    const repeats = base.map((t, i) => ({ ...t, id: `rep${i}`, postedAt: t.postedAt.replace(/-05$/, "-06") }));
+    const found = detectFindings([...n, ...repeats], AS_OF).filter((f) => f.kind === "duplicate_charge");
+    expect(found).toHaveLength(2);
+  });
+
+  it("finds the latest raise in a staircase of price increases (review round 1)", () => {
+    const slack = monthly("SLACK TECHNOLOGIES", (i) => (i < 8 ? 480 : i < 16 ? 576 : 691.2), 24);
+    expect(detectFindings(slack, AS_OF).map((f) => f.kind)).toContain("price_creep");
+  });
+
+  it("words a bill jump as a price or seat change, since bank data can't tell them apart", () => {
+    const seats = monthly("SLACK TECHNOLOGIES", (i) => (i < 10 ? 480 : 640), 14);
+    const f = detectFindings(seats, AS_OF).find((x) => x.kind === "price_creep");
+    expect(f?.title).toMatch(/bill up \d+%/);
+    expect(f?.detail).toMatch(/seats/);
+  });
 });

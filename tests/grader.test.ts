@@ -47,4 +47,26 @@ describe("gradeCsvFiles", () => {
     expect(() => gradeCsvFiles([], 1)).toThrow(/file/);
     expect(() => gradeCsvFiles([{ name: "a.csv", text: "date,description,amount\n2026-09-05,ZOOM.US,-149.90\n" }], Number.NaN)).toThrow(/cash/);
   });
+
+  const settled = demo.transactions.filter((t) => t.status === "settled");
+  const generic = (rows: readonly RhoTransaction[]) => ["date,description,amount", ...rows.map((t) => [dateOf(t), q(t.counterparty_name), (t.amount.amount / 100).toFixed(2)].join(","))].join("\n");
+
+  it("gets runway right for a checking export plus the card's export (review round 1)", () => {
+    const g = gradeCsvFiles(
+      [
+        { name: "checking.csv", text: generic(settled.filter((t) => t.account_type === "checking")) },
+        { name: "card.csv", text: mercuryCsv(settled.filter((t) => t.account_type === "credit")) },
+      ],
+      cash,
+    );
+    expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
+    expect(g.notes.join(" ")).not.toMatch(/weren't uploaded/);
+  });
+
+  it("ignores the same file uploaded twice and rows repeated across overlapping exports", () => {
+    const text = mercuryCsv(demo.transactions);
+    const g = gradeCsvFiles([{ name: "a.csv", text }, { name: "a-copy.csv", text }], cash);
+    expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
+    expect(g.notes.join(" ")).toMatch(/duplicate/i);
+  });
 });

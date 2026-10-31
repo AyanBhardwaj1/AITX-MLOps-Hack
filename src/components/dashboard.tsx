@@ -104,7 +104,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
   const oneTime = live.reduce((s, f) => s + f.oneTimeCents, 0);
   const totalAnalysisMs = Object.values(data.timingsMs).reduce((s, v) => s + v, 0);
-  const impactByFinding = useMemo(() => Object.fromEntries(data.findings.map((f) => [f.id, f.monthlySavingsCents + f.oneTimeCents])), [data.findings]);
+  // First-year value: a recurring saving outranks a similar one-off amount.
+  const impactByFinding = useMemo(() => Object.fromEntries(data.findings.map((f) => [f.id, f.monthlySavingsCents * 12 + f.oneTimeCents])), [data.findings]);
 
   async function setStatus(id: string, status: FindingStatus) {
     const previous = statuses[id] ?? "open";
