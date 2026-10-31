@@ -36,6 +36,8 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
 - **This week + Monday digest.** Deterministic alerts for spend spikes, large one-off payments, subscription price changes, new vendors, renewals due within 14 days and low runway. The same list, plus runway, the default-alive verdict and open waste, goes to Slack every Monday (incoming webhook).
 - **Plan ahead: default alive?** Paul Graham's test, computed: revenue growth is estimated from six months of the feed, and the planner projects month by month with hires, a raise, cut waste or a different growth rate. It shows break-even, the cash-out date and the minimum growth that keeps you alive.
 - **Verified savings.** After you act on a finding, Runway watches the next bills: a cancelled tool must stop charging, a price increase must drop back, a double charge needs its refund. Only verified money counts as saved, and anything still charging is flagged.
+- **Free CSV Runway Grader** (`/grader`, no signup). Drop a Rho, Mercury or generic bank export and type today's cash. You get runway, a range from past swings and the top wasted spend. It runs in your browser: a Playwright check logged zero network requests during grading. It also states plainly what a given upload can't see, such as card waste in a checking-only export.
+- **Inbox ordered by what's at stake.** Drafts waiting for approval are sorted by the dollar impact of their finding, so the few approvals you make each week are the ones that matter.
 - **Investor update.** This month's update drafted from the bank feed: revenue and month-over-month change, burn, cash, runway, default alive, software spend moves and verified cuts. Wins, misses and asks stay marked for you to write.
 - **Read-only by design.** Rho's API can't move money, and neither can Runway. Agents can only create drafts; the database refuses anything else.
 
@@ -132,6 +134,28 @@ Each company also contains negative controls that must not be flagged: usage-bas
 
 **Honest caveat:** the detectors were developed against this generator. These numbers show the logic works on known patterns, not accuracy on real ledgers.
 
+### Stress test on ledger shapes the detectors weren't tuned for
+
+`npm run stress-eval` re-scores the detectors on the same 20 seeds × 2 noise levels after transforming the ledger in ways real feeds differ from the generator:
+- business-day posting
+- vendor renames
+- refunds
+- a shared founder card
+- per-person seat cards
+- annual and usage-priced billing
+- second workspaces billed the same day
+- refunded double charges
+- 12-month histories
+
+The first run exposed three real defects: steady usage growth read as a price increase (43% precision), recurring second workspaces read as double charges (4%), and refunded double charges kept being flagged. To avoid grading our own homework, a separate agent wrote a **held-out** set of 15 variants without seeing the detector code (`src/lib/eval/heldout.ts`). It was frozen and run on the unfixed code, where precision on the affected detectors was 0–50%. The fixes were developed on the dev settings only. The held-out set was then run once: **100% precision and recall on all 15 variants**.
+
+Remaining stated limits:
+- Billing names the alias table doesn't know are found under the unfamiliar name.
+- With ±4-day posting jitter, recall drops to 88–98%.
+- All of this is one generated company shape (`synthetic_proxy`), not real ledgers.
+
+Details and every number's source: `sleep-research/` (tracker, runs, reviews).
+
 The eval and two independent code reviews caught real bugs during development, each now covered by a regression test:
 - Two people's identical orders were flagged as a double charge.
 - Airfare was flagged as price creep.
@@ -168,7 +192,12 @@ The eval and two independent code reviews caught real bugs during development, e
 
   Their deterministic parts (tools, validation, the memo number check) are tested. Without a key, everything degrades to rules and templates.
 - **Zombie detection is a heuristic.** Bank data has no usage data, so "idle card" stands in for "unused". SSO or Google Workspace signals would make it precise.
-- **The Monte Carlo band captures month-to-month noise, not trends.** For a steady company the band is narrow, so the revenue-drop stress line is the more useful risk view.
+- **The forecast range covers past month-to-month swings, not trends or shocks, and is too narrow.** A backtest on generated history (`npx tsx scripts/runway-backtest.ts`) found:
+  - Realized cash landed inside the P10–P90 band only 59% / 41% of the time at 3 / 6 months.
+  - After a hiring ramp, a revenue drop or a big one-off bill, reality fell *below* P10 in 56–100% of cases at 6 months.
+  - The UI and Copilot therefore call it a "range from past swings". Use the scenario planner and the revenue-drop line for trends.
+  - A trend-aware range is the top next step.
+- **SaaS waste is one lever, not the biggest.** On the demo cohort, fixing all detected waste adds about 0.4 months of runway, while delaying one $15k/month hire by 3 months adds about 0.56 (`scripts/runway-levers.ts`; one company shape, illustrative).
 - **Not built yet** (ranked in [the product research](reports/Runway%20product%20go%20to%20market.md)):
   - Rho partner OAuth (needs Rho's partner approval) and a Mercury connector.
   - Inbox ranking and batching by dollar impact; categorization corrections that stick.
