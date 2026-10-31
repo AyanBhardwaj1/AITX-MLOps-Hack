@@ -15,6 +15,7 @@ import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
 import { AutopilotPanel } from "./autopilot-panel";
 import { HowItWorks } from "./how-it-works";
+import { InvestorUpdateCard } from "./investor-update-card";
 import { CopilotPanel } from "./copilot-panel";
 import { InboxPanel } from "./inbox-panel";
 import { ForecastChart } from "./forecast-chart";
@@ -257,6 +258,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           asOf={data.asOf}
           wasteSavingsCents={allSim.monthlySavingsCents}
         />
+
+        <InvestorUpdateCard mode={data.mode} />
 
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <RenewalsCard renewals={data.renewals} />
