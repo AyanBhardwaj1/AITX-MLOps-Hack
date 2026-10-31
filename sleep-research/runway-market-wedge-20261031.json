@@ -15,9 +15,12 @@
     {
       "name": "literature",
       "status": "done",
-      "accepted": false,
+      "accepted": true,
       "at": "2026-10-31T08:49:53+00:00",
-      "artifact": "sleep-research/IDEA_REPORT.md"
+      "artifact": "sleep-research/IDEA_REPORT.md",
+      "verdict": "sleep-research/traces/triage/round1.md",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T09:02:11+00:00"
     },
     {
       "name": "ideas",
@@ -67,5 +70,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T08:53:41+00:00"
+  "updated": "2026-10-31T09:02:11+00:00"
 }

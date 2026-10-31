@@ -43,7 +43,7 @@ Built on the earlier research in `research_notes/Runway product go to market/` (
    - Vertice absorbed Vendr; Productiv shut down (Aug 2026).
    - Zylo, Tropic and Spendflo cost $10K–$200K+/yr and rely on SSO and usage data.
    - Implication: sub-50-person teams without SSO are unserved; bank and card data is their only signal.
-3. **AI CFO / FP&A for founders.** cfo.ai (ex-Runway.com) "Ari" at about $375–$1,125/mo works from QuickBooks/NetSuite/Stripe, not the bank. Blaze (YC) projects runway via Plaid. Causal went to Lucanet, Mosaic to HiBob, Pry to Brex.
+3. **AI CFO / FP&A for founders** (plus Blaze, YC: bank-connected via Plaid, recurring-payment detection and runway; the closest functional clone). cfo.ai (ex-Runway.com) "Ari" at about $375–$1,125/mo works from QuickBooks/NetSuite/Stripe, not the bank. Blaze (YC) projects runway via Plaid. Causal went to Lucanet, Mosaic to HiBob, Pry to Brex.
 4. **AI bookkeeping.** Digits, Puzzle, Pilot and Kick for founders; Basis and Rillet for firms. Heavily funded; owns the GL.
 5. **Trust and agents.** Finance leaders rarely fully trust AI (14% full trust, Esker Sept 2026); 90% require human approval (Medius). Approval fatigue is a known failure mode.
 6. **Distribution.**
@@ -51,10 +51,17 @@ Built on the earlier research in `research_notes/Runway product go to market/` (
    - Mercury: about 300K customers; read-only tokens.
    - Fractional CFOs and accountants as a channel.
 
+> **Landscape gate (triage reviewer, WARN):** the facts are transcribed accurately, but several gaps turned "not found in search" into "does not exist". The corrections below were applied after review (trace: `traces/triage/round1.md`, Task A).
+> - Cledara (~$75/mo) and Ramp are low-end options, so "unserved" is narrowed to "underserved by bank-native tools".
+> - Rho's accountant program reportedly has multi-client tooling, so G3 is narrowed accordingly.
+> - G1's hedge is restored: verification may exist inside Ramp or Zylo deprovisioning flows.
+> - Blaze (YC), the closest functional clone, is added to the landscape.
+> - Single-source prices and the Rho API open date are `[UNVERIFIED]`.
+
 ### Recurring limitations and structural gaps (inputs to Stage 2)
-- **G1.** No product verifies that savings actually landed. Detection tools report "found"; verification needs a bank feed over time. *Shipped in Runway already.*
+- **G1.** No product *found* verifies that savings actually landed (it may exist inside Ramp or Zylo deprovisioning flows). Detection tools report "found"; verification needs a bank feed over time. *Shipped in Runway already.*
 - **G2.** Cross-bank and card consolidation for small teams: no bank will show a rival's accounts.
-- **G3.** The fractional CFO serving 10–30 startups has no cheap multi-client, bank-native monitoring tool; Fathom and Jirav are GL-based.
+- **G3.** The fractional CFO serving 10–30 startups lacks a cheap, bank-native multi-client *risk triage*. Fathom and Jirav are GL-based, and Rho's accountant program reportedly includes multi-client tooling whose scope is unknown.
 - **G4.** Activation friction: the connect-a-bank step and "time to first insight". Startups churn back to spreadsheets when setup costs exceed perceived value.
 - **G5.** Approval fatigue in agent inboxes: undifferentiated drafts get rubber-stamped.
 - **G6.** Categorization drift on real ledgers. Runway's detectors were tuned on its own generator (self-acknowledged caveat), so robustness on unfamiliar company shapes is unproven.
@@ -96,7 +103,23 @@ Five lens subagents (pattern-transfer, contradiction, untested-assumption, segme
 | I18 | **Privacy-safe peer spend benchmark** with DP and k-anonymity (dp-peer-spend-benchmark) | acquisition | W / H | Requires N opted-in companies per cell; synthetic only here | Ramp/Vendr own SKU price benchmarks; category benchmarks unsourced |
 
 ## Triage (reviewer)
-_pending_
+
+Trace: `traces/triage/round1.md` (same-family fresh subagent, provisional). Summary of the ruling:
+- **Most pilots would be decided by construction.** When the team injects the effect and writes the fix (I2-new-method, I8, I9, I11, I13, I3, I17), the pilot carries little information.
+- **Informative pilots test existing code on inputs it wasn't tuned for:** I5, I6, I15, and the existing-method half of I2.
+- **Ranking:**
+  1. I6, fix now (reviewer reproduced two false-"verified" cases)
+  2. I5, pilot
+  3. I15, pilot
+  4. I1, the high-risk pilot slot
+  5. I11, a 30-minute desk calculation
+  6. I2 + I8, backtest the existing method only
+  7. I4, a simple $-impact Inbox sort
+  8. I16, a desk check after I15
+  9. I3, a desk decision after I6
+  10. I12, I13, I14, I9 and I17 later; I10 later; I7 and I18 parked.
+- **Build regardless:** the I6 fix (done in commit aafac20, regression tests in `tests/savings.test.ts`), the Inbox $-sort, the I11 desk calculation, and an honest backtest of the existing runway method.
+- **Red flags recorded:** complexity added since brainstorming in I4, I5, I6, I7 and I13; the shared variation wrapper must stay to a few externally motivated perturbations, not a framework.
 
 ## Novelty
 _pending_

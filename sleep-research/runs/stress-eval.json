@@ -1,0 +1,731 @@
+{
+  "generatedAt": "2026-10-31T09:04:38.889Z",
+  "seeds": [
+    1,
+    38,
+    75,
+    112,
+    149,
+    186,
+    223,
+    260,
+    297,
+    334,
+    371,
+    408,
+    445,
+    482,
+    519,
+    556,
+    593,
+    630,
+    667,
+    704
+  ],
+  "noise": [
+    "clean",
+    "noisy"
+  ],
+  "results": {
+    "baseline": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "billing_day_drift": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "harsh_day_jitter": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 105,
+          "fp": 0,
+          "fn": 15
+        },
+        "price_creep": {
+          "tp": 39,
+          "fp": 0,
+          "fn": 1
+        },
+        "zombie": {
+          "tp": 37,
+          "fp": 0,
+          "fn": 3
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        0.8427503447968208,
+        0.9788103301499262,
+        1,
+        0.8427503447968208,
+        0.9665426265525151,
+        0.702601124911245,
+        0.9788103301499262,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0.5539016873668675,
+        1,
+        0.9665426265525151,
+        1,
+        0.9665426265525151,
+        0.702601124911245,
+        0.702601124911245,
+        0.9788103301499262,
+        0.66914375146376,
+        0.8427503447968208,
+        0.9788103301499262,
+        1,
+        0.9665426265525151,
+        1,
+        1,
+        1,
+        1,
+        0.702601124911245,
+        1,
+        1,
+        1,
+        0.9788103301499262
+      ],
+      "examples": [
+        "MISS zombie: Priya stopped spending; her card still pays three tools",
+        "MISS duplicate_tools: Confluence added while Notion is the wiki",
+        "MISS duplicate_tools: Zoom and Webex both paid for video meetings",
+        "MISS duplicate_tools: Salesforce added; HubSpot never cancelled",
+        "MISS price_creep: Datadog $2,400 → $3,600"
+      ]
+    },
+    "vendor_rename": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "refunds": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "shared_card": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "seat_cards": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "annual_billing": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": []
+    },
+    "usage_priced": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 52,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": [
+        "FP price_creep: Intercom price up 56%",
+        "FP price_creep: Intercom price up 62%",
+        "FP price_creep: Intercom price up 76%",
+        "FP price_creep: Intercom price up 54%",
+        "FP price_creep: Sentry price up 81%",
+        "FP price_creep: Sentry price up 89%"
+      ]
+    },
+    "combined": {
+      "runs": 40,
+      "byKind": {
+        "duplicate_tools": {
+          "tp": 120,
+          "fp": 0,
+          "fn": 0
+        },
+        "price_creep": {
+          "tp": 40,
+          "fp": 52,
+          "fn": 0
+        },
+        "zombie": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        },
+        "duplicate_charge": {
+          "tp": 40,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "dollarRecall": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": [
+        "FP price_creep: Intercom price up 56%",
+        "FP price_creep: Intercom price up 62%",
+        "FP price_creep: Intercom price up 76%",
+        "FP price_creep: Intercom price up 54%",
+        "FP price_creep: Sentry price up 81%",
+        "FP price_creep: Intercom price up 64%"
+      ]
+    }
+  }
+}
