@@ -24,7 +24,8 @@ Never commit `.env.local`; it's gitignored.
 | `APP_PASSWORD` | Password prompt on the whole site (any username) | Pick one, at least 8 characters. **Required before using a real Rho account.** |
 | `RHO_BASE_URL` / `RHO_API_TOKEN` | Your real Rho account instead of the sandbox | Rho → Settings → API. Production URL: `https://rhoapi.rho.co/api/v1`; tokens start with `rhobat_`. |
 | `CRON_SECRET` | Daily 8 AM (Austin) Autopilot run | Any random string of 16+ characters, e.g. `openssl rand -hex 24` |
-| `AUTOPILOT_CRON_MODE` | Which data the daily run reviews | `demo` (default) or `sandbox` (the configured Rho feed) |
+| `AUTOPILOT_CRON_MODE` | Which data the daily run and the Monday digest review | `demo` (default) or `sandbox` (the configured Rho feed) |
+| `SLACK_WEBHOOK_URL` | Monday digest in Slack (13:30 UTC, about 8 AM in Austin; needs `CRON_SECRET`); "Send to Slack now" also needs `APP_PASSWORD` | Slack → Apps → Incoming Webhooks → add to a channel. Must start with `https://hooks.slack.com/services/` |
 | `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | "Approve & file" creates a Jira issue | `https://<site>.atlassian.net`, your Atlassian email, id.atlassian.com → Security → API tokens, and the project key (e.g. `RUN`) |
 
 ## Steps
@@ -44,7 +45,7 @@ Never commit `.env.local`; it's gitignored.
    Every configured integration should print `PASS`. Unconfigured ones print `SKIP`, and nothing permanent is created.
 3. **Vercel.**
    - Add the same variables, then **Redeploy**.
-   - The daily cron in `vercel.json` registers automatically on deploy. It only runs if `CRON_SECRET` is set.
+   - The crons in `vercel.json` (daily Autopilot, Monday digest) register automatically on deploy. They only run if `CRON_SECRET` is set.
 4. **Smoke test on the live URL:**
    - `/api/health` returns `"status":"ok"` and `"database":"ok"` (or `"not_configured"` without `DATABASE_URL`).
    - The dashboard loads.

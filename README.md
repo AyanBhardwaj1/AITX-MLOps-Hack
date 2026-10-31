@@ -33,6 +33,10 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
 - **Runs on its own.**
   - Autopilot also runs daily via Vercel Cron.
   - Each run's steps and memo are kept as history.
+- **This week + Monday digest.** Deterministic alerts for spend spikes, large one-off payments, subscription price changes, new vendors, renewals due within 14 days and low runway. The same list, plus runway, the default-alive verdict and open waste, goes to Slack every Monday (incoming webhook).
+- **Plan ahead: default alive?** Paul Graham's test, computed: revenue growth is estimated from six months of the feed, and the planner projects month by month with hires, a raise, cut waste or a different growth rate. It shows break-even, the cash-out date and the minimum growth that keeps you alive.
+- **Verified savings.** After you act on a finding, Runway watches the next bills: a cancelled tool must stop charging, a price increase must drop back, a double charge needs its refund. Only verified money counts as saved, and anything still charging is flagged.
+- **Investor update.** This month's update drafted from the bank feed: revenue and month-over-month change, burn, cash, runway, default alive, software spend moves and verified cuts. Wins, misses and asks stay marked for you to write.
 - **Read-only by design.** Rho's API can't move money, and neither can Runway. Agents can only create drafts; the database refuses anything else.
 
 ## Quick start
@@ -165,11 +169,11 @@ The eval and two independent code reviews caught real bugs during development, e
   Their deterministic parts (tools, validation, the memo number check) are tested. Without a key, everything degrades to rules and templates.
 - **Zombie detection is a heuristic.** Bank data has no usage data, so "idle card" stands in for "unused". SSO or Google Workspace signals would make it precise.
 - **The Monte Carlo band captures month-to-month noise, not trends.** For a steady company the band is narrow, so the revenue-drop stress line is the more useful risk view.
-- **Not built yet:**
-  - Apify-scraped plan pricing for "cheaper tier" suggestions.
-  - Treasury idle-cash insight.
-  - Slack digest.
-  - Closing the loop by checking that the next Rho charge actually dropped.
+- **Not built yet** (ranked in [the product research](reports/Runway%20product%20go%20to%20market.md)):
+  - Rho partner OAuth (needs Rho's partner approval) and a Mercury connector.
+  - Inbox ranking and batching by dollar impact; categorization corrections that stick.
+  - Stripe MRR for the revenue side of the default-alive test.
+  - Email delivery for the digest; a multi-client view for fractional CFOs.
 - **The Rho field mapping is unverified.** It was built from Rho's public docs and earlier hackathon clients, and needs re-checking against the live sandbox and production API.
 
 ## Team
