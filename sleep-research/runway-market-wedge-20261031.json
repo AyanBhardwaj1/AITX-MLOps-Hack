@@ -21,8 +21,10 @@
     },
     {
       "name": "ideas",
-      "status": "pending",
-      "accepted": false
+      "status": "done",
+      "accepted": false,
+      "at": "2026-10-31T08:53:41+00:00",
+      "artifact": "sleep-research/IDEA_REPORT.md"
     },
     {
       "name": "triage",
@@ -65,5 +67,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T08:49:53+00:00"
+  "updated": "2026-10-31T08:53:41+00:00"
 }
