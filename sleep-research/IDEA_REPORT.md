@@ -148,7 +148,12 @@ Each pick got a fresh reviewer. Traces are in `traces/novelty/`. All vendor fact
 | Idea | Setup | Runtime | Result | Class |
 |---|---|---|---|---|
 | I15 CSV grader parity | `scripts/csv-parity.ts`: 20 seeds × 2 noise × 4 export layouts (Rho-style, Mercury-style with columns `[UNVERIFIED]`, generic all accounts, generic checking only). Re-import via `src/lib/csv/import.ts` with the true cash balance typed in. Output: `runs/csv-parity.md` | ~3 s | **Runway matches the API path** in every layout (median Δ 0.00, max 0.05 months). Rho- and Mercury-style files find 100% of the waste. Generic all-accounts loses only idle-card detection (no cardholder column). Checking-only gets runway right but sees **0%** of the card waste (blind spot quantified). The first run exposed two import defects ("STRIPE TRANSFER" read as a transfer: +31.9% burn; card payoffs double-counted or dropped); both fixed, with tests | **positive** (with stated limits) |
-| I1 portfolio triage | `scripts/portfolio-triage.ts`: 30 portfolios × 30 companies; trouble from real revenue drops starting 20 days before the cutoff; distractors are one-off bills and seasonal dips. Output: `runs/portfolio-triage.md` | ~21 s | Composite recall@5 96.5% vs trailing-runway sort 95.8%. The **pre-declared early-warning bar (+15 points) is not met**: the lift is 0.7 points. Distractors are rare for both | **refuted** (informative negative: in simulation, who crosses 6 months is set by current runway; a smarter score adds nothing) |
+| I1 portfolio triage | `scripts/portfolio-triage.ts`: 30 portfolios × 30 companies; trouble from real revenue drops starting 20 days before the cutoff; distractors are one-off bills and seasonal dips. Output: `runs/portfolio-triage.md` | ~21 s | Composite recall@5 96.5% vs trailing-runway sort 95.8%. **The plan reviewer showed the test could not pass** (`traces/plan/round1.md` §0):
+- With a 95.8% baseline, the +15-point bar was unattainable.
+- The "early-warning" filter kept 899 of 900 companies, so it equals plain recall.
+- The truth window counted the distractor events as burn.
+
+When runway at the cutoff is roughly equal (9–11 months, 202 companies), the composite separates better: AUC 0.747 vs 0.650 | **inconclusive** (test design); weak signal when cash is held equal |
 | I5 detector stress test | `npm run stress-eval`: 20 seeds × 2 noise levels × 14 settings (`src/lib/eval/perturb.ts`). Settings come from real-feed differences named by the novelty reviewer (`traces/novelty/I5-detector-stress.md`). Output: `runs/stress-eval.json` and `.md` | ~5 s | Hypothesis "at least one detector falls below 80% precision under realistic shapes" **confirmed** (3 defects; see below) | **positive** |
 
 Under realistic shapes (from `runs/stress-eval.md`):
@@ -176,7 +181,7 @@ All numbers are `synthetic_proxy`: the generator's planted truth plus external t
 
 **Why it won.**
 - Both pilots were informative and positive, and they reinforce each other. The grader is the acquisition surface, with no OAuth and any bank's export. The stress results decide whether its findings deserve trust on ledgers the detectors weren't tuned for.
-- I1's ranking claim was refuted in simulation. Its remaining value, convenience across many clients, depends on advisor demand and Rho partner OAuth, neither testable here.
+- I1's pilot was inconclusive (flawed test design). Its value also depends on advisor demand and Rho partner OAuth, neither testable here.
 
 **Hypothesis.** Fixing the three failures the stress test exposed restores ≥ 90% precision under every realistic setting, with no recall loss on the baseline and no eval regression:
 1. usage-priced tools read as price increases;
@@ -205,11 +210,11 @@ A browser-only CSV grader built on the same engine then gives any founder runway
 ## Backups and eliminated
 
 - **Backups (unpicked, kept):**
-  - I1: portfolio view, gated on advisor demand and Rho partner OAuth. Its ranking claim is refuted, so it would be sorted by runway.
+  - I1: portfolio view, gated on advisor demand and Rho partner OAuth. Its ranking pilot was inconclusive (AUC 0.75 vs 0.65 at equal runway is weak signal worth a fair rerun).
   - I2: trend-aware band, after the existing-method backtest.
   - I4: confidence and cost-of-delay ordering, after the $-sort.
   - I3: savings-gated pricing, after the I6 fix.
   - I16: blind-spot meter; the I15 pilot quantified the gap.
   - I12, I13, I14, I9, I17, I10, I8.
 - **Parked:** I7 (investor live card) and I18 (DP benchmark); both need real users or populations.
-- **Eliminated:** none published-as-is. I1's *risk-ranking* differentiator was **refuted in simulation** (P3).
+- **Eliminated:** none published-as-is. I1's *risk-ranking* pilot was **inconclusive by test design** (P3). A fair rerun compares companies with similar runway and uses a truth window that doesn't count the distractor events as burn.

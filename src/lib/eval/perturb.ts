@@ -252,6 +252,7 @@ const APPLY: Record<Exclude<Perturbation, "combined">, Apply> = {
 
 export function perturb(company: DemoCompany, p: Perturbation, seed: number): DemoCompany {
   if (p !== "combined") return APPLY[p](company, seed);
-  // Realistic shapes together: not shared_card (erases the idle-card cases seat_cards tests) or the harsh jitter.
-  return PERTURBATIONS.filter((x) => x !== "shared_card" && x !== "harsh_day_jitter").reduce((c, x) => APPLY[x](c, seed), company);
+  // Realistic shapes together: not shared_card (erases the idle-card cases seat_cards tests), not the harsh
+  // jitter (a sensitivity bound) and not the unaliased rename (a vendor-naming limit under exact-key scoring).
+  return PERTURBATIONS.filter((x) => x !== "shared_card" && x !== "harsh_day_jitter" && x !== "unaliased_rename").reduce((c, x) => APPLY[x](c, seed), company);
 }
