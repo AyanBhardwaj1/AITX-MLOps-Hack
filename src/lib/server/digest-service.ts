@@ -22,16 +22,17 @@ function appUrl(): string | undefined {
 /** The digest for one data source, leaving out findings people dismissed. */
 export async function buildDigestFor(mode: DataMode): Promise<DigestPreview> {
   const { dataset, analysis } = await loadAnalysis(mode);
-  let dismissed = new Set<string>();
+  // Leave out dismissed findings and ones already acted on (tracked under "Acted on").
+  let exclude = new Set<string>();
   try {
     const statuses = await getStore(scopeFor(mode)).syncFindings(analysis.findings);
-    dismissed = new Set([...statuses].filter(([, s]) => s === "dismissed").map(([id]) => id));
+    exclude = new Set([...statuses].filter(([, s]) => s !== "open").map(([id]) => id));
   } catch (err) {
-    // Without the store the digest still goes out; it just can't honour dismissals this time.
+    // Without the store the digest still goes out; it just can't honour decisions this time.
     console.error("[digest] couldn't read finding statuses", err);
   }
   const savings = await savingsFor(mode, dataset, analysis);
-  const input = digestInputFromAnalysis(analysis, { company: COMPANY[scopeFor(mode)] ?? dataset.label, dismissed, appUrl: appUrl(), savings });
+  const input = digestInputFromAnalysis(analysis, { company: COMPANY[scopeFor(mode)] ?? dataset.label, exclude, appUrl: appUrl(), savings });
   return { ...buildDigest(input), changes: [...input.changes] };
 }
 

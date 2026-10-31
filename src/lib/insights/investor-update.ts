@@ -1,6 +1,6 @@
 import type { MonthHistory } from "../finance/history";
 import { monthlyHistory } from "../finance/history";
-import { projectScenario, type ScenarioResult } from "../finance/scenario";
+import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
 import { formatDate } from "../format";
 import { formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
@@ -22,7 +22,7 @@ export interface InvestorUpdateInput {
   grossBurnCents: Cents;
   runwayMonths: number;
   zeroCashDate: IsoDate | null;
-  scenario: Pick<ScenarioResult, "defaultAlive" | "breakEvenMonth" | "revenueGrowth" | "growthNeededForDefaultAlive">;
+  scenario: Pick<ScenarioResult, "defaultAlive" | "breakEvenMonth" | "revenueGrowth" | "growthBasis" | "growthNeededForDefaultAlive">;
   verifiedSavingsCents?: Cents;
 }
 
@@ -57,12 +57,14 @@ export function investorUpdateInput(a: Analysis, opts: { company: string; verifi
   };
 }
 
-function revenueLine(history: readonly MonthHistory[], growth: number): string {
+function revenueLine(history: readonly MonthHistory[], s: InvestorUpdateInput["scenario"]): string {
   const last = history.at(-1);
   const prev = history.at(-2);
   if (!last || last.inflowCents <= 0) return "- **Revenue:** No revenue yet.";
   const vs = prev && prev.inflowCents > 0 ? ` (${signedPct((last.inflowCents - prev.inflowCents) / prev.inflowCents)} vs ${shortMonth(prev.month)}` : " (first revenue month";
-  return `- **Revenue:** ${formatDollars(last.inflowCents)} in ${shortMonth(last.month)}${vs}; ${(growth * 100).toFixed(1)}%/month over the last 6 months)`;
+  const measured = describeGrowth(s.revenueGrowth, s.growthBasis);
+  const trend = measured && s.growthBasis ? `${measured} over the last ${s.growthBasis.months} months` : measured ? `planning at ${measured}` : "too early to measure a growth rate";
+  return `- **Revenue:** ${formatDollars(last.inflowCents)} in ${shortMonth(last.month)}${vs}; ${trend})`;
 }
 
 function spendLine(history: readonly MonthHistory[]): string | null {
@@ -86,7 +88,7 @@ export function buildInvestorUpdate(input: InvestorUpdateInput): InvestorUpdate 
     ? `**${input.runwayMonths.toFixed(1)} months** of runway${input.zeroCashDate ? ` (to about ${formatDate(input.zeroCashDate)})` : ""}`
     : "cash-flow positive";
   const numbers = [
-    revenueLine(input.history, input.scenario.revenueGrowth),
+    revenueLine(input.history, input.scenario),
     `- **Net burn:** ${formatDollars(input.netBurnCents)}/month (3-month average); gross spend ${formatDollars(input.grossBurnCents)}/month`,
     `- **Cash:** ${formatDollars(input.cashCents)}, so ${runway}`,
     aliveLine(input.scenario),

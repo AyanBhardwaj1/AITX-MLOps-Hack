@@ -23,10 +23,17 @@ export function InvestorUpdateCard({ mode }: { mode: "demo" | "sandbox" }) {
     }
   }
 
+  const [copyFailed, setCopyFailed] = useState(false);
   async function copy(text: string) {
-    await navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), COPIED_MS);
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      setCopyFailed(false);
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPIED_MS);
+    } catch {
+      setCopyFailed(true);
+    }
   }
 
   return (
@@ -74,7 +81,7 @@ export function InvestorUpdateCard({ mode }: { mode: "demo" | "sandbox" }) {
               onClick={() => void copy(state.text)}
               className="rounded-lg bg-brand px-3 py-1.5 font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px"
             >
-              <span aria-live="polite">{copied ? "Copied" : "Copy update"}</span>
+              <span aria-live="polite">{copied ? "Copied" : copyFailed ? "Copy failed: select the text instead" : "Copy update"}</span>
             </button>
             <a
               href={`mailto:?subject=${encodeURIComponent(state.subject)}&body=${encodeURIComponent(state.text)}`}

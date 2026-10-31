@@ -41,7 +41,7 @@ describe("instant answers (no LLM)", () => {
     const text = instantAnswer(a, "default_alive").text;
     expect(text).toContain(s.defaultAlive ? "default alive" : "default dead");
     if (s.breakEvenMonth !== null) expect(text).toContain(`month ${s.breakEvenMonth}`);
-    expect(text).toContain(`${s.revenueGrowthPctPerMonth.toFixed(1)}%/month`);
+    expect(text).toContain(s.revenueGrowthMeasured!);
   });
 
   it("lists the same changes the dashboard shows", () => {

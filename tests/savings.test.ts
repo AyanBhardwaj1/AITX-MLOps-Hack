@@ -86,6 +86,33 @@ describe("verifySavings", () => {
     expect(r.verifiedOneTimeCents).toBe(11_999);
   });
 
+  it("handles a vendor billing several cards on the same day (no crash, waits for every card)", () => {
+    const alice = monthly("CISCO WEBEX", "2026-01-05", 6, 90, "Alice Ng");
+    const bob = monthly("CISCO WEBEX", "2026-01-05", 6, 90, "Bob Ray");
+    const r = verifySavings([accepted({})], [...zoom, ...alice, ...bob], "2026-07-08");
+    expect(r.checks[0]).toMatchObject({ status: "waiting", checkAfter: "2026-07-13" });
+    expect(verifySavings([accepted({})], [...zoom, ...alice, ...bob], "2026-08-01").checks[0]!.status).toBe("verified");
+  });
+
+  it("uses each card's own rhythm: cards billed a day apart don't shrink the cycle", () => {
+    const alice = monthly("CISCO WEBEX", "2026-01-05", 6, 90, "Alice Ng");
+    const bob = monthly("CISCO WEBEX", "2026-01-06", 6, 90, "Bob Ray");
+    expect(verifySavings([accepted({})], [...zoom, ...alice, ...bob], "2026-07-08").checks[0]!.status).toBe("waiting");
+  });
+
+  it("only counts a refund dated after the double charge, and each refund once", () => {
+    const charges = [txn("CANVA", "2026-08-10", 119.99), txn("CANVA", "2026-08-11", 119.99)];
+    const fp = `duplicate_charge:canva:acc:${charges[1]!.id}`;
+    const dup = accepted({ fingerprint: fp, kind: "duplicate_charge", vendorKeys: ["canva"], monthlySavingsCents: 0, oneTimeCents: 11_999, acceptedAt: "2026-08-12T00:00:00Z" });
+    const earlierCredit = { ...txn("CANVA", "2026-08-01", 0), amountCents: 11_999 };
+    expect(verifySavings([dup], [earlierCredit, ...charges], "2026-10-01").checks[0]!.status).toBe("waiting");
+    const refund = { ...txn("CANVA", "2026-08-20", 0), amountCents: 11_999 };
+    const dup2 = { ...dup, fingerprint: `duplicate_charge:canva:acc:${charges[0]!.id}` };
+    const r = verifySavings([dup, dup2], [...charges, refund], "2026-10-01");
+    expect(r.checks.filter((c) => c.status === "verified")).toHaveLength(1);
+    expect(r.verifiedOneTimeCents).toBe(11_999);
+  });
+
   it("returns nothing to verify for no accepted findings", () => {
     expect(verifySavings([], zoom, "2026-10-01")).toEqual({ checks: [], verifiedMonthlyCents: 0, verifiedOneTimeCents: 0, pendingMonthlyCents: 0 });
   });

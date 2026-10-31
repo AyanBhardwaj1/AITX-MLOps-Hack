@@ -2,6 +2,7 @@ import { daysBetween } from "../dates";
 import { VARIABLE_BY_NATURE } from "../detect/findings";
 import { isOutflow } from "../detect/recurring";
 import { monthlyHistory } from "../finance/history";
+import { coefficientOfVariation } from "../stats";
 import { upcomingRenewals } from "../finance/renewals";
 import { formatDate } from "../format";
 import { formatCents } from "../money";
@@ -40,6 +41,9 @@ const NEW_VENDOR_DAYS = 30;
 const NEW_VENDOR_MIN_CENTS = 10_000;
 const PRICE_CHANGE_RATIO = 0.1;
 const PRICE_CHANGE_RECENT_DAYS = 35;
+/** A fixed price barely moves (tax or FX noise); bills that already swing more than this are usage, not a price. */
+const STEADY_PRICE_CV = 0.03;
+const MIN_STEADY_CHARGES = 2;
 const LARGE_PAYMENT_MIN_CENTS = 1_000_000;
 const LARGE_PAYMENT_DAYS = 14;
 const RUNWAY_WARN_MONTHS = 12;
@@ -112,6 +116,8 @@ function priceChanges(txns: readonly EnrichedTxn[], streams: readonly RecurringS
     events.sort((a, b) => a.postedAt.localeCompare(b.postedAt));
     const [prev, last] = events.slice(-2);
     if (!prev || !last || !recent(last.postedAt, asOf, PRICE_CHANGE_RECENT_DAYS)) return [];
+    const earlier = events.slice(0, -1).map((t) => -t.amountCents);
+    if (earlier.length < MIN_STEADY_CHARGES || coefficientOfVariation(earlier) > STEADY_PRICE_CV) return [];
     const before = -prev.amountCents;
     const after = -last.amountCents;
     if (after < before * (1 + PRICE_CHANGE_RATIO)) return [];

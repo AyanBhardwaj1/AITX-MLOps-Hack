@@ -1,5 +1,5 @@
 import { monthlyHistory } from "../finance/history";
-import { projectScenario, type ScenarioResult } from "../finance/scenario";
+import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
 import { formatDate } from "../format";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
@@ -19,9 +19,9 @@ export interface DigestInput {
   cashCents: Cents;
   netBurnCents: Cents;
   runwayMonths: number;
-  scenario: Pick<ScenarioResult, "defaultAlive" | "breakEvenMonth" | "revenueGrowth" | "growthNeededForDefaultAlive" | "zeroCashDate">;
+  scenario: Pick<ScenarioResult, "defaultAlive" | "breakEvenMonth" | "revenueGrowth" | "growthBasis" | "growthNeededForDefaultAlive" | "zeroCashDate">;
   changes: readonly Change[];
-  /** Open (not dismissed) findings. */
+  /** Open findings: not dismissed, and not already acted on (those are tracked under "Acted on"). */
   findings: readonly Finding[];
   /** Verification of what people acted on, when known. */
   savings?: SavingsSummary;
@@ -39,7 +39,7 @@ const TOP_FINDINGS = 3;
 
 export function digestInputFromAnalysis(
   a: Analysis,
-  { company, dismissed, appUrl, savings }: { company: string; dismissed: ReadonlySet<string>; appUrl?: string; savings?: SavingsSummary },
+  { company, exclude, appUrl, savings }: { company: string; exclude: ReadonlySet<string>; appUrl?: string; savings?: SavingsSummary },
 ): DigestInput {
   return {
     company,
@@ -49,7 +49,7 @@ export function digestInputFromAnalysis(
     runwayMonths: a.snapshot.runwayMonths,
     scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS) }),
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
-    findings: a.findings.filter((f) => !dismissed.has(f.id)),
+    findings: a.findings.filter((f) => !exclude.has(f.id)),
     savings,
     appUrl,
   };
@@ -62,17 +62,20 @@ type Block = { kind: "p"; spans: Span[] } | { kind: "h"; text: string } | { kind
 const pct = (g: number) => `${(g * 100).toFixed(1)}%`;
 
 function verdict(s: DigestInput["scenario"]): Span[] {
-  const growth = `${pct(s.revenueGrowth)}/month`;
+  const measured = describeGrowth(s.revenueGrowth, s.growthBasis);
+  const growth = measured ?? "flat revenue (too little revenue history to measure growth)";
   if (s.defaultAlive) {
-    const need = s.growthNeededForDefaultAlive === null ? "" : ` (needs at least ${pct(s.growthNeededForDefaultAlive)})`;
-    return ["Default alive: ", { bold: "yes" }, `, break-even in month ${s.breakEvenMonth} if revenue keeps growing ${growth}${need}.`];
+    const need =
+      s.growthNeededForDefaultAlive === null ? "" : s.growthNeededForDefaultAlive <= 0 ? " (it holds even if growth stops)" : ` (needs at least ${pct(s.growthNeededForDefaultAlive)})`;
+    const holds = measured ? `if revenue keeps growing ${measured}` : "even at flat revenue";
+    return ["Default alive: ", { bold: "yes" }, `, break-even in month ${s.breakEvenMonth} ${holds}${need}.`];
   }
-  const out = s.zeroCashDate ? `cash runs out around ${formatDate(s.zeroCashDate)}` : "profitability isn't reached within 5 years";
+  const out = s.zeroCashDate ? `cash runs out around ${formatDate(s.zeroCashDate)}` : "lasting profitability isn't reached within 5 years";
   const fix =
     s.growthNeededForDefaultAlive === null
       ? " Growth alone can't fix this: cut spend or raise."
       : ` Revenue would need to grow ${pct(s.growthNeededForDefaultAlive)}/month.`;
-  return ["Default alive: ", { bold: "no" }, `. At ${growth} revenue growth, ${out}.${fix}`];
+  return ["Default alive: ", { bold: "no" }, `. At ${measured ? `${growth} revenue growth` : growth}, ${out}.${fix}`];
 }
 
 function blocks(d: DigestInput): Block[] {

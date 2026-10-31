@@ -8,7 +8,7 @@ let input: DigestInput;
 beforeAll(() => {
   const demo = generateDemoCompany();
   a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });
-  input = digestInputFromAnalysis(a, { company: "Taco Robotics, Inc.", dismissed: new Set(), appUrl: "https://runway.example.com" });
+  input = digestInputFromAnalysis(a, { company: "Taco Robotics, Inc.", exclude: new Set(), appUrl: "https://runway.example.com" });
 });
 
 describe("weekly digest", () => {

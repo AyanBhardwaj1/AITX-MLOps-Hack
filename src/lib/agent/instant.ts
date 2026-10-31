@@ -112,15 +112,16 @@ function renewals(a: Analysis): InstantAnswer {
 
 function defaultAlive(a: Analysis): InstantAnswer {
   const s = runScenario(a, {});
-  const growth = `${s.revenueGrowthPctPerMonth.toFixed(1)}%/month`;
+  const growth = s.revenueGrowthMeasured;
   const need = s.growthNeededForDefaultAlivePctPerMonth;
+  const trend = growth ? `Revenue has grown about ${growth} recently.` : "There isn't enough revenue history to measure growth yet, so this assumes flat revenue.";
   const lines = s.defaultAlive
     ? [
-        `**Yes, default alive.** Revenue has grown about ${growth} over the last 6 months. If that holds and spend stays flat, revenue covers expenses in **month ${s.breakEvenMonth}**, before the cash runs out.`,
-        need !== null ? `The margin: growth needs to stay above **${need.toFixed(1)}%/month**. Below that, you'd need to raise or cut.` : "",
+        `**Yes, default alive.** ${trend} If that holds and spend stays flat, revenue covers expenses from **month ${s.breakEvenMonth}** on, before the cash runs out.`,
+        need === null ? "" : need <= 0 ? "It holds even if growth stops." : `The margin: growth needs to stay above **${need.toFixed(1)}%/month**. Below that, you'd need to raise or cut.`,
       ]
     : [
-        `**No, default dead.** At ${growth} revenue growth with flat spend, cash runs out${s.zeroCashDate ? ` around ${formatDate(s.zeroCashDate)}` : ""} before revenue catches up with expenses.`,
+        `**No, default dead.** ${trend} With flat spend, ${s.zeroCashDate ? `cash runs out around ${formatDate(s.zeroCashDate)}` : "lasting profitability isn't reached within 5 years"} before revenue catches up with expenses.`,
         need !== null
           ? `Growth would need to reach **${need.toFixed(1)}%/month** to make it on current cash. Otherwise plan cuts or a raise now: raising usually takes 6+ months.`
           : "Growth alone can't close the gap on current cash: plan cuts or a raise now.",

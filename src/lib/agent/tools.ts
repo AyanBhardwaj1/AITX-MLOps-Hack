@@ -3,7 +3,7 @@ import { aiSpendTrend } from "../finance/ai-spend";
 import { forecastCash } from "../finance/forecast";
 import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
-import { projectScenario, scenarioOptions } from "../finance/scenario";
+import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
 import { goalSeek, simulateSavings, stressRunway } from "../finance/runway";
 import type { Analysis } from "../pipeline";
@@ -195,6 +195,8 @@ export function runScenario(a: Analysis, input: z.input<typeof scenarioOptions>)
   return {
     defaultAlive: s.defaultAlive,
     revenueGrowthPctPerMonth: Math.round(s.revenueGrowth * 1000) / 10,
+    /** Human description of the growth used ("7.5%/month", "over 30%/month"), or null if history is too short to measure. */
+    revenueGrowthMeasured: describeGrowth(s.revenueGrowth, s.growthBasis),
     growthNeededForDefaultAlivePctPerMonth: s.growthNeededForDefaultAlive === null ? null : Math.round(s.growthNeededForDefaultAlive * 1000) / 10,
     breakEvenMonth: s.breakEvenMonth,
     runOutMonths: round1(s.runOutMonths ?? Number.POSITIVE_INFINITY),

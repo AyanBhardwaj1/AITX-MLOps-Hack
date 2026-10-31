@@ -1,5 +1,5 @@
 import { AVG_DAYS_PER_MONTH, addDays, daysBetween } from "../dates";
-import { isOutflow } from "../detect/recurring";
+import { SAME_EVENT_DAYS, isOutflow } from "../detect/recurring";
 import { median } from "../stats";
 import type { AcceptedFinding } from "../store/types";
 import type { Cents, EnrichedTxn, IsoDate } from "../types";
@@ -40,8 +40,10 @@ const LATE_BILL_DAYS = 7;
 /** A price is "back down" once it has dropped by most of the increase. */
 const PRICE_DROP_SHARE = 0.8;
 const REFUND_SHARE = 0.9;
-/** Refunds can land a little before someone records the decision. */
+/** Refunds can land a little before someone records the decision (used when the charge date is unknown). */
 const REFUND_LOOKBACK_DAYS = 30;
+/** Floor for a billing cycle, so odd data can never make the expected-date math degenerate. */
+const MIN_CYCLE_DAYS = 7;
 
 interface Target {
   vendorKey: string;
@@ -65,10 +67,20 @@ function targets(f: AcceptedFinding): Target[] {
   }
 }
 
-function chargesFor(txns: readonly EnrichedTxn[], t: Target): EnrichedTxn[] {
-  return txns
+/** The target's billing events, one list per card (each card has its own rhythm), oldest first. */
+function chargesByCard(txns: readonly EnrichedTxn[], t: Target): EnrichedTxn[][] {
+  const byCard = new Map<string, EnrichedTxn[]>();
+  const matching = txns
     .filter((x) => isOutflow(x) && x.vendor.key === t.vendorKey && (t.holder === null || slug(x.cardholder) === t.holder))
     .sort((a, b) => a.postedAt.localeCompare(b.postedAt));
+  for (const x of matching) {
+    const list = byCard.get(x.cardholder ?? "") ?? [];
+    const prev = list.at(-1);
+    // Repeats within a few days are one billing event (or a double charge), not a cycle.
+    if (!prev || daysBetween(prev.postedAt, x.postedAt) > SAME_EVENT_DAYS) list.push(x);
+    byCard.set(x.cardholder ?? "", list);
+  }
+  return [...byCard.values()];
 }
 
 /** The first charge we'd expect after the in-flight window, from the vendor's billing rhythm before acting. */
@@ -76,7 +88,7 @@ function nextExpected(before: readonly EnrichedTxn[], inFlightEnd: IsoDate): { d
   const last = before.at(-1);
   if (!last) return null;
   const gaps = before.slice(1).map((t, i) => daysBetween(before[i]!.postedAt, t.postedAt));
-  const gapDays = gaps.length ? median(gaps) : AVG_DAYS_PER_MONTH;
+  const gapDays = Math.max(MIN_CYCLE_DAYS, gaps.length ? median(gaps) : AVG_DAYS_PER_MONTH);
   const cycles = Math.max(1, Math.ceil((daysBetween(last.postedAt, inFlightEnd) + 1) / gapDays));
   return { date: addDays(last.postedAt, Math.round(cycles * gapDays)), gapDays };
 }
@@ -111,19 +123,30 @@ function checkPriceDrop(charges: readonly EnrichedTxn[], f: AcceptedFinding, acc
   return dropped ? { status: "verified", checkAfter, lastChargeDate: null } : { status: "still_charging", checkAfter: null, lastChargeDate: latest.postedAt };
 }
 
-function checkRefund(txns: readonly EnrichedTxn[], f: AcceptedFinding, acceptedOn: IsoDate): Outcome {
-  const since = addDays(acceptedOn, -REFUND_LOOKBACK_DAYS);
-  const refunded = txns.some(
-    (t) => t.status === "posted" && t.amountCents >= f.oneTimeCents * REFUND_SHARE && t.vendor.key === f.vendorKeys[0] && t.postedAt >= since,
+/** A refund must come after the duplicate charge (its id ends the fingerprint), and each refund counts once. */
+function checkRefund(txns: readonly EnrichedTxn[], f: AcceptedFinding, acceptedOn: IsoDate, usedRefunds: Set<string>): Outcome {
+  const chargeId = f.fingerprint.split(":").at(-1);
+  const since = txns.find((t) => t.id === chargeId)?.postedAt ?? addDays(acceptedOn, -REFUND_LOOKBACK_DAYS);
+  const refund = txns.find(
+    (t) =>
+      t.status === "posted" &&
+      t.amountCents >= f.oneTimeCents * REFUND_SHARE &&
+      t.vendor.key === f.vendorKeys[0] &&
+      t.postedAt >= since &&
+      !usedRefunds.has(t.id),
   );
-  return { status: refunded ? "verified" : "waiting", checkAfter: null, lastChargeDate: null };
+  if (refund) usedRefunds.add(refund.id);
+  return { status: refund ? "verified" : "waiting", checkAfter: null, lastChargeDate: null };
 }
 
-function check(f: AcceptedFinding, txns: readonly EnrichedTxn[], asOf: IsoDate): Outcome {
+function check(f: AcceptedFinding, txns: readonly EnrichedTxn[], asOf: IsoDate, usedRefunds: Set<string>): Outcome {
   const acceptedOn = f.acceptedAt.slice(0, 10);
-  if (f.kind === "duplicate_charge") return checkRefund(txns, f, acceptedOn);
-  const outcomes = targets(f).map((t) =>
-    f.kind === "price_creep" ? checkPriceDrop(chargesFor(txns, t), f, acceptedOn, asOf) : checkCancelled(chargesFor(txns, t), acceptedOn, asOf),
+  if (f.kind === "duplicate_charge") return checkRefund(txns, f, acceptedOn, usedRefunds);
+  // Every card paying every target has to stop (or drop back) before the saving counts.
+  const outcomes = targets(f).flatMap((t) =>
+    chargesByCard(txns, t).map((charges) =>
+      f.kind === "price_creep" ? checkPriceDrop(charges, f, acceptedOn, asOf) : checkCancelled(charges, acceptedOn, asOf),
+    ),
   );
   const still = outcomes.find((o) => o.status === "still_charging");
   if (still) return still;
@@ -133,6 +156,7 @@ function check(f: AcceptedFinding, txns: readonly EnrichedTxn[], asOf: IsoDate):
 }
 
 export function verifySavings(accepted: readonly AcceptedFinding[], txns: readonly EnrichedTxn[], asOf: IsoDate): SavingsSummary {
+  const usedRefunds = new Set<string>();
   const checks = accepted.map(
     (f): SavingsCheck => ({
       fingerprint: f.fingerprint,
@@ -141,7 +165,7 @@ export function verifySavings(accepted: readonly AcceptedFinding[], txns: readon
       monthlySavingsCents: f.monthlySavingsCents,
       oneTimeCents: f.oneTimeCents,
       acceptedOn: f.acceptedAt.slice(0, 10),
-      ...check(f, txns, asOf),
+      ...check(f, txns, asOf, usedRefunds),
     }),
   );
   const sum = (status: SavingsStatus, pick: (c: SavingsCheck) => number) => checks.filter((c) => c.status === status).reduce((s, c) => s + pick(c), 0);

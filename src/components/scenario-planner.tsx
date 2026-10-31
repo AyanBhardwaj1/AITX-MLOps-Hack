@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { MonthHistory } from "@/lib/finance/history";
-import { estimateRevenueGrowth, projectScenario } from "@/lib/finance/scenario";
+import { estimateRevenueGrowthDetail, projectScenario } from "@/lib/finance/scenario";
 import { formatCompactDollars, formatDate, formatMonth } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
 
@@ -31,8 +31,9 @@ export function ScenarioPlanner({
   wasteSavingsCents: number;
 }) {
   const id = useId();
-  const estimated = useMemo(() => estimateRevenueGrowth(history), [history]);
-  const [growthPct, setGrowthPct] = useState(() => (estimated * 100).toFixed(1));
+  const estimate = useMemo(() => estimateRevenueGrowthDetail(history), [history]);
+  // null = use the measured rate unrounded, so the verdict matches the digest and Copilot exactly.
+  const [growthPct, setGrowthPct] = useState<string | null>(null);
   const [hires, setHires] = useState("0");
   const [hireCost, setHireCost] = useState(String(DEFAULT_HIRE_COST_DOLLARS));
   const [hireStart, setHireStart] = useState("1");
@@ -44,7 +45,7 @@ export function ScenarioPlanner({
     asOf,
     cashCents,
     history,
-    revenueGrowth: num(growthPct, -50, 100) / 100,
+    revenueGrowth: growthPct === null ? estimate.rate : num(growthPct, -50, 100) / 100,
     hires: [{ count: Math.round(num(hires, 0, MAX_HIRES)), monthlyCostCents: Math.round(num(hireCost, 0, 1_000_000) * 100), startMonth: Math.round(num(hireStart, 0, MAX_START_MONTH)) }],
     raise: { amountCents: Math.round(num(raise, 0, 1e9) * 100), month: Math.round(num(raiseMonth, 0, MAX_START_MONTH)) },
     monthlyCutsCents: cutWaste ? wasteSavingsCents : 0,
@@ -80,10 +81,12 @@ export function ScenarioPlanner({
             <label htmlFor={`${id}-growth`} className={label}>
               Revenue growth per month (%)
             </label>
-            <input id={`${id}-growth`} name="growth" type="number" inputMode="decimal" step="0.5" min="-50" max="100" value={growthPct} onChange={(e) => setGrowthPct(e.target.value)} className={field} />
+            <input id={`${id}-growth`} name="growth" type="number" inputMode="decimal" step="0.5" min="-50" max="100" value={growthPct ?? (estimate.rate * 100).toFixed(1)} onChange={(e) => setGrowthPct(e.target.value)} className={field} />
             <p className="mt-1 text-[11px] text-muted">
-              Your last 6 months: {pct(estimated)}.{" "}
-              <button type="button" onClick={() => setGrowthPct((estimated * 100).toFixed(1))} className="font-medium text-brand hover:underline">
+              {estimate.months === 0
+                ? "Not enough revenue history to measure growth yet."
+                : `Measured over your last ${estimate.months} months: ${pct(estimate.rate)}${estimate.clamped ? " (capped for planning)" : ""}.`}{" "}
+              <button type="button" onClick={() => setGrowthPct(null)} className="font-medium text-brand hover:underline">
                 Reset
               </button>
             </p>
@@ -138,7 +141,11 @@ export function ScenarioPlanner({
             </div>
             <div>
               <dt className="text-xs text-muted">Growth needed</dt>
-              <dd className="tabular mt-0.5 font-medium">{result.growthNeededForDefaultAlive === null ? "Over 30%/mo" : `${pct(result.growthNeededForDefaultAlive)}/mo`}</dd>
+              <dd className="tabular mt-0.5 font-medium">{result.growthNeededForDefaultAlive === null
+                  ? "Over 30%/mo"
+                  : result.growthNeededForDefaultAlive <= 0
+                    ? "None: holds at flat revenue"
+                    : `${pct(result.growthNeededForDefaultAlive)}/mo`}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted">Today</dt>

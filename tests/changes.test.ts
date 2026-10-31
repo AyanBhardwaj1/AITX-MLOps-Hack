@@ -49,6 +49,11 @@ describe("detectChanges", () => {
     expect(c).toMatchObject({ severity: "warn", amountCents: 50_00 });
   });
 
+  it("does not alert on a vendor whose bill already swings month to month", () => {
+    const twilio = [410, 380, 445, 390, 420, 470];
+    expect(kinds(monthly("TWILIO INC", (i) => twilio[i]!, 6))).not.toContain("price_change");
+  });
+
   it("does not treat usage-based cloud bills as price changes", () => {
     expect(kinds(monthly("AMAZON WEB SERVICES", (i) => 1000 + i * 300, 6))).not.toContain("price_change");
   });

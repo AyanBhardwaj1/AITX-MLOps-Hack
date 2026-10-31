@@ -51,8 +51,19 @@ export interface ScenarioPoint {
   cashCents: Cents;
 }
 
+export interface GrowthEstimate {
+  /** Monthly compound growth, clamped to [MIN_GROWTH, MAX_GROWTH]. */
+  rate: number;
+  /** Months of revenue the rate is measured over (0 = not enough history; the rate is then 0). */
+  months: number;
+  /** True when the measured rate was outside the planning range and got capped. */
+  clamped: boolean;
+}
+
 export interface ScenarioResult {
   revenueGrowth: number;
+  /** How revenueGrowth was measured; null when the caller supplied the rate. */
+  growthBasis: GrowthEstimate | null;
   expenseGrowth: number;
   baseRevenueCents: Cents;
   baseExpensesCents: Cents;
@@ -60,9 +71,9 @@ export interface ScenarioResult {
   /** Months until cash runs out, or null if it never does within the horizon. */
   runOutMonths: number | null;
   zeroCashDate: IsoDate | null;
-  /** First month revenue covers expenses, or null if never within the horizon (or after cash runs out). */
+  /** Start of the profitable run that lasts to the end of the horizon, or null if there isn't one. */
   breakEvenMonth: number | null;
-  /** Reaches profitability without running out of cash. */
+  /** Reaches lasting profitability without running out of cash. */
   defaultAlive: boolean;
   /** Lowest monthly revenue growth that would make the company default alive; null if even 30%/mo isn't enough. */
   growthNeededForDefaultAlive: number | null;
@@ -70,11 +81,17 @@ export interface ScenarioResult {
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-/** Compound monthly growth of inflows over the last six months (log-linear least squares). */
-export function estimateRevenueGrowth(history: readonly MonthHistory[]): number {
+/**
+ * Compound monthly growth of inflows (log-linear least squares) over the most recent unbroken
+ * run of revenue months within the last six, so a startup whose revenue began recently is
+ * measured from its first revenue month rather than reported as 0%.
+ */
+export function estimateRevenueGrowthDetail(history: readonly MonthHistory[]): GrowthEstimate {
   const window = history.slice(-GROWTH_WINDOW_MONTHS);
-  if (window.length < MIN_GROWTH_MONTHS || window.some((m) => m.inflowCents <= 0)) return 0;
-  const ys = window.map((m) => Math.log(m.inflowCents));
+  const lastGap = window.findLastIndex((m) => m.inflowCents <= 0);
+  const run = window.slice(lastGap + 1);
+  if (run.length < MIN_GROWTH_MONTHS) return { rate: 0, months: 0, clamped: false };
+  const ys = run.map((m) => Math.log(m.inflowCents));
   const n = ys.length;
   const meanX = (n - 1) / 2;
   const meanY = ys.reduce((s, y) => s + y, 0) / n;
@@ -84,8 +101,12 @@ export function estimateRevenueGrowth(history: readonly MonthHistory[]): number 
     num += (x - meanX) * (y - meanY);
     den += (x - meanX) ** 2;
   });
-  return clamp(Math.expm1(num / den), MIN_GROWTH, MAX_GROWTH);
+  const raw = Math.expm1(num / den);
+  const rate = clamp(raw, MIN_GROWTH, MAX_GROWTH);
+  return { rate, months: run.length, clamped: rate !== raw };
 }
+
+export const estimateRevenueGrowth = (history: readonly MonthHistory[]) => estimateRevenueGrowthDetail(history).rate;
 
 interface Resolved {
   asOf: IsoDate;
@@ -101,24 +122,26 @@ function simulate(r: Resolved): Pick<ScenarioResult, "points" | "runOutMonths" |
   const start = monthKey(r.asOf);
   const points: ScenarioPoint[] = [];
   let cash = r.cashCents;
-  let breakEvenMonth: number | null = null;
+  // Start of the current profitable run; reset whenever a month loses money.
+  let profitableSince: number | null = null;
   for (let m = 0; m <= HORIZON_MONTHS; m++) {
     const revenue = Math.round(r.baseRevenueCents * (1 + r.revenueGrowth) ** (m + 1));
     const hires = o.hires.filter((h) => h.startMonth <= m).reduce((s, h) => s + h.monthlyCostCents * h.count, 0);
     const expenses = Math.max(0, Math.round(r.baseExpensesCents * (1 + o.expenseGrowth) ** (m + 1)) + hires - o.monthlyCutsCents);
     const raise = o.raise && o.raise.month === m ? o.raise.amountCents : 0;
     const net = revenue - expenses + raise;
-    if (breakEvenMonth === null && revenue >= expenses) breakEvenMonth = m;
+    if (revenue < expenses) profitableSince = null;
+    else profitableSince ??= m;
     if (cash + net < 0) {
       points.push({ monthOffset: m, month: shiftMonth(start, m), revenueCents: revenue, expensesCents: expenses, cashCents: 0 });
       // Fraction of this month the starting cash covers.
-      const runOutMonths = m + cash / -net;
-      return { points, runOutMonths, breakEvenMonth: breakEvenMonth !== null && breakEvenMonth < runOutMonths ? breakEvenMonth : null };
+      return { points, runOutMonths: m + cash / -net, breakEvenMonth: null };
     }
     cash += net;
     points.push({ monthOffset: m, month: shiftMonth(start, m), revenueCents: revenue, expensesCents: expenses, cashCents: cash });
   }
-  return { points, runOutMonths: null, breakEvenMonth };
+  // Only profitability that lasts to the end of the horizon counts as break-even.
+  return { points, runOutMonths: null, breakEvenMonth: profitableSince };
 }
 
 const isAlive = (s: Pick<ScenarioResult, "runOutMonths" | "breakEvenMonth">) => s.runOutMonths === null && s.breakEvenMonth !== null;
@@ -141,17 +164,19 @@ export function projectScenario(input: ScenarioInput): ScenarioResult {
   const options = scenarioOptions.parse(input);
   const recent = input.history.slice(-BASE_MONTHS);
   const avg = (f: (m: MonthHistory) => number) => (recent.length ? Math.round(recent.reduce((s, m) => s + f(m), 0) / recent.length) : 0);
+  const basis = options.revenueGrowth === undefined ? estimateRevenueGrowthDetail(input.history) : null;
   const resolved: Resolved = {
     asOf: input.asOf,
     cashCents: input.cashCents,
     baseRevenueCents: avg((m) => m.inflowCents),
     baseExpensesCents: avg((m) => m.outflowCents),
-    revenueGrowth: options.revenueGrowth ?? estimateRevenueGrowth(input.history),
+    revenueGrowth: options.revenueGrowth ?? basis!.rate,
     options,
   };
   const sim = simulate(resolved);
   return {
     revenueGrowth: resolved.revenueGrowth,
+    growthBasis: basis,
     expenseGrowth: options.expenseGrowth,
     baseRevenueCents: resolved.baseRevenueCents,
     baseExpensesCents: resolved.baseExpensesCents,
@@ -160,4 +185,11 @@ export function projectScenario(input: ScenarioInput): ScenarioResult {
     defaultAlive: isAlive(sim),
     growthNeededForDefaultAlive: growthNeeded(resolved),
   };
+}
+
+/** "7.5%/month", "over 30%/month" (capped) or null when there isn't enough revenue history to measure. */
+export function describeGrowth(rate: number, basis: GrowthEstimate | null): string | null {
+  if (basis && basis.months === 0) return null;
+  if (basis?.clamped) return rate >= MAX_GROWTH ? `over ${(MAX_GROWTH * 100).toFixed(0)}%/month` : `under ${(MIN_GROWTH * 100).toFixed(0)}%/month`;
+  return `${(rate * 100).toFixed(1)}%/month`;
 }

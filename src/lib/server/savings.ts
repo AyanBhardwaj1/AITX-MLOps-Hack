@@ -17,5 +17,11 @@ export async function savingsFor(mode: DataMode, dataset: Dataset, analysis: Ana
   // A stored decision about the same finding wins over shipped history.
   const seen = new Set(stored.map((f) => f.fingerprint));
   const all = [...(dataset.actedOn ?? []).filter((f) => !seen.has(f.fingerprint)), ...stored];
-  return verifySavings(all, analysis.txns, analysis.asOf);
+  try {
+    return verifySavings(all, analysis.txns, analysis.asOf);
+  } catch (err) {
+    // One odd record must never take down the dashboard, digest or investor update.
+    console.error("[savings] verification failed", err);
+    return { checks: [], verifiedMonthlyCents: 0, verifiedOneTimeCents: 0, pendingMonthlyCents: 0 };
+  }
 }

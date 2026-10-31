@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MonthHistory } from "@/lib/finance/history";
-import { estimateRevenueGrowth, projectScenario, type ScenarioInput } from "@/lib/finance/scenario";
+import { estimateRevenueGrowth, estimateRevenueGrowthDetail, projectScenario, type ScenarioInput } from "@/lib/finance/scenario";
 
 const month = (i: number) => `2026-${String(i + 1).padStart(2, "0")}`;
 /** Six months of history with revenue growing by `g` a month and flat spend. */
@@ -30,10 +30,18 @@ describe("estimateRevenueGrowth", () => {
     expect(estimateRevenueGrowth(history(10_000_00, 0.1, 1, 2))).toBe(0);
   });
 
-  it("is 0 when any month in the window has no revenue (growth from zero is undefined)", () => {
+  it("measures growth over the most recent run of revenue months, not from zero", () => {
     const h = history(10_000_00, 0.1, 1);
     h[2] = { ...h[2]!, inflowCents: 0 };
-    expect(estimateRevenueGrowth(h)).toBe(0);
+    expect(estimateRevenueGrowth(h)).toBeCloseTo(0.1, 3);
+    const recentStart = [0, 0, 0, 1_000_00, 2_000_00, 4_000_00].map((inflowCents, i) => ({ month: month(i), inflowCents, outflowCents: 1, softwareCents: 0 }));
+    expect(estimateRevenueGrowthDetail(recentStart)).toMatchObject({ months: 3, clamped: true });
+  });
+
+  it("reports when the estimate was capped or there wasn't enough revenue history", () => {
+    expect(estimateRevenueGrowthDetail(history(1_00, 2, 1))).toMatchObject({ rate: 0.3, clamped: true, months: 6 });
+    const late = [0, 0, 0, 0, 5_000_00, 6_000_00].map((inflowCents, i) => ({ month: month(i), inflowCents, outflowCents: 1, softwareCents: 0 }));
+    expect(estimateRevenueGrowthDetail(late)).toMatchObject({ rate: 0, months: 0 });
   });
 
   it("clamps implausible rates", () => {
@@ -124,6 +132,24 @@ describe("projectScenario", () => {
     const a = projectScenario(base());
     expect(projectScenario(base())).toEqual(a);
     expect(a.points.length).toBeLessThanOrEqual(61);
+  });
+
+  it("a break-even that doesn't last is not default alive (falling revenue)", () => {
+    const s = projectScenario(base({ cashCents: 5_000_000_00, history: history(110_000_00, 0, 100_000_00), revenueGrowth: -0.05 }));
+    expect(s.defaultAlive).toBe(false);
+    expect(s.breakEvenMonth).toBeNull();
+  });
+
+  it("later hires that push the company back into losses make it default dead, even with years of cash", () => {
+    const s = projectScenario(base({ cashCents: 5_000_000_00, history: history(100_000_00, 0, 90_000_00), revenueGrowth: 0, hires: [{ monthlyCostCents: 15_000_00, startMonth: 3, count: 5 }] }));
+    expect(s.defaultAlive).toBe(false);
+  });
+
+  it("break-even is the start of the profitable run that lasts", () => {
+    const s = projectScenario(base({ cashCents: 5_000_000_00, revenueGrowth: 0.1 }));
+    const be = s.breakEvenMonth!;
+    expect(s.points.slice(be).every((p) => p.revenueCents >= p.expensesCents)).toBe(true);
+    expect(s.points[be - 1]!.revenueCents).toBeLessThan(s.points[be - 1]!.expensesCents);
   });
 
   it("rejects nonsense inputs", () => {
