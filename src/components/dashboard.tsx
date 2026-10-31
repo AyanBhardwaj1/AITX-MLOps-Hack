@@ -103,6 +103,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
   const oneTime = live.reduce((s, f) => s + f.oneTimeCents, 0);
   const totalAnalysisMs = Object.values(data.timingsMs).reduce((s, v) => s + v, 0);
+  const impactByFinding = useMemo(() => Object.fromEntries(data.findings.map((f) => [f.id, f.monthlySavingsCents + f.oneTimeCents])), [data.findings]);
 
   async function setStatus(id: string, status: FindingStatus) {
     const previous = statuses[id] ?? "open";
@@ -382,7 +383,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 <AutopilotPanel mode={data.mode} llm={data.capabilities.copilot} onOpenInbox={() => setTab("inbox")} />
               </div>
               <div id="panel-inbox" role="tabpanel" aria-labelledby="tab-inbox" hidden={tab !== "inbox"}>
-                <InboxPanel mode={data.mode} jira={data.capabilities.jira} active={tab === "inbox"} />
+                <InboxPanel mode={data.mode} jira={data.capabilities.jira} active={tab === "inbox"} impactByFinding={impactByFinding} />
               </div>
             </div>
           </aside>

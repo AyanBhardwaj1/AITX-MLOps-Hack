@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { orderInbox } from "@/lib/agent/inbox-order";
+import { formatMoney } from "@/lib/format";
 import type { StoredAction } from "@/lib/store/types";
 
 const KIND_LABEL: Record<StoredAction["kind"], string> = {
@@ -27,7 +29,18 @@ async function fetchActions(mode: string): Promise<StoredAction[]> {
 }
 
 /** Drafts from Copilot and Autopilot wait here; nothing leaves Runway until a person approves it. */
-export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; jira: boolean; active: boolean }) {
+export function InboxPanel({
+  mode,
+  jira,
+  active,
+  impactByFinding,
+}: {
+  mode: "demo" | "sandbox";
+  jira: boolean;
+  active: boolean;
+  /** Dollar impact (cents) of each finding, so the biggest decisions come first. */
+  impactByFinding: Record<string, number>;
+}) {
   const [actions, setActions] = useState<StoredAction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -72,6 +85,7 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
   }
 
   const pending = actions?.filter((a) => a.status === "draft").length ?? 0;
+  const ordered = actions ? orderInbox(actions, impactByFinding) : null;
 
   return (
     <div className="max-h-[560px] space-y-3 overflow-y-auto p-4 text-sm">
@@ -84,7 +98,7 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
       {actions?.length === 0 && <p className="text-muted">No drafts yet. Run Autopilot or ask Copilot to draft something.</p>}
       {pending > 0 && <p className="text-xs font-medium text-warn">{pending} waiting for approval</p>}
       <ul className="space-y-2">
-        {actions?.map((a) => (
+        {ordered?.map((a) => (
           <li key={a.id} className="rounded-lg border border-line p-3">
             <div className="flex items-start justify-between gap-2">
               <button
@@ -96,6 +110,7 @@ export function InboxPanel({ mode, jira, active }: { mode: "demo" | "sandbox"; j
                 <span className="block truncate font-medium">{a.title}</span>
                 <span className="text-xs text-muted">
                   {KIND_LABEL[a.kind]} · from {a.createdBy}
+                  {a.findingFingerprint && impactByFinding[a.findingFingerprint] ? ` · ${formatMoney(impactByFinding[a.findingFingerprint]!)} at stake` : ""}
                   {a.externalRef ? ` · ${a.externalRef}` : ""}
                 </span>
               </button>
