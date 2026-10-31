@@ -88,15 +88,20 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   const months = new Set(a.txns.map((t) => t.postedAt.slice(0, 7))).size;
 
   const notes: string[] = [];
-  if (payoffsAsSpend) {
-    notes.push("Card payoffs are counted as spend because the card's own transactions weren't uploaded, so waste on that card can't be seen. Add the card's export to find it.");
+  // An inverted file explains everything else that looks off, so say that first and skip notes it would make misleading.
+  for (const name of inverted) notes.push(`Most amounts in ${name} are positive. If that export lists charges as positive numbers, spend is being read as income and these results are wrong: export with charges as negatives.`);
+  if (payoffsAsSpend && inverted.length === 0) {
+    notes.push(
+      seenTexts.size > 1
+        ? "Card payoffs are counted as spend because no upload shows the card receiving those payments. If one of these files is that card's export, its spend may be counted twice; otherwise the card's own transactions weren't uploaded and waste on it can't be seen."
+        : "Card payoffs are counted as spend because the card's own transactions weren't uploaded, so waste on that card can't be seen. Add the card's export to find it.",
+    );
   }
   if (!transactions.some((t) => t.user_full_name)) {
     notes.push("This export has no cardholder column, so idle cards (subscriptions still billing someone who left) can't be found, and per-person seats may merge.");
   }
   if (duplicateFiles) notes.push(`${duplicateFiles} duplicate file${duplicateFiles === 1 ? " was" : "s were"} ignored.`);
-  if (duplicateRows) notes.push(`${duplicateRows} row${duplicateRows === 1 ? "" : "s"} repeated across overlapping exports ${duplicateRows === 1 ? "was" : "were"} counted once.`);
-  for (const name of inverted) notes.push(`Most amounts in ${name} are positive. If that export lists charges as positive numbers, spend is being read as income: export with charges as negatives.`);
+  if (duplicateRows && inverted.length === 0) notes.push(`${duplicateRows} row${duplicateRows === 1 ? "" : "s"} repeated across overlapping exports ${duplicateRows === 1 ? "was" : "were"} counted once.`);
   if (skipped) notes.push(`${skipped} row${skipped === 1 ? "" : "s"} couldn't be read and ${skipped === 1 ? "was" : "were"} skipped.`);
   if (months < 4) notes.push(`Only ${months} month${months === 1 ? "" : "s"} of history: burn and recurring charges are more reliable with 6–12 months.`);
 

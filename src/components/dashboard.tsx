@@ -64,7 +64,7 @@ export interface DashboardData {
 
 const KIND_LABEL: Record<Finding["kind"], string> = {
   duplicate_tools: "Overlapping tools",
-  price_creep: "Price increase",
+  price_creep: "Bill increase",
   zombie: "Idle-card subscriptions",
   duplicate_charge: "Double charge",
 };

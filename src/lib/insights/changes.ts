@@ -126,7 +126,7 @@ function priceChanges(txns: readonly EnrichedTxn[], streams: readonly RecurringS
         id: `price_change:${s.vendorKey}|${s.cardholder ?? ""}`,
         kind: "price_change" as const,
         severity: "warn" as const,
-        title: `${s.vendorName} price went up ${Math.round(((after - before) / before) * 100)}%`,
+        title: `${s.vendorName} bill went up ${Math.round(((after - before) / before) * 100)}%`,
         detail: `${formatCents(before)} → ${formatCents(after)} per ${s.cadence} charge (${formatDate(last.postedAt)}).`,
         amountCents: after - before,
         date: last.postedAt,

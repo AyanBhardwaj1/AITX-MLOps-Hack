@@ -153,7 +153,9 @@ Review round 1 then found two regressions in those fixes: separate one-off doubl
 
 Remaining stated limits:
 - **Bank data can't tell a price rise from added seats.** A jump from 12 to 16 Slack seats shows as "Slack bill up 33%", so findings say "bill up" and "if you didn't add seats…".
-- **A double charge that repeats in three or more consecutive months** looks exactly like a second workspace and isn't flagged.
+- **A double charge that repeats in three or more consecutive months,** or that recurs about every 3 or 12 months, looks exactly like a second workspace billed quarterly or yearly, and isn't flagged.
+- **A bill that is flat for a year and then starts growing** (or adds a seat every couple of months) can be read as a two-step "bill up". Review round 2 measured this as a false "bill up" in 29–36% of such runs, or 100% for steady seat additions after a flat year. Three or more raises within two years are missed.
+- Every number here comes from one generated company shape with planted waste (`synthetic_proxy`), not real ledgers.
 - Savings for a growing bill are estimated from its typical past charge, not its latest one (held-out dollar check: 85% within 10% on one usage variant).
 - Billing names the alias table doesn't know are found under the unfamiliar name.
 - With ±4-day posting jitter, recall drops to 88–98%.

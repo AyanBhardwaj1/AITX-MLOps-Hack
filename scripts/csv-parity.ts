@@ -17,7 +17,7 @@ import type { FindingKind } from "../src/lib/types";
 const SEEDS = Array.from({ length: 20 }, (_, i) => i * 37 + 1);
 const NOISE = ["clean", "noisy"] as const;
 const KINDS: FindingKind[] = ["duplicate_tools", "price_creep", "zombie", "duplicate_charge"];
-const LAYOUTS = ["rho_csv", "mercury_csv", "generic_all_accounts", "generic_checking_only", "checking_plus_card_files"] as const;
+const LAYOUTS = ["rho_csv", "mercury_csv", "generic_all_accounts", "generic_checking_only", "checking_plus_card_files", "mercury_checking_named_debits", "one_account_two_date_ranges"] as const;
 
 const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
 const dateOf = (t: RhoTransaction) => (t.posted_at ?? t.initiated_at).slice(0, 10);
@@ -32,12 +32,28 @@ function importTwoFiles(rows: readonly RhoTransaction[]): RhoTransaction[] {
   return resolveCardPayoffs(merged).transactions;
 }
 
+/** Review round 2: a Mercury-style checking export whose debit-card purchases carry a name, with credit-card payoffs. */
+function importNamedDebits(rows: readonly RhoTransaction[]): RhoTransaction[] {
+  const checking = rows.filter((t) => t.account_type === "checking").map((t, i) => (i % 25 === 0 && t.amount.amount < 0 && t.transaction_type === "ach_debit" ? { ...t, user_full_name: "Maya Thompson" } : t));
+  return importCsv(exportCsv(checking, "mercury_csv"), { accountId: "upload" }).transactions;
+}
+
+/** Review round 2: one account's history exported as two date ranges and uploaded together. */
+function importTwoRanges(rows: readonly RhoTransaction[]): RhoTransaction[] {
+  const sorted = [...rows].sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
+  const mid = Math.floor(sorted.length / 2);
+  const merged = [sorted.slice(0, mid), sorted.slice(mid)].flatMap((part, i) => importCsv(exportCsv(part, "mercury_csv"), { accountId: `upload_${i + 1}`, resolvePayoffs: false }).transactions);
+  return resolveCardPayoffs(merged).transactions;
+}
+
 function importLayout(rows: readonly RhoTransaction[], layout: (typeof LAYOUTS)[number]) {
   if (layout === "checking_plus_card_files") return { transactions: importTwoFiles(rows), skipped: [] as number[] };
+  if (layout === "mercury_checking_named_debits") return { transactions: importNamedDebits(rows), skipped: [] as number[] };
+  if (layout === "one_account_two_date_ranges") return { transactions: importTwoRanges(rows), skipped: [] as number[] };
   return importCsv(exportCsv(rows, layout), { accountId: "upload" });
 }
 
-function exportCsv(rows: readonly RhoTransaction[], layout: Exclude<(typeof LAYOUTS)[number], "checking_plus_card_files">): string {
+function exportCsv(rows: readonly RhoTransaction[], layout: "rho_csv" | "mercury_csv" | "generic_all_accounts" | "generic_checking_only"): string {
   const settled = rows.filter((t) => t.status === "settled");
   if (layout === "rho_csv") {
     return ["Date,Description,Amount,Type,Account,Cardholder", ...settled.map((t) => [dateOf(t), t.counterparty_name, dollars(t.amount.amount), t.transaction_type, t.account_id, t.user_full_name ?? ""].map(q).join(","))].join("\n");
@@ -95,7 +111,8 @@ for (const st of SETTINGS) {
       const a = analyze({ accounts, transactions: importLayout(c.transactions, layout).transactions, asOf: c.asOf });
       const r = agreement[st.name]![layout]!;
       r.runs += 1;
-      const noIdle = layout.startsWith("generic");
+      // Layouts without the card's own rows can't see card waste; compare runway only for those via the Δ column.
+      const noIdle = layout.startsWith("generic") || layout === "mercury_checking_named_debits";
       if (sameSet(findingSet(a.findings, noIdle), findingSet(api.findings, noIdle))) r.same += 1;
       r.maxRunwayDelta = Math.max(r.maxRunwayDelta, Math.abs(a.snapshot.runwayMonths - api.snapshot.runwayMonths));
     }

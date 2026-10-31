@@ -4,7 +4,7 @@ import { GraderPanel } from "@/components/grader-panel";
 
 export const metadata: Metadata = {
   title: "Runway Grader: your runway from a bank CSV",
-  description: "Drop your Rho, Mercury or bank CSV export: runway, a range from your past cash swings and the biggest wasted spend in seconds. Runs in your browser; nothing is uploaded.",
+  description: "Drop a bank CSV export (generic, or Rho- or Mercury-style columns): runway, a range from your past cash swings and the biggest wasted spend in seconds. Runs in your browser; nothing is uploaded.",
 };
 
 export default function GraderPage() {

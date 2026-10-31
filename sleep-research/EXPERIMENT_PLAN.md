@@ -24,7 +24,7 @@ All evaluations are `synthetic_proxy` (generator truth + external perturbations)
 - The Rho-style layout is our own export format, so its match holds by construction and is reported as such.
 - The grader does not use the connected product's LLM vendor labels.
 - Generic layouts also lose per-person seat separation: merged seats can hide a duplicate-tools finding and create false double charges when seats share one price.
-- *Experiment:* `scripts/csv-parity.ts` (4 layouts) after the C1 fixes.
+- *Experiment:* `scripts/csv-parity.ts` after the C1 fixes. It started with 4 layouts; review rounds 1–2 added a two-file upload, a checking export with named debit rows, and one account split into two date ranges.
 - *Falsified if:* runway Δ > 0.25 months for any layout, or waste recall < 100% for Rho- or Mercury-style layouts.
 - *Known, stated limits (not failures):* generic layouts lose idle-card detection; checking-only uploads see no card waste.
 

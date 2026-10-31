@@ -83,14 +83,19 @@
     },
     {
       "name": "review",
-      "status": "running",
-      "accepted": false,
-      "at": "2026-10-31T09:50:01+00:00"
+      "status": "done",
+      "accepted": true,
+      "at": "2026-10-31T10:15:36+00:00",
+      "artifact": "sleep-research/AUTO_REVIEW.md",
+      "verdict": "sleep-research/traces/review/round2.md",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T10:15:36+00:00"
     },
     {
       "name": "claims",
-      "status": "pending",
-      "accepted": false
+      "status": "running",
+      "accepted": false,
+      "at": "2026-10-31T10:15:36+00:00"
     },
     {
       "name": "report",
@@ -98,5 +103,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T09:50:01+00:00"
+  "updated": "2026-10-31T10:15:36+00:00"
 }

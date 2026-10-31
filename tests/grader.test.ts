@@ -69,4 +69,20 @@ describe("gradeCsvFiles", () => {
     expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
     expect(g.notes.join(" ")).toMatch(/duplicate/i);
   });
+
+  it("doesn't drop credit-card spend when a checking export has named debit-card rows (review round 2)", () => {
+    // Checking export (Mercury-style) whose debit-card purchases carry a name, plus credit-card payoffs.
+    const checking = settled.filter((t) => t.account_type === "checking").map((t, i) => (i % 25 === 0 && t.amount.amount < 0 && t.transaction_type === "ach_debit" ? { ...t, user_full_name: "Maya Thompson" } : t));
+    const g = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }], cash);
+    expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
+    expect(g.notes.join(" ")).toMatch(/weren't uploaded/);
+  });
+
+  it("keeps every finding when one account is exported as two date ranges (review round 2)", () => {
+    const sorted = [...demo.transactions].sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
+    const mid = Math.floor(sorted.length / 2);
+    const g = gradeCsvFiles([{ name: "jan-jun.csv", text: mercuryCsv(sorted.slice(0, mid)) }, { name: "jul-dec.csv", text: mercuryCsv(sorted.slice(mid)) }], cash);
+    expect(g.wasteMonthlyCents).toBe(api.findings.reduce((s, f) => s + f.monthlySavingsCents, 0));
+    expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
+  });
 });

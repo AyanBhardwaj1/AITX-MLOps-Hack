@@ -131,7 +131,8 @@ function rowToTransaction(get: (col: string) => string, layout: CsvLayout, accou
   const account = (layout === "rho" ? get("account") : layout === "mercury" ? get("source account") : "").trim() || accountId;
   const first = cardholder?.split(" ")[0];
   return {
-    id: `csv_${account}_${rowNo}`,
+    // The upload id keeps rows unique when one account is exported as several files.
+    id: `csv_${accountId}_${account}_${rowNo}`,
     money_movement_id: null,
     account_id: account,
     account_name: account,
@@ -149,13 +150,14 @@ function rowToTransaction(get: (col: string) => string, layout: CsvLayout, accou
 }
 
 /**
- * Card payoffs from checking are transfers when the card's own rows are also present (any row with a
- * cardholder, or the incoming leg of a payoff); otherwise they are the only trace of that card's spend.
+ * Card payoffs from checking are transfers when the card's own rows are also present (shown by the
+ * incoming leg of a payoff); otherwise they are the only trace of that card's spend.
  * Decide this over everything uploaded together, never file by file, or card spend gets counted twice.
  */
 export function resolveCardPayoffs(transactions: readonly RhoTransaction[]): { transactions: RhoTransaction[]; cardSpendAsPayoffs: boolean } {
   const payoffs = transactions.filter((t) => t.transaction_type === "credit_repayment");
-  const cardRowsPresent = transactions.some((t) => t.user_full_name) || payoffs.some((t) => t.amount.amount > 0);
+  // Only the incoming leg proves the card account was uploaded: a named row may be a debit-card purchase.
+  const cardRowsPresent = payoffs.some((t) => t.amount.amount > 0);
   const cardSpendAsPayoffs = payoffs.length > 0 && !cardRowsPresent;
   return {
     transactions: cardSpendAsPayoffs ? transactions.map((t) => (t.transaction_type === "credit_repayment" ? { ...t, transaction_type: UNITEMIZED_CARD_SPEND } : t)) : [...transactions],
