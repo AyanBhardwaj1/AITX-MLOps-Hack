@@ -65,19 +65,27 @@
     {
       "name": "implement",
       "status": "done",
-      "accepted": false,
-      "at": "2026-10-31T09:39:27+00:00"
+      "accepted": true,
+      "at": "2026-10-31T09:39:27+00:00",
+      "verdict": "sleep-research/traces/audit/round1.md",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T09:50:01+00:00"
     },
     {
       "name": "audit",
-      "status": "running",
-      "accepted": false,
-      "at": "2026-10-31T09:39:27+00:00"
+      "status": "done",
+      "accepted": true,
+      "at": "2026-10-31T09:50:01+00:00",
+      "artifact": "sleep-research/EXPERIMENT_AUDIT.md",
+      "verdict": "sleep-research/traces/audit/round1.md",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T09:50:01+00:00"
     },
     {
       "name": "review",
-      "status": "pending",
-      "accepted": false
+      "status": "running",
+      "accepted": false,
+      "at": "2026-10-31T09:50:01+00:00"
     },
     {
       "name": "claims",
@@ -90,5 +98,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T09:39:27+00:00"
+  "updated": "2026-10-31T09:50:01+00:00"
 }
