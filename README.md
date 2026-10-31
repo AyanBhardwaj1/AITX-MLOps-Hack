@@ -147,7 +147,7 @@ Each company also contains negative controls that must not be flagged: usage-bas
 - refunded double charges
 - 12-month histories
 
-The first run exposed three real defects: steady usage growth read as a price increase (43% precision), recurring second workspaces read as double charges (4%), and refunded double charges kept being flagged. To avoid grading our own homework, a separate agent wrote a **held-out** set of 15 variants without seeing the detector code (`src/lib/eval/heldout.ts`). It was frozen and run on the unfixed code, where precision on the affected detectors was 0–50%. The fixes were developed on the dev settings only. The held-out set was then run once: **100% precision and recall on all 15 variants**.
+The first run exposed three real defects: steady usage growth read as a price increase (43% precision), recurring second workspaces read as double charges (4%), and refunded double charges kept being flagged. To avoid grading our own homework, a separate agent wrote a **held-out** set of 15 variants without seeing the detector code (`src/lib/eval/heldout.ts`). It was frozen and run on the unfixed code, where precision on the affected detectors was 0–50%. The fixes were developed on the dev settings only. In the first committed after-fixes run of the held-out set, every detector scored 100% precision and recall wherever something was planted or found. In the three full-refund variants nothing was planted and nothing was found, which is correct.
 
 Remaining stated limits:
 - Billing names the alias table doesn't know are found under the unfamiliar name.

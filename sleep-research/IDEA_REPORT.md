@@ -147,7 +147,7 @@ Each pick got a fresh reviewer. Traces are in `traces/novelty/`. All vendor fact
 
 | Idea | Setup | Runtime | Result | Class |
 |---|---|---|---|---|
-| I15 CSV grader parity | `scripts/csv-parity.ts`: 20 seeds × 2 noise × 4 export layouts (Rho-style, Mercury-style with columns `[UNVERIFIED]`, generic all accounts, generic checking only). Re-import via `src/lib/csv/import.ts` with the true cash balance typed in. Output: `runs/csv-parity.md` | ~3 s | **Runway matches the API path** in every layout (median Δ 0.00, max 0.05 months). Rho- and Mercury-style files find 100% of the waste. Generic all-accounts loses only idle-card detection (no cardholder column). Checking-only gets runway right but sees **0%** of the card waste (blind spot quantified). The first run exposed two import defects ("STRIPE TRANSFER" read as a transfer: +31.9% burn; card payoffs double-counted or dropped); both fixed, with tests | **positive** (with stated limits) |
+| I15 CSV grader parity | `scripts/csv-parity.ts`: 20 seeds × 2 noise × 4 export layouts (Rho-style, Mercury-style with columns `[UNVERIFIED]`, generic all accounts, generic checking only). Re-import via `src/lib/csv/import.ts` with the true cash balance typed in. Output: `runs/csv-parity.md` | ~3 s | **Runway matches the API path** in every layout (median Δ 0.00, max 0.05 months). Rho- and Mercury-style files find 100% of the waste. On the clean ledger, generic all-accounts loses idle-card detection (no cardholder column); per-person seats can also merge (plan review). Checking-only gets runway right but sees **0%** of the card waste (blind spot quantified). The first run exposed two import defects ("STRIPE TRANSFER" read as a transfer, overstating burn (magnitude in the session log only); card payoffs double-counted or dropped); both fixed, with tests | **positive** (with stated limits) |
 | I1 portfolio triage | `scripts/portfolio-triage.ts`: 30 portfolios × 30 companies; trouble from real revenue drops starting 20 days before the cutoff; distractors are one-off bills and seasonal dips. Output: `runs/portfolio-triage.md` | ~21 s | Composite recall@5 96.5% vs trailing-runway sort 95.8%. **The plan reviewer showed the test could not pass** (`traces/plan/round1.md` §0):
 - With a 95.8% baseline, the +15-point bar was unattainable.
 - The "early-warning" filter kept 899 of 900 companies, so it equals plain recall.
@@ -156,7 +156,7 @@ Each pick got a fresh reviewer. Traces are in `traces/novelty/`. All vendor fact
 When runway at the cutoff is roughly equal (9–11 months, 202 companies), the composite separates better: AUC 0.747 vs 0.650 | **inconclusive** (test design); weak signal when cash is held equal |
 | I5 detector stress test | `npm run stress-eval`: 20 seeds × 2 noise levels × 14 settings (`src/lib/eval/perturb.ts`). Settings come from real-feed differences named by the novelty reviewer (`traces/novelty/I5-detector-stress.md`). Output: `runs/stress-eval.json` and `.md` | ~5 s | Hypothesis "at least one detector falls below 80% precision under realistic shapes" **confirmed** (3 defects; see below) | **positive** |
 
-Under realistic shapes (from `runs/stress-eval.md`):
+Under realistic shapes, **before the fixes** (from `git show 7b3b966:sleep-research/runs/stress-eval.md`; the current `runs/stress-eval.md` holds the after-fix numbers):
 - **Price increase vs usage-priced tools:** precision 43%.
   - *Cause:* steady seat or usage growth (Intercom, Sentry) reads as a price increase.
 - **Split workspaces:** a second identical same-day charge every month gives double-charge precision 4%, and the idle-card finding is missed (recall 0%).
@@ -183,7 +183,7 @@ All numbers are `synthetic_proxy`: the generator's planted truth plus external t
 - Both pilots were informative and positive, and they reinforce each other. The grader is the acquisition surface, with no OAuth and any bank's export. The stress results decide whether its findings deserve trust on ledgers the detectors weren't tuned for.
 - I1's pilot was inconclusive (flawed test design). Its value also depends on advisor demand and Rho partner OAuth, neither testable here.
 
-**Hypothesis.** Fixing the three failures the stress test exposed restores ≥ 90% precision under every realistic setting, with no recall loss on the baseline and no eval regression:
+**Hypothesis.** Fixing the three failures the stress test exposed restores ≥ 90% precision on the named settings (one company shape), with no recall loss on the baseline and no eval regression:
 1. usage-priced tools read as price increases;
 2. recurring same-day workspace pairs read as double charges and hide idle cards;
 3. refunded double charges stay flagged.
