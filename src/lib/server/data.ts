@@ -2,6 +2,7 @@ import "server-only";
 import { analyze, type Analysis } from "../pipeline";
 import { createRhoClient } from "../rho/client";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
+import type { AcceptedFinding } from "../store/types";
 import type { VendorInfo } from "../types";
 import { generateDemoCompany } from "../seed/demo-company";
 import { assertSafeToServe } from "../access";
@@ -16,6 +17,8 @@ export interface Dataset {
   transactions: RhoTransaction[];
   asOf?: string;
   label: string;
+  /** Earlier decisions that ship with the data (the demo company's history). */
+  actedOn?: AcceptedFinding[];
 }
 
 const SANDBOX_CACHE_MS = 5 * 60_000;
@@ -28,7 +31,7 @@ export function parseMode(value: unknown): DataMode {
 export async function loadDataset(mode: DataMode): Promise<Dataset> {
   if (mode === "demo") {
     const demo = generateDemoCompany();
-    return { accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, label: "demo" };
+    return { accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, label: "demo", actedOn: demo.actedOn };
   }
   const e = env();
   assertSafeToServe({ rhoBaseUrl: e.RHO_BASE_URL, appPassword: e.APP_PASSWORD });

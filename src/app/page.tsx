@@ -7,6 +7,7 @@ import { detectChanges } from "@/lib/insights/changes";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { hasJira, hasOpenAI, hasSlack } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
+import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingStatus } from "@/lib/store/types";
 
@@ -38,6 +39,7 @@ async function findingStatuses(mode: DataMode, findings: Parameters<ReturnType<t
 async function buildData(mode: DataMode): Promise<DashboardData> {
   const { dataset, analysis: a } = await loadAnalysis(mode);
   const { statuses, storeOk } = await findingStatuses(mode, a.findings);
+  const savings = await savingsFor(mode, dataset, a);
   const byId = new Map(a.txns.map((t) => [t.id, t]));
   const history = monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS);
   return {
@@ -79,6 +81,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     }),
     renewals: upcomingRenewals(a.streams, a.asOf),
     aiSpend: aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS),
+    savings,
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     capabilities: { copilot: hasOpenAI(), jira: hasJira(), slack: hasSlack(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
   };

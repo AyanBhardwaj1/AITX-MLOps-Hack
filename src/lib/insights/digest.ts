@@ -5,6 +5,7 @@ import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import type { Cents, Finding, IsoDate } from "../types";
 import { detectChanges, type Change } from "./changes";
+import type { SavingsSummary } from "./savings";
 
 /**
  * The Monday digest: runway, the default-alive verdict, what changed, and the waste still open.
@@ -22,6 +23,8 @@ export interface DigestInput {
   changes: readonly Change[];
   /** Open (not dismissed) findings. */
   findings: readonly Finding[];
+  /** Verification of what people acted on, when known. */
+  savings?: SavingsSummary;
   appUrl?: string;
 }
 
@@ -36,7 +39,7 @@ const TOP_FINDINGS = 3;
 
 export function digestInputFromAnalysis(
   a: Analysis,
-  { company, dismissed, appUrl }: { company: string; dismissed: ReadonlySet<string>; appUrl?: string },
+  { company, dismissed, appUrl, savings }: { company: string; dismissed: ReadonlySet<string>; appUrl?: string; savings?: SavingsSummary },
 ): DigestInput {
   return {
     company,
@@ -47,6 +50,7 @@ export function digestInputFromAnalysis(
     scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS) }),
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     findings: a.findings.filter((f) => !dismissed.has(f.id)),
+    savings,
     appUrl,
   };
 }
@@ -96,6 +100,20 @@ function blocks(d: DigestInput): Block[] {
       spans: [{ bold: `${formatDollars(monthly)}/month` }, ` across ${d.findings.length} findings${oneTime ? `, plus ${formatCents(oneTime)} to reclaim` : ""}.`],
     });
     if (top.length) out.push({ kind: "ul", items: top.slice(0, TOP_FINDINGS).map((f) => [`${f.title} (saves ${formatDollars(f.monthlySavingsCents)}/month)`]) });
+  }
+  if (d.savings?.checks.length) {
+    const still = d.savings.checks.filter((c) => c.status === "still_charging");
+    out.push(
+      { kind: "h", text: "Acted on" },
+      {
+        kind: "p",
+        spans: [
+          { bold: `${formatDollars(d.savings.verifiedMonthlyCents)}/month` },
+          ` verified saved (the charges stopped)${d.savings.pendingMonthlyCents ? `; ${formatDollars(d.savings.pendingMonthlyCents)}/month still being checked` : ""}.`,
+        ],
+      },
+    );
+    if (still.length) out.push({ kind: "ul", items: still.map((c) => [{ bold: `Still charging: ${c.title}` }, ". The cancellation or price change didn't take; follow up with the vendor."]) });
   }
   if (d.appUrl) out.push({ kind: "link", url: d.appUrl, text: "Open Runway" });
   return out;

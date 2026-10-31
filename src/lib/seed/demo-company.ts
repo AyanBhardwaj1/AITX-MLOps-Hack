@@ -1,5 +1,6 @@
 import { addDays, addMonths, monthKey, shiftMonth } from "../dates";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
+import type { AcceptedFinding } from "../store/types";
 import type { Category, FindingKind } from "../types";
 import { createRng, type Rng } from "./rng";
 
@@ -25,6 +26,8 @@ export interface DemoCompany {
   truth: PlantedWaste[];
   /** Expected category per vendor key, for scoring categorization. */
   categoryLabels: Record<string, Category>;
+  /** Decisions made before "today": a finding acted on months ago, so savings verification has history to show. */
+  actedOn: AcceptedFinding[];
 }
 
 export interface DemoOptions {
@@ -36,6 +39,10 @@ export interface DemoOptions {
 }
 
 const CHECKING = "acc_taco_checking";
+const ZENDESK_DOLLARS = 290;
+const ZENDESK_BILLED_MONTHS = 12;
+/** Last Zendesk bill this many months before asOf (June for the default Oct 2026), outside the 3-month burn window. */
+const ZENDESK_STOPPED_MONTHS_AGO = 4;
 const CREDIT = "acc_taco_card";
 const SAVINGS = "acc_taco_savings";
 
@@ -81,7 +88,7 @@ const NOISE_PREFIXES = ["SQ *", "TST* ", "PAYPAL *", "SP * "];
 
 export const DEMO_CATEGORY_LABELS: Record<string, Category> = {
   slack: "software", zoom: "software", webex: "software", loom: "software", google_workspace: "software",
-  notion: "software", confluence: "software", linear: "software", github: "software", datadog: "software",
+  notion: "software", confluence: "software", linear: "software", github: "software", datadog: "software", zendesk: "software",
   sentry: "software", vercel: "cloud", figma: "software", miro: "software", calendly: "software",
   hubspot: "software", salesforce: "software", intercom: "software", one_password: "software", docusign: "software",
   canva: "software", aws: "cloud", openai: "ai_api", gusto: "payroll", brazos_properties: "rent",
@@ -187,6 +194,26 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 2
   push(addDays(asOf, -20), -dollarsToCents(2_400), "TEAMLINE SOFTWARE INC", "ach_debit", CHECKING, undefined, "failed");
   push(addDays(asOf, -2), -dollarsToCents(310), "GITHUB.COM", "card_debit", CREDIT, "Daniel Rivera", "pending");
 
+  // History for savings verification: Zendesk overlapped Intercom until the team acted on it
+  // ZENDESK_STOPPED_MONTHS_AGO months back; it has not billed since. Ends before the burn window.
+  const zendeskStart = shiftMonth(monthKey(asOf), -ZENDESK_STOPPED_MONTHS_AGO - ZENDESK_BILLED_MONTHS + 1);
+  let zendeskLast = "";
+  for (let k = 0; k < ZENDESK_BILLED_MONTHS; k++) {
+    zendeskLast = `${shiftMonth(zendeskStart, k)}-18`;
+    push(zendeskLast, -dollarsToCents(ZENDESK_DOLLARS), "ZENDESK INC", "ach_debit", CHECKING);
+  }
+  const actedOn: AcceptedFinding[] = [
+    {
+      fingerprint: "duplicate_tools:support_chat",
+      kind: "duplicate_tools",
+      title: "2 tools for customer support: Intercom, Zendesk",
+      vendorKeys: ["intercom", "zendesk"],
+      monthlySavingsCents: dollarsToCents(ZENDESK_DOLLARS),
+      oneTimeCents: 0,
+      acceptedAt: `${addDays(zendeskLast, 4)}T16:00:00Z`,
+    },
+  ];
+
   // This month's news for the weekly digest (current month, so burn and runway are unaffected):
   // a fundraising legal bill and a second AI provider someone just started paying for.
   push(addDays(asOf, -9), -dollarsToCents(14_500), "WILSON SONSINI LEGAL", "ach_debit", CHECKING);
@@ -207,5 +234,5 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 2
     { kind: "duplicate_charge", vendorKeys: ["canva"], monthlyCents: 0, oneTimeCents: dollarsToCents(119.99), note: "Canva charged twice" },
   ];
 
-  return { name: "Taco Robotics, Inc.", asOf, accounts, transactions: rows, truth, categoryLabels: DEMO_CATEGORY_LABELS };
+  return { name: "Taco Robotics, Inc.", asOf, accounts, transactions: rows, truth, categoryLabels: DEMO_CATEGORY_LABELS, actedOn };
 }

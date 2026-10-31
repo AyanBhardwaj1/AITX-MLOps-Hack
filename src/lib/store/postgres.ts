@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import type { Finding } from "../types";
-import { StoreError, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
+import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
 
 /**
  * Postgres store on the schema in supabase/migrations. The server connects with a privileged
@@ -136,6 +136,39 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
 
     async setFindingStatus(fingerprint, status, note) {
       await transition("finding", "findings", "fingerprint", fingerprint, () => true, status, { note });
+    },
+
+    async listAcceptedFindings() {
+      const org = await orgId();
+      // When it was accepted comes from the audit log: the latest move to "accepted".
+      const { rows } = await pool.query<{
+        fingerprint: string;
+        kind: AcceptedFinding["kind"];
+        title: string;
+        vendor_keys: string[];
+        monthly_savings_minor: string;
+        one_time_minor: string;
+        accepted_at: Date;
+      }>(
+        `select f.fingerprint, f.kind, f.title, f.vendor_keys, f.monthly_savings_minor, f.one_time_minor, e.accepted_at
+           from public.findings f
+           join lateral (
+             select max(at) as accepted_at from public.entity_events
+              where org_id = f.org_id and entity_type = 'finding' and entity_id = f.id and to_status = 'accepted'
+           ) e on e.accepted_at is not null
+          where f.org_id = $1 and f.status = 'accepted'
+          order by e.accepted_at`,
+        [org],
+      );
+      return rows.map((r) => ({
+        fingerprint: r.fingerprint,
+        kind: r.kind,
+        title: r.title,
+        vendorKeys: r.vendor_keys,
+        monthlySavingsCents: Number(r.monthly_savings_minor),
+        oneTimeCents: Number(r.one_time_minor),
+        acceptedAt: r.accepted_at.toISOString(),
+      }));
     },
 
     async saveDrafts(drafts: readonly DraftInput[]) {

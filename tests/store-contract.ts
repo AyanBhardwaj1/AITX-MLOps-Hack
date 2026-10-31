@@ -34,6 +34,27 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(again.get("price_creep:datadog")).toBe("open");
     });
 
+    it("lists accepted findings with what was found and when it was accepted", async () => {
+      const store = await makeStore();
+      await store.syncFindings([finding("duplicate_tools:video_meetings"), finding("price_creep:datadog")]);
+      const before = Date.now();
+      await store.setFindingStatus("duplicate_tools:video_meetings", "accepted");
+      const accepted = await store.listAcceptedFindings();
+      expect(accepted).toHaveLength(1);
+      expect(accepted[0]).toMatchObject({
+        fingerprint: "duplicate_tools:video_meetings",
+        kind: "duplicate_tools",
+        title: "duplicate_tools:video_meetings",
+        vendorKeys: ["zoom", "webex"],
+        monthlySavingsCents: 9_000,
+        oneTimeCents: 0,
+      });
+      expect(Date.parse(accepted[0]!.acceptedAt)).toBeGreaterThanOrEqual(before - 1_000);
+      // Undoing removes it; accepting again records the new time.
+      await store.setFindingStatus("duplicate_tools:video_meetings", "open");
+      expect(await store.listAcceptedFindings()).toEqual([]);
+    });
+
     it("refuses to change a finding it has never seen", async () => {
       const store = await makeStore();
       await expect(store.setFindingStatus("nope", "accepted")).rejects.toBeInstanceOf(StoreError);

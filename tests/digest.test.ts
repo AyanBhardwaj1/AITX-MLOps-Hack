@@ -51,6 +51,22 @@ describe("weekly digest", () => {
     expect(buildDigest({ ...input, changes }).slack).toContain("&lt;!channel&gt; &amp; co");
   });
 
+  it("reports verified savings and flags anything still charging", () => {
+    const savings = {
+      verifiedMonthlyCents: 29_000,
+      verifiedOneTimeCents: 0,
+      pendingMonthlyCents: 0,
+      checks: [
+        { fingerprint: "a", title: "2 tools for customer support: Intercom, Zendesk", kind: "duplicate_tools" as const, status: "verified" as const, monthlySavingsCents: 29_000, oneTimeCents: 0, acceptedOn: "2026-06-22", checkAfter: null, lastChargeDate: null },
+        { fingerprint: "b", title: "Datadog price up 50%", kind: "price_creep" as const, status: "still_charging" as const, monthlySavingsCents: 120_000, oneTimeCents: 0, acceptedOn: "2026-08-01", checkAfter: null, lastChargeDate: "2026-10-05" },
+      ],
+    };
+    const md = buildDigest({ ...input, savings }).markdown;
+    expect(md).toContain("**$290/month** verified saved");
+    expect(md).toContain("Still charging: Datadog price up 50%");
+    expect(buildDigest(input).markdown).not.toContain("verified saved");
+  });
+
   it("is deterministic", () => {
     expect(buildDigest(input)).toEqual(buildDigest(input));
   });

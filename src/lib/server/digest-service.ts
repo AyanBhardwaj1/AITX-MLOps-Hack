@@ -3,6 +3,7 @@ import { buildDigest, digestInputFromAnalysis, type Digest } from "../insights/d
 import type { Change } from "../insights/changes";
 import { postToSlack } from "../slack";
 import { loadAnalysis, type DataMode } from "./data";
+import { savingsFor } from "./savings";
 import { env } from "./env";
 import { scopeFor } from "./scope";
 import { getStore } from "./store";
@@ -29,7 +30,8 @@ export async function buildDigestFor(mode: DataMode): Promise<DigestPreview> {
     // Without the store the digest still goes out; it just can't honour dismissals this time.
     console.error("[digest] couldn't read finding statuses", err);
   }
-  const input = digestInputFromAnalysis(analysis, { company: COMPANY[scopeFor(mode)] ?? dataset.label, dismissed, appUrl: appUrl() });
+  const savings = await savingsFor(mode, dataset, analysis);
+  const input = digestInputFromAnalysis(analysis, { company: COMPANY[scopeFor(mode)] ?? dataset.label, dismissed, appUrl: appUrl(), savings });
   return { ...buildDigest(input), changes: [...input.changes] };
 }
 

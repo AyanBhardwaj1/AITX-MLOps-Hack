@@ -1,5 +1,5 @@
 import type { Finding } from "../types";
-import { StoreError, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
+import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
 
 /**
  * In-process store: used when DATABASE_URL isn't set. State lives as long as the server
@@ -7,6 +7,8 @@ import { StoreError, type DraftInput, type FindingStatus, type RunInput, type St
  */
 export function createMemoryStore(): Store {
   const findingStatus = new Map<string, FindingStatus>();
+  const latestFinding = new Map<string, Finding>();
+  const acceptedAt = new Map<string, string>();
   const actions: StoredAction[] = [];
   const runs: StoredRun[] = [];
 
@@ -23,12 +25,23 @@ export function createMemoryStore(): Store {
   return {
     kind: "memory",
     async syncFindings(findings: readonly Finding[]) {
-      for (const f of findings) if (!findingStatus.has(f.id)) findingStatus.set(f.id, "open");
+      for (const f of findings) {
+        if (!findingStatus.has(f.id)) findingStatus.set(f.id, "open");
+        latestFinding.set(f.id, f);
+      }
       return new Map(findings.map((f) => [f.id, findingStatus.get(f.id)!]));
     },
     async setFindingStatus(fingerprint, status) {
       if (!findingStatus.has(fingerprint)) throw new StoreError("Finding not found", "not_found");
       findingStatus.set(fingerprint, status);
+      if (status === "accepted") acceptedAt.set(fingerprint, new Date().toISOString());
+      else acceptedAt.delete(fingerprint);
+    },
+    async listAcceptedFindings() {
+      return [...acceptedAt].map(([fingerprint, at]): AcceptedFinding => {
+        const f = latestFinding.get(fingerprint)!;
+        return { fingerprint, kind: f.kind, title: f.title, vendorKeys: [...f.vendorKeys], monthlySavingsCents: f.monthlySavingsCents, oneTimeCents: f.oneTimeCents, acceptedAt: at };
+      });
     },
     async saveDrafts(drafts: readonly DraftInput[]) {
       return drafts.map((d) => {

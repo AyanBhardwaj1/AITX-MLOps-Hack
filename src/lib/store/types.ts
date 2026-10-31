@@ -21,6 +21,18 @@ export interface StoredAction extends DraftInput {
   createdAt: string;
 }
 
+/** A finding a person chose to act on, as it was when accepted, for checking the savings landed. */
+export interface AcceptedFinding {
+  fingerprint: string;
+  kind: Finding["kind"];
+  title: string;
+  vendorKeys: string[];
+  monthlySavingsCents: number;
+  oneTimeCents: number;
+  /** ISO timestamp of the most recent move to "accepted". */
+  acceptedAt: string;
+}
+
 export interface RunStep {
   seq: number;
   name: string;
@@ -63,6 +75,7 @@ export interface Store {
   /** Upserts findings by fingerprint and returns each one's status (dismissals are kept). */
   syncFindings(findings: readonly Finding[]): Promise<Map<string, FindingStatus>>;
   setFindingStatus(fingerprint: string, status: FindingStatus, note?: string): Promise<void>;
+  listAcceptedFindings(): Promise<AcceptedFinding[]>;
   saveDrafts(drafts: readonly DraftInput[]): Promise<StoredAction[]>;
   listActions(limit: number): Promise<StoredAction[]>;
   decideAction(id: string, decision: "approved" | "rejected"): Promise<StoredAction>;

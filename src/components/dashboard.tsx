@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { simulateSavings, stressRunway, type Snapshot } from "@/lib/finance/runway";
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
@@ -7,6 +8,7 @@ import type { Forecast } from "@/lib/finance/forecast";
 import type { MonthHistory } from "@/lib/finance/history";
 import type { Renewal } from "@/lib/finance/renewals";
 import type { Change } from "@/lib/insights/changes";
+import type { SavingsSummary } from "@/lib/insights/savings";
 import { categoryName, formatDate, formatMoney } from "@/lib/format";
 import { formatCents, formatDollars } from "@/lib/money";
 import type { FindingStatus } from "@/lib/store/types";
@@ -18,6 +20,7 @@ import { InboxPanel } from "./inbox-panel";
 import { ForecastChart } from "./forecast-chart";
 import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { RunwayChart } from "./runway-chart";
+import { SavingsTracker } from "./savings-tracker";
 import { ScenarioPlanner } from "./scenario-planner";
 import { ThisWeekCard } from "./this-week-card";
 
@@ -53,6 +56,7 @@ export interface DashboardData {
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
   changes: Change[];
+  savings: SavingsSummary;
   capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean };
 }
 
@@ -74,6 +78,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
     Object.fromEntries(data.findings.map((f) => [f.id, f.status])),
   );
   const [statusError, setStatusError] = useState<string | null>(null);
+  const router = useRouter();
   const [showDismissed, setShowDismissed] = useState(false);
   const live = data.findings.filter((f) => statuses[f.id] !== "dismissed");
   const dismissed = data.findings.filter((f) => statuses[f.id] === "dismissed");
@@ -110,6 +115,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
       });
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Save failed (${res.status})`);
       setStatusError(null);
+      // Re-read server data so "Acted on" and the digest reflect the decision right away.
+      if (status === "accepted" || previous === "accepted") router.refresh();
     } catch (err) {
       setStatuses((s) => ({ ...s, [id]: previous }));
       setStatusError(err instanceof Error ? err.message : "Couldn't save that");
@@ -306,6 +313,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 </div>
               )}
             </section>
+
+            <SavingsTracker savings={data.savings} />
 
             <section className="rounded-xl border border-line bg-panel">
               <div className="border-b border-line px-5 py-3">
