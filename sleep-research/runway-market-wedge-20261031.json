@@ -51,8 +51,10 @@
     },
     {
       "name": "plan",
-      "status": "pending",
-      "accepted": false
+      "status": "done",
+      "accepted": false,
+      "at": "2026-10-31T09:12:56+00:00",
+      "artifact": "sleep-research/EXPERIMENT_PLAN.md"
     },
     {
       "name": "implement",
@@ -80,5 +82,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T09:12:23+00:00"
+  "updated": "2026-10-31T09:12:56+00:00"
 }
