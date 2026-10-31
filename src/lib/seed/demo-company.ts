@@ -187,6 +187,11 @@ export function generateDemoCompany({ seed = 42, asOf = "2026-10-26", months = 2
   push(addDays(asOf, -20), -dollarsToCents(2_400), "TEAMLINE SOFTWARE INC", "ach_debit", CHECKING, undefined, "failed");
   push(addDays(asOf, -2), -dollarsToCents(310), "GITHUB.COM", "card_debit", CREDIT, "Daniel Rivera", "pending");
 
+  // This month's news for the weekly digest (current month, so burn and runway are unaffected):
+  // a fundraising legal bill and a second AI provider someone just started paying for.
+  push(addDays(asOf, -9), -dollarsToCents(14_500), "WILSON SONSINI LEGAL", "ach_debit", CHECKING);
+  push(addDays(asOf, -12), -dollarsToCents(480), "ANTHROPIC PBC", "card_debit", CREDIT, "Daniel Rivera");
+
   const accounts: RhoAccount[] = [
     { id: CHECKING, account_type: "checking", account_name: "Operating", balance: { amount: dollarsToCents(842_350), currency: "USD" } },
     { id: SAVINGS, account_type: "savings", account_name: "Savings", balance: { amount: dollarsToCents(110_000), currency: "USD" } },

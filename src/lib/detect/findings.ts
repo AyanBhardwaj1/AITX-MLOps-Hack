@@ -13,7 +13,7 @@ const CREEP_RECENT_CHARGES = 2;
 const CREEP_BASELINE_CHARGES = 3;
 const STABLE_BASELINE_CV = 0.15;
 /** Spend that varies by nature (usage, fares, meals, headcount): not subscriptions. */
-const VARIABLE_BY_NATURE: ReadonlySet<Category> = new Set([
+export const VARIABLE_BY_NATURE: ReadonlySet<Category> = new Set([
   "cloud", "ai_api", "travel", "meals", "marketing", "hardware", "payroll", "contractors",
 ]);
 /** A cardholder with no non-subscription spend for this long has probably left. */
