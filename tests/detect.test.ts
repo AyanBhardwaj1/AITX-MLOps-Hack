@@ -183,3 +183,29 @@ describe("review regressions", () => {
     expect(detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_charge")).toEqual([]);
   });
 });
+
+describe("detectors on real-world ledger shapes (stress-test regressions)", () => {
+  it("does not call steady seat/usage growth a price increase", () => {
+    const usage = monthly("INTERCOM", (i) => 400 * 1.03 ** i * (i % 2 ? 1.08 : 0.94), 12);
+    expect(detectFindings(usage, AS_OF).filter((f) => f.kind === "price_creep")).toEqual([]);
+  });
+
+  it("still finds a real price step, even on a bill that wobbles", () => {
+    const step = monthly("DATADOG INC", (i) => (i < 8 ? 2_400 : 3_600) * (i % 2 ? 1.06 : 0.95), 12);
+    expect(detectFindings(step, AS_OF).map((f) => f.kind)).toContain("price_creep");
+  });
+
+  it("treats a same-day repeat that recurs every month as a second workspace, not a double charge", () => {
+    const one = monthly("MIRO.COM", 150, 6, "Priya Shah");
+    const two = one.map((t) => ({ ...t, id: `${t.id}_ws2` }));
+    expect(detectFindings([...one, ...two], AS_OF).filter((f) => f.kind === "duplicate_charge")).toEqual([]);
+  });
+
+  it("drops a double charge the vendor already refunded, and keeps what a partial refund leaves", () => {
+    const pair = [charge("CANVA", "2026-09-10", 119.99), charge("CANVA", "2026-09-11", 119.99)];
+    const refund = (dollars: number, d: string) => ({ ...charge("CANVA", d, 0), amountCents: Math.round(dollars * 100) });
+    expect(detectFindings([...pair, refund(119.99, "2026-09-16")], AS_OF).filter((f) => f.kind === "duplicate_charge")).toEqual([]);
+    const partial = detectFindings([...pair, refund(60, "2026-09-16")], AS_OF).find((f) => f.kind === "duplicate_charge");
+    expect(partial?.oneTimeCents).toBe(5_999);
+  });
+});

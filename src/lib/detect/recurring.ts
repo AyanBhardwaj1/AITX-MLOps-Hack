@@ -40,19 +40,29 @@ export function isOutflow(t: EnrichedTxn): boolean {
   return t.amountCents < 0 && t.status === "posted" && t.type !== "transfer" && t.vendor.category !== "transfer";
 }
 
+/** A same-card repeat that happens in at least this many billing cycles is a second seat or workspace. */
+export const RECURRING_REPEAT_MIN_CYCLES = 2;
+
 /**
  * Groups outflows by vendor AND cardholder (so per-seat plans on different cards stay separate),
- * oldest first, dropping charges that repeat within SAME_EVENT_DAYS on the same card.
+ * oldest first. A charge repeating within SAME_EVENT_DAYS on the same card is one billing event (or a
+ * double charge), unless such repeats recur cycle after cycle: then they are a second workspace and
+ * get their own stream ("<key>#2").
  */
 export function billingEventsByStream(txns: readonly EnrichedTxn[]): Map<string, EnrichedTxn[]> {
   const byStream = new Map<string, EnrichedTxn[]>();
+  const repeats = new Map<string, EnrichedTxn[]>();
   const sorted = txns.filter(isOutflow).sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
   for (const t of sorted) {
     const key = `${t.vendor.key}|${t.cardholder ?? ""}`;
     const list = byStream.get(key) ?? [];
     const prev = list.at(-1);
     if (!prev || daysBetween(prev.postedAt, t.postedAt) > SAME_EVENT_DAYS) list.push(t);
+    else repeats.set(key, [...(repeats.get(key) ?? []), t]);
     byStream.set(key, list);
+  }
+  for (const [key, extra] of repeats) {
+    if (extra.length >= RECURRING_REPEAT_MIN_CYCLES) byStream.set(`${key}#2`, extra);
   }
   return byStream;
 }
