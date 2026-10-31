@@ -42,6 +42,8 @@ const PRICE_DROP_SHARE = 0.8;
 const REFUND_SHARE = 0.9;
 /** Refunds can land a little before someone records the decision (used when the charge date is unknown). */
 const REFUND_LOOKBACK_DAYS = 30;
+/** With a single past charge the cadence is unknown; annual is the longest we bill on. */
+const UNKNOWN_CADENCE_DAYS = 365;
 /** Floor for a billing cycle, so odd data can never make the expected-date math degenerate. */
 const MIN_CYCLE_DAYS = 7;
 
@@ -88,7 +90,8 @@ function nextExpected(before: readonly EnrichedTxn[], inFlightEnd: IsoDate): { d
   const last = before.at(-1);
   if (!last) return null;
   const gaps = before.slice(1).map((t, i) => daysBetween(before[i]!.postedAt, t.postedAt));
-  const gapDays = Math.max(MIN_CYCLE_DAYS, gaps.length ? median(gaps) : AVG_DAYS_PER_MONTH);
+  // One charge says nothing about cadence: assume the longest (annual) rather than call it stopped after a month.
+  const gapDays = Math.max(MIN_CYCLE_DAYS, gaps.length ? median(gaps) : UNKNOWN_CADENCE_DAYS);
   const cycles = Math.max(1, Math.ceil((daysBetween(last.postedAt, inFlightEnd) + 1) / gapDays));
   return { date: addDays(last.postedAt, Math.round(cycles * gapDays)), gapDays };
 }
@@ -148,6 +151,8 @@ function check(f: AcceptedFinding, txns: readonly EnrichedTxn[], asOf: IsoDate, 
       f.kind === "price_creep" ? checkPriceDrop(charges, f, acceptedOn, asOf) : checkCancelled(charges, acceptedOn, asOf),
     ),
   );
+  // Nothing from these vendors in this feed (paid elsewhere, or renamed): there is nothing to verify against.
+  if (outcomes.length === 0) return { status: "waiting", checkAfter: null, lastChargeDate: null };
   const still = outcomes.find((o) => o.status === "still_charging");
   if (still) return still;
   if (outcomes.every((o) => o.status === "verified")) return { status: "verified", checkAfter: null, lastChargeDate: null };

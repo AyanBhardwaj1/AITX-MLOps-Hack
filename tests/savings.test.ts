@@ -113,6 +113,21 @@ describe("verifySavings", () => {
     expect(r.verifiedOneTimeCents).toBe(11_999);
   });
 
+  it("doesn't call an annual tool verified after a month when it has billed only once", () => {
+    const docusign = [txn("DOCUSIGN", "2025-12-02", 600)];
+    const f = accepted({ fingerprint: "duplicate_tools:esign", vendorKeys: ["adobe_sign", "docusign"], monthlySavingsCents: 5_000, acceptedAt: "2026-01-10T00:00:00Z" });
+    const r = verifySavings([f], docusign, "2026-03-01");
+    expect(r.checks[0]!.status).toBe("waiting");
+    expect(r.checks[0]!.checkAfter! > "2026-11-30").toBe(true);
+    expect(r.verifiedMonthlyCents).toBe(0);
+  });
+
+  it("can't verify a vendor that never appears in this feed", () => {
+    const r = verifySavings([accepted({})], zoom, "2026-10-01");
+    expect(r.checks[0]).toMatchObject({ status: "waiting", checkAfter: null });
+    expect(r.verifiedMonthlyCents).toBe(0);
+  });
+
   it("returns nothing to verify for no accepted findings", () => {
     expect(verifySavings([], zoom, "2026-10-01")).toEqual({ checks: [], verifiedMonthlyCents: 0, verifiedOneTimeCents: 0, pendingMonthlyCents: 0 });
   });

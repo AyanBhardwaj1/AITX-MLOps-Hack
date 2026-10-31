@@ -13,7 +13,7 @@ function Status({ c }: { c: SavingsCheck }) {
   }
   return (
     <span className="rounded bg-canvas px-1.5 py-0.5 text-[11px] font-medium text-muted">
-      {c.checkAfter ? `Checking after ${formatDate(c.checkAfter)}` : "Waiting for refund"}
+      {c.checkAfter ? `Checking after ${formatDate(c.checkAfter)}` : c.kind === "duplicate_charge" ? "Waiting for refund" : "Not billed in this feed: check manually"}
     </span>
   );
 }
