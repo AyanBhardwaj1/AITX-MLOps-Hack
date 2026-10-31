@@ -125,7 +125,29 @@ Trace: `traces/triage/round1.md` (same-family fresh subagent, provisional). Summ
 _pending_
 
 ## Pilots
-_pending_
+
+| Idea | Setup | Runtime | Result | Class |
+|---|---|---|---|---|
+| I5 detector stress test | `npm run stress-eval`: 20 seeds × 2 noise levels × 14 settings (`src/lib/eval/perturb.ts`). Settings come from real-feed differences named by the novelty reviewer (`traces/novelty/I5-detector-stress.md`). Output: `runs/stress-eval.json` and `.md` | ~5 s | Hypothesis "at least one detector falls below 80% precision under realistic shapes" **confirmed** (3 defects; see below) | **positive** |
+
+Under realistic shapes (from `runs/stress-eval.md`):
+- **Price increase vs usage-priced tools:** precision 43%.
+  - *Cause:* steady seat or usage growth (Intercom, Sentry) reads as a price increase.
+- **Split workspaces:** a second identical same-day charge every month gives double-charge precision 4%, and the idle-card finding is missed (recall 0%).
+  - *Cause:* the extra charges count as the idle cardholder's "other spend".
+- **Refunded double charge:** double-charge precision 0%, because an already-refunded duplicate is still flagged.
+- **Robust (100/100):**
+  - business-day posting
+  - vendor renames that the aliases cover
+  - refunds on subscriptions
+  - shared founder card (idle-card waste becomes undetectable there by construction)
+  - per-person seat cards
+  - annual billing
+  - 12-month history
+- **Unaliased rename** ("DDOG BILLING" mid-history): the price increase *is* found, but under the unrecognised billing name. Exact-match scoring counts it as one FP plus one miss. This is a vendor-naming limit (the LLM labeller is meant to cover it in production), not a detector failure.
+- **Harsh ±4-day jitter** (beyond typical posting): recall 88–98%. This is a sensitivity bound only.
+
+All numbers are `synthetic_proxy`: the generator's planted truth plus external transforms. They show the mechanism, not field accuracy.
 
 ## Chosen idea
 _pending_

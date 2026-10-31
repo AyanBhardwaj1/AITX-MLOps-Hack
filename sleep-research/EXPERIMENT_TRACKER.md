@@ -6,3 +6,4 @@ Evaluation types follow `integrity.md`. With no real users or ledgers in this sa
 |---|---|---|---|---|---|---|
 | P1a | I5 detector stress test, first drift model | 20 seeds × 2 noise × 9 settings; billing drift ±4 days independent per charge | synthetic_proxy | DONE, superseded | not kept (the file was overwritten; the numbers survive only in the session log, so they are **not cited**) | ~5 s |
 | P1b | I5 detector stress test, realistic posting model + labelled harsh jitter | 20 seeds × 2 noise × 10 settings (`npm run stress-eval`) | synthetic_proxy | DONE | `sleep-research/runs/stress-eval.json`, `sleep-research/runs/stress-eval.md` | ~5 s |
+| P1c | I5 + 4 source-backed settings (split workspaces, refunded double charge, unaliased rename, 12-month history) | 20 seeds × 2 noise × 14 settings | synthetic_proxy | DONE | `sleep-research/runs/stress-eval.json`, `.md` (overwrites P1b; P1b rows are a subset) | ~5 s |

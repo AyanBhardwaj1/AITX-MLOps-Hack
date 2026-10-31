@@ -19,6 +19,10 @@ export type Perturbation =
   | "seat_cards"
   | "annual_billing"
   | "usage_priced"
+  | "split_workspaces"
+  | "refunded_double_charge"
+  | "unaliased_rename"
+  | "short_history"
   | "combined";
 
 export const PERTURBATIONS: readonly Exclude<Perturbation, "combined">[] = [
@@ -30,6 +34,10 @@ export const PERTURBATIONS: readonly Exclude<Perturbation, "combined">[] = [
   "seat_cards",
   "annual_billing",
   "usage_priced",
+  "split_workspaces",
+  "refunded_double_charge",
+  "unaliased_rename",
+  "short_history",
 ];
 
 const dateOf = (t: RhoTransaction) => (t.posted_at ?? t.initiated_at).slice(0, 10);
@@ -191,6 +199,42 @@ const harshDayJitter: Apply = (c, seed) => {
   };
 };
 
+/** Two workspaces of one tool billed on the same card the same day, every month (intentional, not a billing error). Truth unchanged. */
+const splitWorkspaces: Apply = (c) => ({
+  ...c,
+  transactions: [
+    ...c.transactions,
+    ...c.transactions
+      .filter((t) => isSubscriptionCharge(t) && vendorKey(t) === "miro")
+      .map((t) => ({ ...t, id: `${t.id}_ws2`, money_movement_id: null })),
+  ],
+});
+
+/** The vendor already refunded the double charge: nothing left to recover. Truth drops the double charge. */
+const refundedDoubleCharge: Apply = (c) => {
+  const dup = c.transactions.filter((t) => vendorKey(t) === "canva" && t.amount.amount < 0).sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
+  const second = dup[1];
+  if (!second) return c;
+  const refund = withDate({ ...second, id: `${second.id}_refund`, money_movement_id: null, transaction_type: "card_credit", amount: { ...second.amount, amount: -second.amount.amount } }, addDays(dateOf(second), 6));
+  return { ...c, transactions: [...c.transactions, refund], truth: c.truth.filter((w) => w.kind !== "duplicate_charge") };
+};
+
+/** A billing name the alias table doesn't know, from mid-history on (e.g. a new payment processor). Truth unchanged. */
+const unaliasedRename: Apply = (c) => {
+  const dates = c.transactions.map(dateOf).sort();
+  const midpoint = dates[Math.floor(dates.length / 2)]!;
+  return {
+    ...c,
+    transactions: c.transactions.map((t) => (vendorKey(t) === "datadog" && isSubscriptionCharge(t) && dateOf(t) >= midpoint ? { ...t, counterparty_name: "DDOG BILLING 8443" } : t)),
+  };
+};
+
+/** Only the last 12 months of history (a newer company, or a newly connected account). Truth unchanged. */
+const shortHistory: Apply = (c) => {
+  const cutoff = addDays(c.asOf, -365);
+  return { ...c, transactions: c.transactions.filter((t) => dateOf(t) > cutoff) };
+};
+
 const APPLY: Record<Exclude<Perturbation, "combined">, Apply> = {
   billing_day_drift: billingDayDrift,
   harsh_day_jitter: harshDayJitter,
@@ -200,6 +244,10 @@ const APPLY: Record<Exclude<Perturbation, "combined">, Apply> = {
   seat_cards: seatCards,
   annual_billing: annualBilling,
   usage_priced: usagePriced,
+  split_workspaces: splitWorkspaces,
+  refunded_double_charge: refundedDoubleCharge,
+  unaliased_rename: unaliasedRename,
+  short_history: shortHistory,
 };
 
 export function perturb(company: DemoCompany, p: Perturbation, seed: number): DemoCompany {
