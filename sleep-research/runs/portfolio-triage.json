@@ -1,0 +1,328 @@
+{
+  "generatedAt": "2026-10-31T09:11:51.341Z",
+  "summary": {
+    "portfolios": 30,
+    "companiesPerPortfolio": 30,
+    "meanTroubledPerPortfolio": 9.7,
+    "recallAt5": {
+      "trailing": 0.9583333333333334,
+      "composite": 0.9650000000000001
+    },
+    "meanDistractorsInTop5": {
+      "trailing": 0.06666666666666667,
+      "composite": 0.06666666666666667
+    },
+    "earlyWarningRecallAt5": {
+      "portfoliosWithCrossers": 30,
+      "meanCrossers": 9.666666666666666,
+      "trailing": 0.9583333333333334,
+      "composite": 0.9650000000000001
+    },
+    "portfoliosWithAtMostOneDistractor": {
+      "trailing": 29,
+      "composite": 29
+    }
+  },
+  "results": [
+    {
+      "crossers": 7,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 7,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 12,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 12,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 10,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 10,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 15,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 15,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 9,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 10,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 9,
+      "earlyTrailing": 0.8,
+      "earlyComposite": 1,
+      "troubled": 9,
+      "recallTrailing": 0.8,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 7,
+      "earlyTrailing": 0.8,
+      "earlyComposite": 0.8,
+      "troubled": 7,
+      "recallTrailing": 0.8,
+      "recallComposite": 0.8,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 7,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 7,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 10,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 10,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 13,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 13,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 11,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 11,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 6,
+      "earlyTrailing": 0.8,
+      "earlyComposite": 0.8,
+      "troubled": 6,
+      "recallTrailing": 0.8,
+      "recallComposite": 0.8,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 14,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 14,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 8,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 8,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 9,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 9,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 8,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 8,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 10,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 10,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 12,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 12,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 6,
+      "earlyTrailing": 0.6,
+      "earlyComposite": 0.6,
+      "troubled": 6,
+      "recallTrailing": 0.6,
+      "recallComposite": 0.6,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 12,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 12,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 11,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 11,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 4,
+      "earlyTrailing": 0.75,
+      "earlyComposite": 0.75,
+      "troubled": 4,
+      "recallTrailing": 0.75,
+      "recallComposite": 0.75,
+      "distractorsTrailing": 2,
+      "distractorsComposite": 2
+    },
+    {
+      "crossers": 10,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 10,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 9,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 9,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 13,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 13,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 8,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 8,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 8,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 8,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 10,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 10,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 13,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 13,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    },
+    {
+      "crossers": 9,
+      "earlyTrailing": 1,
+      "earlyComposite": 1,
+      "troubled": 9,
+      "recallTrailing": 1,
+      "recallComposite": 1,
+      "distractorsTrailing": 0,
+      "distractorsComposite": 0
+    }
+  ]
+}

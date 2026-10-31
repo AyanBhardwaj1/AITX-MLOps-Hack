@@ -44,9 +44,10 @@
     },
     {
       "name": "pilots",
-      "status": "running",
+      "status": "done",
       "accepted": false,
-      "at": "2026-10-31T09:06:34+00:00"
+      "at": "2026-10-31T09:12:23+00:00",
+      "artifact": "sleep-research/IDEA_REPORT.md"
     },
     {
       "name": "plan",
@@ -79,5 +80,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T09:06:34+00:00"
+  "updated": "2026-10-31T09:12:23+00:00"
 }
