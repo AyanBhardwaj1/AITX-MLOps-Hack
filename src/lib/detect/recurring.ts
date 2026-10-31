@@ -1,5 +1,6 @@
 import { AVG_DAYS_PER_MONTH, addDays, daysBetween } from "../dates";
 import { coefficientOfVariation, median } from "../stats";
+import { UNITEMIZED_CARD_SPEND } from "../rho/map";
 import type { Cadence, EnrichedTxn, IsoDate, RecurringStream } from "../types";
 
 interface CadenceRule {
@@ -100,7 +101,8 @@ function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate): R
 export function detectStreams(txns: readonly EnrichedTxn[], asOf: IsoDate): RecurringStream[] {
   const streams: RecurringStream[] = [];
   for (const events of billingEventsByStream(txns).values()) {
-    if (events.length < 2) continue;
+    // Lump card payoffs stand in for many purchases: spend, but never one subscription.
+    if (events.length < 2 || events[0]!.vendor.key === UNITEMIZED_CARD_SPEND) continue;
     const gaps = events.slice(1).map((e, i) => daysBetween(events[i]!.postedAt, e.postedAt));
     const rule = matchCadence(gaps, events.length);
     if (rule) streams.push(buildStream(events, rule, asOf));

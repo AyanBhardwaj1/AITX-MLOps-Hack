@@ -25,19 +25,28 @@
     {
       "name": "ideas",
       "status": "done",
-      "accepted": false,
+      "accepted": true,
       "at": "2026-10-31T08:53:41+00:00",
-      "artifact": "sleep-research/IDEA_REPORT.md"
+      "artifact": "sleep-research/IDEA_REPORT.md",
+      "verdict": "sleep-research/traces/triage/round1.md",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T09:06:34+00:00"
     },
     {
       "name": "triage",
-      "status": "pending",
-      "accepted": false
+      "status": "done",
+      "accepted": true,
+      "at": "2026-10-31T09:06:34+00:00",
+      "artifact": "sleep-research/IDEA_REPORT.md",
+      "verdict": "sleep-research/traces/triage/round1.md; sleep-research/traces/novelty/",
+      "reviewer": "same-family",
+      "accepted_at": "2026-10-31T09:06:34+00:00"
     },
     {
       "name": "pilots",
-      "status": "pending",
-      "accepted": false
+      "status": "running",
+      "accepted": false,
+      "at": "2026-10-31T09:06:34+00:00"
     },
     {
       "name": "plan",
@@ -70,5 +79,5 @@
       "accepted": false
     }
   ],
-  "updated": "2026-10-31T09:02:11+00:00"
+  "updated": "2026-10-31T09:06:34+00:00"
 }

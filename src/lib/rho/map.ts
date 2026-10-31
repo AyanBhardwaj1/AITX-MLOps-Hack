@@ -2,6 +2,9 @@ import type { Cents, EnrichedTxn, TxnType } from "../types";
 import { resolveVendor } from "../vendors/normalize";
 import type { RhoAccount, RhoTransaction } from "./schema";
 
+/** A card payoff counted as spend because the card's own rows were not imported (see csv/import.ts). */
+export const UNITEMIZED_CARD_SPEND = "unitemized_card_spend";
+
 /** Accounts whose balance is spendable cash. Credit is a liability; rewards are points. */
 const CASH_ACCOUNT_TYPES = new Set<RhoAccount["account_type"]>(["checking", "savings", "investment"]);
 
@@ -39,7 +42,12 @@ export function mapTransaction(t: RhoTransaction): EnrichedTxn | null {
     type,
     status: settled ? "posted" : "pending",
     cardholder: t.card_id ? (t.user_full_name ?? undefined) : undefined,
-    vendor: type === "transfer" ? { key: "internal_transfer", name: "Internal transfer", category: "transfer", job: null, source: "catalog" } : resolveVendor(t.counterparty_name),
+    vendor:
+      type === "transfer"
+        ? { key: "internal_transfer", name: "Internal transfer", category: "transfer", job: null, source: "catalog" }
+        : t.transaction_type === UNITEMIZED_CARD_SPEND
+          ? { key: UNITEMIZED_CARD_SPEND, name: "Card spend (line items not uploaded)", category: "other", job: null, source: "catalog" }
+          : resolveVendor(t.counterparty_name),
   };
 }
 

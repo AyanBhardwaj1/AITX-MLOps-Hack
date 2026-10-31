@@ -83,7 +83,7 @@ Five lens subagents (pattern-transfer, contradiction, untested-assumption, segme
 
 | # | Idea (merged keys) | Type | Effort / risk | so_what | prior_work |
 |---|---|---|---|---|---|
-| I1 | **Advisor / fractional-CFO console**: multi-client triage ranked by risk; per-client pricing; advisor seat free (fractional-cfo-client-book, advisor-console-proadvisor, fractional-cfo-triage-board) | acquisition | W / M | One sale brings 10–30 orgs. A failed ranking (precision@5 < 0.8) means advisors won't return | QuickBooks ProAdvisor console (GL-based); Fathom and Jirav (GL, per company); none bank-native found |
+| I1 | **Advisor / fractional-CFO console** *(prior_work corrected after novelty: Fathom ranks portfolios on GL data; Rho, Mercury and Ramp have free multi-client portals)*: multi-client triage ranked by risk; per-client pricing; advisor seat free (fractional-cfo-client-book, advisor-console-proadvisor, fractional-cfo-triage-board) | acquisition | W / M | One sale brings 10–30 orgs. A failed ranking (precision@5 < 0.8) means advisors won't return | QuickBooks ProAdvisor console (GL-based); Fathom and Jirav (GL, per company); none bank-native found |
 | I2 | **Backtested, trend-aware runway**: replay past forecasts against realized cash, show the error/coverage track record, and add a trend-aware band (backtested-runway-estimator, backtested-runway-vs-spreadsheet, runway-backtest-calibration) | trust / retention | D / L | If the current band already covers 70–90% → no feature needed (useful negative). Else the product publishes its own accuracy, which no bank does | Mercury Insights shows runway without an error bar; cfo.ai models from the GL; no published track record found |
 | I3 | **Price on verified savings**: free until verified savings ≥ 3× price, or a success fee (verified-savings-price-gate, success-fee-verified-savings) | monetization | D / M | Tells whether a savings-anchored price is viable on realistic waste levels, or if savings front-load (retention cliff) | Rocket Money success fee (consumer); Vertice savings guarantee (enterprise) |
 | I4 | **Inbox ranked for approval fatigue**: expected value × calibrated confidence, plus renewal-cliff cost of delay; batch low-value items (calibrated-ev-inbox, cost-of-delay-inbox) | trust / retention | D / L–M | With k approvals/week, does ordering capture materially more realized savings? | Ramp agents auto-approve by policy; Medius 90% human approval; no EV-ordered startup inbox found |
@@ -122,7 +122,26 @@ Trace: `traces/triage/round1.md` (same-family fresh subagent, provisional). Summ
 - **Red flags recorded:** complexity added since brainstorming in I4, I5, I6, I7 and I13; the shared variation wrapper must stay to a few externally motivated perturbations, not a framework.
 
 ## Novelty
-_pending_
+
+Each pick got a fresh reviewer. Traces are in `traces/novelty/`. All vendor facts come from search excerpts, because page fetches to vendor domains were blocked by the sandbox network.
+
+- **I5 detector stress + published accuracy:** novelty MEDIUM as positioning, LOW as method (`I5-detector-stress.md`).
+  - No vendor publishes subscription-detection precision or recall: Plaid, Ramp, Brex, Mercury, Rocket Money, Cledara, Vendr/Vertice and Zylo all checked. Subaio claims "98.7%" with no method.
+  - Ntropy's evaluation series (2024) already argues for customer-run benchmarks.
+  - A self-generated benchmark will read as a vendor claim, so publish the harness, not just numbers.
+  - The reviewer added four code-specific failure modes. All four are now in the harness, and three of them failed.
+- **I15 CSV Runway Grader:** novelty LOW (`I15-csv-grader.md`).
+  - Close prior work: Open Accountant skills (local CSV runway and subscription audit); SpendCull (CSV waste audit → monitoring); Cashrun (paid CSV runway); Founderpath (free converter → bank-connect funnel).
+  - The bundle (startup-bank export → P10–P90 runway + top waste, no signup, no upload, same engine as the paid product) was not found.
+  - Real issues: a generic CSV has no balance, and a single-account export misses spend on other cards.
+  - Position it as an acquisition experiment with a measured match to the connected-account results.
+- **I1 advisor console:** novelty LOW (`I1-advisor-console.md`).
+  - Free bank-native multi-client portals exist: Rho Partner Portal (Nov 2024), Mercury Advisor Portal, Ramp Advisor Console, Brex Pro Access.
+  - Fathom Portfolio ranks clients red/amber/green on GL data, Intuit Accountant Suite Core is free, and re:cap does bank-based runway alerts for investors (EU/UK).
+  - Banks pay advisors referral bonuses, which cuts against a paid add-on.
+  - The only unfound piece is a **forward-looking runway-risk ranking of startup clients from bank data**.
+  - Gate any console build on advisor demand evidence and Rho partner-OAuth approval. Consider the investor/accelerator variant.
+- **Corrections applied to the landscape:** G3 drops "cheap" and "no multi-client tool"; the I1 prior_work note is corrected (Fathom ranks portfolios; bank portals exist).
 
 ## Pilots
 
