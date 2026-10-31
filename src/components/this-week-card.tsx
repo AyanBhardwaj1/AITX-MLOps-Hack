@@ -98,7 +98,8 @@ export function ThisWeekCard({ changes, mode, slack }: { changes: Change[]; mode
             <Markdown text={preview.markdown} />
             {!slack && (
               <p className="mt-3 text-xs text-muted">
-                To get this in Slack every Monday, add a <code>SLACK_WEBHOOK_URL</code> (an incoming webhook) and <code>CRON_SECRET</code> on the server.
+                To get this in Slack every Monday, add a <code>SLACK_WEBHOOK_URL</code> (an incoming webhook) and <code>CRON_SECRET</code> on the
+                server. Sending on demand from here also needs <code>APP_PASSWORD</code>.
               </p>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertSafeToServe, checkBasicAuth, checkBearer, safeEqual } from "@/lib/access";
+import { assertSafeToServe, checkBasicAuth, checkBearer, isCrossSiteWrite, safeEqual } from "@/lib/access";
 
 const basic = (user: string, pass: string) => `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
 
@@ -50,5 +50,24 @@ describe("assertSafeToServe", () => {
   it("refuses a real Rho account unless the app is password-protected", () => {
     expect(() => assertSafeToServe({ rhoBaseUrl: "https://rhoapi.rho.co/api/v1", appPassword: undefined })).toThrow(/APP_PASSWORD/);
     expect(() => assertSafeToServe({ rhoBaseUrl: "https://rhoapi.rho.co/api/v1", appPassword: "long-enough-pass" })).not.toThrow();
+  });
+});
+
+describe("isCrossSiteWrite", () => {
+  const h = (o: Record<string, string>) => new Headers(o);
+  it("lets reads and same-origin writes through", () => {
+    expect(isCrossSiteWrite("GET", h({ "sec-fetch-site": "cross-site" }), "app.example.com")).toBe(false);
+    expect(isCrossSiteWrite("POST", h({ "sec-fetch-site": "same-origin", origin: "https://app.example.com" }), "app.example.com")).toBe(false);
+  });
+
+  it("allows non-browser clients that send neither header (curl, server-to-server)", () => {
+    expect(isCrossSiteWrite("POST", h({}), "app.example.com")).toBe(false);
+  });
+
+  it("blocks writes another site triggers from a visitor's browser", () => {
+    expect(isCrossSiteWrite("POST", h({ "sec-fetch-site": "cross-site" }), "app.example.com")).toBe(true);
+    expect(isCrossSiteWrite("POST", h({ "sec-fetch-site": "same-site" }), "app.example.com")).toBe(true);
+    expect(isCrossSiteWrite("DELETE", h({ origin: "https://evil.example" }), "app.example.com")).toBe(true);
+    expect(isCrossSiteWrite("POST", h({ origin: "null" }), "app.example.com")).toBe(true);
   });
 });

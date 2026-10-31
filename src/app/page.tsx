@@ -5,7 +5,7 @@ import { monthlyHistory } from "@/lib/finance/history";
 import { upcomingRenewals } from "@/lib/finance/renewals";
 import { detectChanges } from "@/lib/insights/changes";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
-import { hasJira, hasOpenAI, hasSlack } from "@/lib/server/env";
+import { canSendSlackFromApp, hasJira, hasOpenAI } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
@@ -83,7 +83,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     aiSpend: aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS),
     savings,
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
-    capabilities: { copilot: hasOpenAI(), jira: hasJira(), slack: hasSlack(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
+    capabilities: { copilot: hasOpenAI(), jira: hasJira(), slack: canSendSlackFromApp(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
   };
 }
 

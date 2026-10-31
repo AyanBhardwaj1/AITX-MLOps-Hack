@@ -46,3 +46,5 @@ export const hasJira = () => {
   return Boolean(e.JIRA_BASE_URL && e.JIRA_EMAIL && e.JIRA_API_TOKEN && e.JIRA_PROJECT_KEY);
 };
 export const hasSlack = () => Boolean(env().SLACK_WEBHOOK_URL);
+/** Sending to Slack on demand needs the site password too; the scheduled digest uses CRON_SECRET instead. */
+export const canSendSlackFromApp = () => hasSlack() && Boolean(env().APP_PASSWORD);

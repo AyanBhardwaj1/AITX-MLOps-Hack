@@ -18,7 +18,9 @@ const KNOWN_JOBS = [...new Set(VENDOR_CATALOG.map((e) => e.job).filter((j): j is
 
 export const llmLabelSchema = z.object({
   vendorKey: z.string(),
-  name: z.string().min(1).max(60),
+  // Plain words only: no dots, slashes, brackets or markup, so a name can't turn into a link,
+  // mention or formatting when it lands in Slack, a memo or a ticket.
+  name: z.string().min(1).max(60).regex(/^[A-Za-z0-9][A-Za-z0-9 &'()-]*$/),
   category: z.enum(CATEGORIES),
   job: z.enum(KNOWN_JOBS).nullable(),
   confidence: z.number().min(0).max(1),

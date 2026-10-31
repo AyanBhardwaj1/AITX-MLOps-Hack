@@ -34,6 +34,12 @@ describe("llmLabelSchema", () => {
     expect(llmLabelSchema.safeParse({ ...ok, job: "made_up_job" }).success).toBe(false);
     expect(llmLabelSchema.safeParse({ ...ok, confidence: 2 }).success).toBe(false);
   });
+
+  it("keeps vendor names plain, so they can't become links or mentions in Slack and memos", () => {
+    const ok = { vendorKey: "x", name: "Teamline", category: "software", job: null, confidence: 0.9 };
+    for (const name of ["Teamline Software", "Ben & Jerry's (HQ)", "A-1 Courier"]) expect(llmLabelSchema.safeParse({ ...ok, name }).success, name).toBe(true);
+    for (const name of ["evil.example.com", "https://x.co", "<!channel>", "**bold**", "@here"]) expect(llmLabelSchema.safeParse({ ...ok, name }).success, name).toBe(false);
+  });
 });
 
 describe("applyVendorLabels", () => {
