@@ -83,7 +83,7 @@ function howLong(a: Analysis): InstantAnswer {
   const snap = getFinancialSnapshot(a);
   const lines = [
     `At today's burn, about **${months(snap.runwayMonths)}**` + (snap.zeroCashDate ? ` (cash runs out around ${snap.zeroCashDate}).` : "."),
-    `From ${f.method}, the likely range is **${range(f.runwayMonths.p10, f.runwayMonths.p90)}**. There's a 1-in-10 chance it's shorter than ${months(f.runwayMonths.p10)}.`,
+    `From ${f.method}, the range is **${range(f.runwayMonths.p10, f.runwayMonths.p90)}**. It reflects past month-to-month swings only, not trends like new hires, a revenue drop or a big one-off bill, so treat the low end as a floor for steady times, not a worst case.`,
     `If revenue fell 30%, runway would be **${months(snap.runwayMonthsIfRevenueFalls30Pct)}**.`,
   ];
   return { question: INSTANT_QUESTIONS.how_long, tools: ["get_runway_forecast", "get_financial_snapshot"], text: lines.join("\n\n") };

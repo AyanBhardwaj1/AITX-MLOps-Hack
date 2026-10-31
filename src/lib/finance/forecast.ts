@@ -35,7 +35,7 @@ export interface Percentiles<T> {
 
 export interface Forecast {
   points: ForecastPoint[];
-  /** p10 is the pessimistic case: a 1-in-10 chance cash runs out sooner. */
+  /** p10/p50/p90 of simulated runway from past month-to-month swings; excludes trends and one-off shocks, so it under-covers (see sleep-research/runs/runway-backtest.md). */
   runwayMonths: Percentiles<number>;
   zeroCashDates: Percentiles<IsoDate | null>;
   simulations: number;

@@ -42,12 +42,12 @@ export function ForecastChart({
           <YAxis tickFormatter={formatCompactDollars} tickLine={false} axisLine={false} fontSize={12} tick={{ fill: "#5b6779" }} width={56} />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            formatter={(v, name) => (name === "Likely range (P10–P90)" ? null : formatDollars(Number(v) * 100))}
+            formatter={(v, name) => (name === "Range from past swings (P10–P90)" ? null : formatDollars(Number(v) * 100))}
             labelFormatter={(l) => String(l)}
           />
           <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={legendText} />
           <Area dataKey="floor" stackId="band" stroke="none" fill="transparent" legendType="none" isAnimationActive={false} />
-          <Area dataKey="band" name="Likely range (P10–P90)" stackId="band" stroke="none" fill={COLORS.band} fillOpacity={0.9} isAnimationActive={false} />
+          <Area dataKey="band" name="Range from past swings (P10–P90)" stackId="band" stroke="none" fill={COLORS.band} fillOpacity={0.9} isAnimationActive={false} />
           <Line dataKey="base" name="At today's burn" stroke={COLORS.base} strokeWidth={2} dot={false} isAnimationActive={false} />
           <Line dataKey="stress" name="If revenue falls 30%" stroke={COLORS.stress} strokeWidth={1.5} strokeDasharray="3 3" dot={false} isAnimationActive={false} />
           {monthlySavingsCents > 0 && (

@@ -6,3 +6,7 @@ Backtest of the P10-P90 cash band: 20 seeds × 2 noise levels × origins 6/7/8/9
 | as_generated | 6 mo | 200 | 41% | 4% | 56% | 2.5% |
 | hiring_ramp | 3 mo | 200 | 7% | 93% | 0% | 4.1% |
 | hiring_ramp | 6 mo | 200 | 0% | 100% | 0% | 8.0% |
+| revenue_drop | 3 mo | 200 | 52% | 23% | 26% | 1.4% |
+| revenue_drop | 6 mo | 200 | 34% | 56% | 10% | 2.5% |
+| one_off_bill | 3 mo | 200 | 49% | 22% | 30% | 1.4% |
+| one_off_bill | 6 mo | 200 | 10% | 76% | 14% | 2.5% |

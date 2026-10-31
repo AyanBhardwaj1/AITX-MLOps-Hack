@@ -154,7 +154,7 @@ const FORECAST_HISTORY_MONTHS = 12;
 const AI_TREND_MONTHS = 6;
 
 export const forecastInput = z.object({});
-/** Monte Carlo runway range: p10 is the pessimistic case (1-in-10 chance of running out sooner). */
+/** Monte Carlo runway range from past month-to-month swings. It excludes trends and one-off shocks, so p10 is not a worst case (see sleep-research/runs/runway-backtest.md). */
 export function getForecast(a: Analysis) {
   const f = forecastCash({
     cashCents: a.snapshot.cashCents,

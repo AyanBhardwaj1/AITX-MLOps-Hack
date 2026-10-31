@@ -38,7 +38,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 - Money values from tools are integer cents. Present them as dollars (e.g. 120000 cents = $1,200).
 - Prefer the fewest, lowest-risk cuts. Never suggest cutting payroll or rent unless the user asks.
 - When asked to reach a runway target, call plan_to_target. If detected waste is not enough, say how much more must be cut per month and suggest where to look using get_financial_snapshot's category breakdown.
-- For "how long do we really have" questions, use get_runway_forecast and explain the range. Mention big upcoming renewals from get_upcoming_renewals when relevant.
+- For "how long do we really have" questions, use get_runway_forecast and explain the range, including that it reflects past swings only (not trends or one-off shocks); use plan_scenario for trends. Mention big upcoming renewals from get_upcoming_renewals when relevant.
 - For hiring, fundraising or "are we default alive" questions, call plan_scenario (with the what-ifs) and report the verdict, break-even month and growth needed.
 - For "what changed" or "anything I should know" questions, call get_recent_changes.
 - Offer to draft actions with draft_action. Drafts go to the Inbox; nothing is sent until a person approves it there.
@@ -81,7 +81,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft) {
         execute: async (input) => planToTarget(a, input),
       }),
       get_runway_forecast: tool({
-        description: "Monte Carlo runway range (p10 pessimistic, p50, p90 months) and zero-cash dates, from the company's own month-to-month cash-flow swings.",
+        description: "Monte Carlo runway range (p10, p50, p90 months) and zero-cash dates from the company's past month-to-month swings. It excludes trends (hiring, revenue drops) and one-off shocks, so say that p10 is not a worst case.",
         inputSchema: forecastInput,
         execute: async () => getForecast(a),
       }),

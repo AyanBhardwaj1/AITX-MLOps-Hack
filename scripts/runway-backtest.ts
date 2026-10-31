@@ -17,7 +17,7 @@ const NOISE = ["clean", "noisy"] as const;
 const ASOF = "2026-10-26";
 const ORIGIN_MONTHS_BACK = [6, 7, 8, 9, 10];
 const HORIZONS = [3, 6];
-const PROFILES = ["as_generated", "hiring_ramp"] as const;
+const PROFILES = ["as_generated", "hiring_ramp", "revenue_drop", "one_off_bill"] as const;
 
 const dateOf = (t: RhoTransaction) => (t.posted_at ?? t.initiated_at).slice(0, 10);
 const cashFlowAfter = (txns: readonly RhoTransaction[], d: string) =>
@@ -38,13 +38,34 @@ function hiringRamp(txns: RhoTransaction[]): { txns: RhoTransaction[]; extra: nu
   return { txns: out, extra };
 }
 
+/** Revenue falls 50% from 5 months before ASOF: an event no history-based band can foresee. */
+function revenueDrop(txns: RhoTransaction[]): { txns: RhoTransaction[]; extra: number } {
+  let extra = 0;
+  const from = addDays(ASOF, -150);
+  const out = txns.map((t) => {
+    if (!t.counterparty_name.includes("STRIPE") || t.amount.amount <= 0 || dateOf(t) < from) return t;
+    const cut = -Math.round(t.amount.amount / 2);
+    extra += cut;
+    return { ...t, amount: { ...t.amount, amount: t.amount.amount + cut } };
+  });
+  return { txns: out, extra };
+}
+
+/** A $60k one-off legal bill 4 months before ASOF. */
+function oneOffBill(txns: RhoTransaction[]): { txns: RhoTransaction[]; extra: number } {
+  const d = addDays(ASOF, -120);
+  const bill = { ...txns[0]!, id: "oneoff_backtest", money_movement_id: null, account_id: "acc_taco_checking", account_type: "checking" as const, transaction_type: "ach_debit", counterparty_name: "WILSON SONSINI LEGAL", amount: { amount: -6_000_000, currency: "USD" }, initiated_at: `${d}T15:00:00Z`, posted_at: `${d}T18:00:00Z`, card_id: null, card_name: null, user_full_name: null };
+  return { txns: [...txns, bill], extra: -6_000_000 };
+}
+
 const results: Record<string, Record<number, { inBand: number; below: number; above: number; n: number; widthPct: number[] }>> = {};
 for (const profile of PROFILES) {
   results[profile] = Object.fromEntries(HORIZONS.map((h) => [h, { inBand: 0, below: 0, above: 0, n: 0, widthPct: [] as number[] }]));
   for (const noise of NOISE) {
     for (const seed of SEEDS) {
       const base = generateDemoCompany({ seed, noise, asOf: ASOF });
-      const { txns, extra } = profile === "hiring_ramp" ? hiringRamp(base.transactions) : { txns: base.transactions, extra: 0 };
+      const { txns, extra } =
+        profile === "hiring_ramp" ? hiringRamp(base.transactions) : profile === "revenue_drop" ? revenueDrop(base.transactions) : profile === "one_off_bill" ? oneOffBill(base.transactions) : { txns: base.transactions, extra: 0 };
       // Keep the company solvent: shift today's cash by the extra spend so past balances stay as generated.
       const cashNow = cashBalanceCents(base.accounts) + extra;
       for (const back of ORIGIN_MONTHS_BACK) {
