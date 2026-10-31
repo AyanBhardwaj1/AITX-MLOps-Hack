@@ -3,6 +3,7 @@ import { VARIABLE_BY_NATURE } from "../detect/findings";
 import { isOutflow } from "../detect/recurring";
 import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
+import { formatDate } from "../format";
 import { formatCents } from "../money";
 import type { Cents, EnrichedTxn, IsoDate, RecurringStream } from "../types";
 
@@ -97,7 +98,7 @@ function largePayments(large: readonly EnrichedTxn[]): Change[] {
       kind: "large_payment" as const,
       severity: "warn" as const,
       title: `Large payment: ${t.vendor.name}`,
-      detail: `${formatCents(-t.amountCents)} on ${t.postedAt}. Not a recurring charge.`,
+      detail: `${formatCents(-t.amountCents)} on ${formatDate(t.postedAt)}. Not a recurring charge.`,
       amountCents: -t.amountCents,
       date: t.postedAt,
     }));
@@ -120,7 +121,7 @@ function priceChanges(txns: readonly EnrichedTxn[], streams: readonly RecurringS
         kind: "price_change" as const,
         severity: "warn" as const,
         title: `${s.vendorName} price went up ${Math.round(((after - before) / before) * 100)}%`,
-        detail: `${formatCents(before)} → ${formatCents(after)} per ${s.cadence} charge (${last.postedAt}).`,
+        detail: `${formatCents(before)} → ${formatCents(after)} per ${s.cadence} charge (${formatDate(last.postedAt)}).`,
         amountCents: after - before,
         date: last.postedAt,
       },
@@ -148,7 +149,7 @@ function newVendors(txns: readonly EnrichedTxn[], asOf: IsoDate, skip: ReadonlyS
           kind: "new_vendor" as const,
           severity: "info" as const,
           title: `New vendor: ${name}`,
-          detail: `First charge ${date}; ${formatCents(total)} so far. Expected, or a tool someone signed up for?`,
+          detail: `First charge ${formatDate(date)}; ${formatCents(total)} so far. Expected, or a tool someone signed up for?`,
           amountCents: total,
           date,
         },
@@ -164,7 +165,7 @@ function renewalsSoon(streams: readonly RecurringStream[], asOf: IsoDate): Chang
       kind: "renewal_soon" as const,
       severity: "info" as const,
       title: `${r.vendorName} renews in ${r.daysAway} days`,
-      detail: `${formatCents(r.amountCents)} ${r.cadence} charge due ${r.dueDate}. Cancel, downgrade or renegotiate before then.`,
+      detail: `${formatCents(r.amountCents)} ${r.cadence} charge due ${formatDate(r.dueDate)}. Cancel, downgrade or renegotiate before then.`,
       amountCents: r.amountCents,
       date: r.dueDate,
     }));

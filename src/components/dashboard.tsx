@@ -6,6 +6,7 @@ import type { AiSpendTrend } from "@/lib/finance/ai-spend";
 import type { Forecast } from "@/lib/finance/forecast";
 import type { MonthHistory } from "@/lib/finance/history";
 import type { Renewal } from "@/lib/finance/renewals";
+import type { Change } from "@/lib/insights/changes";
 import { categoryName, formatDate, formatMoney } from "@/lib/format";
 import { formatCents, formatDollars } from "@/lib/money";
 import type { FindingStatus } from "@/lib/store/types";
@@ -17,6 +18,8 @@ import { InboxPanel } from "./inbox-panel";
 import { ForecastChart } from "./forecast-chart";
 import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { RunwayChart } from "./runway-chart";
+import { ScenarioPlanner } from "./scenario-planner";
+import { ThisWeekCard } from "./this-week-card";
 
 export interface EvidenceRow {
   id: string;
@@ -49,7 +52,8 @@ export interface DashboardData {
   forecast: Forecast;
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
-  capabilities: { copilot: boolean; jira: boolean; persistence: "postgres" | "memory"; storeOk: boolean };
+  changes: Change[];
+  capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean };
 }
 
 const KIND_LABEL: Record<Finding["kind"], string> = {
@@ -204,6 +208,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </div>
         </section>
 
+        <ThisWeekCard changes={data.changes} mode={data.mode} slack={data.capabilities.slack} />
+
         <HowItWorks />
 
         <section className="mb-6 rounded-xl border border-line bg-panel p-5">
@@ -237,6 +243,13 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             <RunwayChart history={data.history} />
           )}
         </section>
+
+        <ScenarioPlanner
+          history={data.history}
+          cashCents={data.snapshot.cashCents}
+          asOf={data.asOf}
+          wasteSavingsCents={allSim.monthlySavingsCents}
+        />
 
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <RenewalsCard renewals={data.renewals} />

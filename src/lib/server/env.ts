@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { RHO_SANDBOX_URL } from "../rho/client";
+import { isSlackWebhookUrl } from "../slack";
 
 const schema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
@@ -22,6 +23,8 @@ const schema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   /** Which data the daily Autopilot reviews: the demo company or the configured Rho feed. */
   AUTOPILOT_CRON_MODE: z.enum(["demo", "sandbox"]).default("demo"),
+  /** Slack incoming webhook for the Monday digest (https://hooks.slack.com/services/...). */
+  SLACK_WEBHOOK_URL: z.string().refine(isSlackWebhookUrl, "must be a https://hooks.slack.com/services/ URL").optional(),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -42,3 +45,4 @@ export const hasJira = () => {
   const e = env();
   return Boolean(e.JIRA_BASE_URL && e.JIRA_EMAIL && e.JIRA_API_TOKEN && e.JIRA_PROJECT_KEY);
 };
+export const hasSlack = () => Boolean(env().SLACK_WEBHOOK_URL);

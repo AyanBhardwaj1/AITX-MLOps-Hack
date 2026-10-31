@@ -3,8 +3,9 @@ import { aiSpendTrend } from "@/lib/finance/ai-spend";
 import { forecastCash } from "@/lib/finance/forecast";
 import { monthlyHistory } from "@/lib/finance/history";
 import { upcomingRenewals } from "@/lib/finance/renewals";
+import { detectChanges } from "@/lib/insights/changes";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
-import { hasJira, hasOpenAI } from "@/lib/server/env";
+import { hasJira, hasOpenAI, hasSlack } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingStatus } from "@/lib/store/types";
@@ -78,7 +79,8 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     }),
     renewals: upcomingRenewals(a.streams, a.asOf),
     aiSpend: aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS),
-    capabilities: { copilot: hasOpenAI(), jira: hasJira(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
+    changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
+    capabilities: { copilot: hasOpenAI(), jira: hasJira(), slack: hasSlack(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
   };
 }
 
