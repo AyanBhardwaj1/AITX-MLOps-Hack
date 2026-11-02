@@ -108,6 +108,17 @@ function dampedSteps(horizon: number, damping: number): number[] {
   return out;
 }
 
+/**
+ * Net burn for the months the data really covers. When the history starts inside the window (a
+ * young company, or a bank export from mid-month), the empty months before it and the partial month
+ * it starts in are not burn, so they are left out of the trend fit.
+ */
+function observedMonths(history: readonly MonthHistory[]): number[] {
+  const first = history.findIndex((m) => m.inflowCents !== 0 || m.outflowCents !== 0);
+  const rows = first <= 0 ? history : history.slice(first + 1);
+  return rows.map((m) => m.outflowCents - m.inflowCents);
+}
+
 /** Nearest-rank percentile on a sorted array (works with Infinity). */
 function percentile(sorted: readonly number[], p: number): number {
   return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)]!;
@@ -127,7 +138,8 @@ export function forecastCash({
   trendWindowMonths = DEFAULT_TREND_WINDOW_MONTHS,
 }: ForecastInput): Forecast {
   const raw = history.map((m) => m.outflowCents - m.inflowCents);
-  const fit = method === "trend" ? fitBurnTrend(raw.slice(-trendWindowMonths)) : null;
+  const observed = observedMonths(history);
+  const fit = method === "trend" ? fitBurnTrend(observed.slice(-trendWindowMonths)) : null;
   // "swings": recentred bootstrap, each month's deviation from the historical mean around today's burn.
   const mean = raw.length ? raw.reduce((s, x) => s + x, 0) / raw.length : 0;
   const noise = fit ? fit.residuals : raw.map((x) => x - mean);
@@ -136,7 +148,7 @@ export function forecastCash({
   // An insignificant slope still widens the range through its uncertainty, but doesn't move the middle.
   const slope = fit && Math.abs(fit.slopeCents) >= MIN_TREND_T * slopeSe ? fit.slopeCents : 0;
   // Today's burn is an average of a few noisy months, so its own level is uncertain too.
-  const levelSe = fit ? fit.residualSdCents / Math.sqrt(Math.min(DEFAULT_LOOKBACK_MONTHS, Math.max(1, raw.length))) : 0;
+  const levelSe = fit ? fit.residualSdCents / Math.sqrt(Math.min(DEFAULT_LOOKBACK_MONTHS, Math.max(1, observed.length))) : 0;
   const steps = dampedSteps(MAX_SIMULATED_MONTHS, trendDamping);
   const rng = createRng(seed);
   const cashByMonth: number[][] = Array.from({ length: horizonMonths + 1 }, () => []);

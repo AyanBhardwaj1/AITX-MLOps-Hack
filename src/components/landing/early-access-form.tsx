@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "done" } | { kind: "error"; message: string };
 
@@ -18,11 +18,16 @@ const BANKS = [
   { value: "other", label: "Somewhere else" },
 ] as const;
 
-/** The CTA's dialog: the product's first screen, already open. Posts to /api/waitlist. */
+/** The CTA’s dialog: the product’s first screen, already open. Posts to /api/waitlist. */
 export function EarlyAccessForm() {
   const id = useId();
   const [role, setRole] = useState<(typeof ROLES)[number]["value"]>("founder");
   const [state, setState] = useState<State>({ kind: "idle" });
+  const confirmation = useRef<HTMLDivElement>(null);
+  // The form is replaced on success: move focus to the confirmation so keyboard and screen-reader users land on it.
+  useEffect(() => {
+    if (state.kind === "done") confirmation.current?.focus();
+  }, [state.kind]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,18 +47,18 @@ export function EarlyAccessForm() {
       });
       if (res.ok) return setState({ kind: "done" });
       const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      setState({ kind: "error", message: body?.error ?? "That didn't go through. Try again." });
+      setState({ kind: "error", message: body?.error ?? "That didn’t go through. Try again." });
     } catch {
-      setState({ kind: "error", message: "You seem to be offline. Try again when you're connected." });
+      setState({ kind: "error", message: "You seem to be offline. Try again when you’re connected." });
     }
   }
 
   if (state.kind === "done") {
     return (
-      <div data-ui className="w-full max-w-[440px] bg-white p-7 text-ink dialog-float" role="status">
-        <p className="text-[length:var(--t-3)] font-semibold">You&apos;re on the list.</p>
+      <div data-ui ref={confirmation} tabIndex={-1} className="w-full max-w-[440px] bg-white p-7 text-ink outline-none dialog-float">
+        <p className="text-[length:var(--t-3)] font-semibold">You’re on the list.</p>
         <p className="mt-3 text-[18px]">
-          We&apos;ll write when Runway can connect to your bank. Until then, the{" "}
+          We’ll write when Runway can connect to your bank. Until then, the{" "}
           <a href="/grader" className="text-link font-medium text-brand">
             free grader
           </a>{" "}
@@ -86,10 +91,10 @@ export function EarlyAccessForm() {
         spellCheck={false}
         placeholder="maya@yourstartup.com"
         maxLength={254}
-        className="mt-1.5 block w-full border border-[#cbd5e1] px-3 py-3 text-[18px] outline-none focus-visible:border-brand"
+        className="mt-1.5 block w-full border border-[#7b8597] bg-white px-3 py-3 text-[18px] focus-visible:border-brand"
       />
       <fieldset className="mt-5">
-        <legend className="text-[15px] font-medium">I&apos;m a</legend>
+        <legend className="text-[15px] font-medium">I’m a</legend>
         <div className="mt-1.5 grid grid-cols-2 bg-[#eef1f4] p-1">
           {ROLES.map((r) => (
             <label
@@ -109,7 +114,7 @@ export function EarlyAccessForm() {
         id={`${id}-bank`}
         name="bank"
         defaultValue=""
-        className="mt-1.5 block w-full border border-[#cbd5e1] bg-white px-3 py-3 text-[18px] outline-none focus-visible:border-brand"
+        className="mt-1.5 block w-full border border-[#7b8597] bg-white px-3 py-3 text-[18px] focus-visible:border-brand"
       >
         <option value="">Choose one</option>
         {BANKS.map((b) => (
@@ -126,8 +131,14 @@ export function EarlyAccessForm() {
       <button type="submit" disabled={state.kind === "sending"} className="btn mt-6 h-[52px] w-full text-[18px] disabled:opacity-70">
         {state.kind === "sending" ? "Joining…" : "Join early access"}
       </button>
-      <p className="mt-3 min-h-[1.5em] text-[15px]" role="alert">
-        {state.kind === "error" ? <span className="font-medium text-[#b91c1c]">{state.message}</span> : <span className="text-muted">No card. One email when your bank is ready.</span>}
+      <p className="mt-3 min-h-[1.5em] text-[15px]">
+        {state.kind === "error" ? (
+          <span role="alert" className="font-medium text-[#b91c1c]">
+            {state.message}
+          </span>
+        ) : (
+          <span className="text-muted">No card. One email when your bank is ready.</span>
+        )}
       </p>
     </form>
   );

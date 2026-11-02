@@ -13,7 +13,7 @@ interface Props {
   zeroCashDateAfterCuts: IsoDate;
 }
 
-/** Showcase: the product's own "cancel" switch at poster size. Flipping it moves the run-out date. */
+/** Showcase: the product’s own "cancel" switch at poster size. Flipping it moves the run-out date. */
 export function WasteSwitch({ daysGained, wasteMonthlyCents, findings, zeroCashDate, zeroCashDateAfterCuts }: Props) {
   const [cut, setCut] = useState(false);
   const year = formatDollars(wasteMonthlyCents * 12);
@@ -22,7 +22,9 @@ export function WasteSwitch({ daysGained, wasteMonthlyCents, findings, zeroCashD
       id="waste"
       aria-labelledby="waste-heading"
       data-reveal
-      className={`waste-field relative min-h-[86svh] overflow-hidden lg:min-h-[92svh] ${cut ? "bg-brand text-white" : "bg-ink text-white"}`}
+      data-cut={cut}
+      // The class must never change: Reveal adds "is-in" to it, and a React re-render would wipe that.
+      className="waste-field on-dark relative min-h-[86svh] overflow-hidden text-white lg:min-h-[92svh]"
     >
       <div className="wrap relative z-10 pt-[clamp(56px,8vw,120px)]">
         <h2 id="waste-heading" className="rise text-[length:var(--t-4)]">
@@ -36,12 +38,12 @@ export function WasteSwitch({ daysGained, wasteMonthlyCents, findings, zeroCashD
           Cash runs out {formatDate(cut ? zeroCashDateAfterCuts : zeroCashDate)}
         </p>
       </div>
-      <div className="absolute bottom-[-4%] left-[6%] sm:left-auto sm:right-[-12%] lg:right-[-8%]">
+      <div className="absolute bottom-[-4%] left-[6%] sm:left-auto sm:right-[2%] lg:right-[4%]">
         <button
           type="button"
           role="switch"
           aria-checked={cut}
-          aria-label={`Cancel the ${findings} findings`}
+          aria-label={`Cancel ${findings} findings`}
           onClick={() => setCut((v) => !v)}
           data-ui
           className="switch rise block text-left text-[clamp(44px,10vw,150px)] transition-transform active:scale-[0.99]"

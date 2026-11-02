@@ -1,6 +1,6 @@
 /**
  * "Many into one": loose transactions on the left, squeezed into one ribbon, out as neat rows of
- * findings on the right. Drawn with the page's one shape, a small square board.
+ * findings on the right. Drawn with the page’s one shape, a small square board.
  */
 
 const W = 1400;

@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <LegalPage
       title="Privacy"
       intro="Runway reads financial data so it can tell you about your runway. Here is exactly what it keeps and why."
-      updated="November 2, 2026"
+      updated="2026-11-02"
       sections={[
         {
           heading: "What we collect",
@@ -24,8 +24,9 @@ export default function PrivacyPage() {
                 <strong>Early-access list:</strong> your email, the role and bank you chose, which part of the site you signed up from, and the time.
               </li>
               <li>
-                <strong>Connected bank data:</strong> account names and balances and up to twelve months of transactions, read through your bank&apos;s
-                read-only API. We never see or store your bank login.
+                <strong>Connected bank data:</strong> account names and balances and the transaction history your bank’s API returns (the
+                analysis uses the last twelve months), including vendor descriptions and the cardholder on each card charge. Runway only calls
+                read endpoints. We never see or store your bank login.
               </li>
               <li>
                 <strong>What you do in the app:</strong> findings you accept or dismiss, drafts you approve, and agent run summaries, so the app remembers
@@ -38,10 +39,10 @@ export default function PrivacyPage() {
           ),
         },
         {
-          heading: "What we don't do",
+          heading: "What we don’t do",
           body: (
             <p>
-              We don&apos;t sell or rent your data, show ads, or use advertising or analytics trackers. The public site sets no cookies. Bank data is used only to
+              We don’t sell or rent your data, show ads, or use advertising or analytics trackers. The public site sets no cookies. Bank data is used only to
               produce your own analysis.
             </p>
           ),
@@ -53,8 +54,9 @@ export default function PrivacyPage() {
               <li>Vercel hosts the app.</li>
               <li>Supabase stores the database (Postgres), in the region the deployment is configured for.</li>
               <li>
-                OpenAI, only when AI features are switched on: it receives vendor names and amounts to label unfamiliar vendors, the computed numbers to
-                answer your questions, and the context needed to write drafts.
+                OpenAI, only when AI features are switched on. It receives the transaction descriptions of unfamiliar vendors (to label them); when
+                you ask Copilot a question, the computed figures and the individual transactions it looks up (date, amount, vendor, category and
+                cardholder name); and the context needed to write drafts.
               </li>
               <li>Slack, only if you connect the Monday digest: it receives the digest text.</li>
             </ul>

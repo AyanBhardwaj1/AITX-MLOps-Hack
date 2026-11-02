@@ -47,3 +47,21 @@ describe("handleSignup", () => {
     await expect(handleSignup({ email: "a@example.com" }, store)).rejects.toThrow("db down");
   });
 });
+
+describe("waitlistBackend", () => {
+  it("uses Postgres whenever a database is configured", async () => {
+    const { waitlistBackend } = await import("@/lib/waitlist/backend");
+    expect(waitlistBackend({ hasDatabase: true, hosted: true })).toBe("postgres");
+    expect(waitlistBackend({ hasDatabase: true, hosted: false })).toBe("postgres");
+  });
+
+  it("refuses signups on a hosted deployment without a database instead of losing them", async () => {
+    const { waitlistBackend } = await import("@/lib/waitlist/backend");
+    expect(waitlistBackend({ hasDatabase: false, hosted: true })).toBe("unavailable");
+  });
+
+  it("keeps an in-memory list for local development and tests", async () => {
+    const { waitlistBackend } = await import("@/lib/waitlist/backend");
+    expect(waitlistBackend({ hasDatabase: false, hosted: false })).toBe("memory");
+  });
+});

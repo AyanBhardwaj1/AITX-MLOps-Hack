@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EarlyAccessForm } from "@/components/landing/early-access-form";
 import { FeedDiagram } from "@/components/landing/feed-diagram";
+import { LoopVideo } from "@/components/landing/loop-video";
 import { Reveal } from "@/components/landing/reveal";
 import { RunwayCalculator } from "@/components/landing/runway-calculator";
 import { SiteFooter, SiteHeader } from "@/components/landing/site-chrome";
@@ -18,7 +19,7 @@ export const dynamic = "force-static";
 export const metadata: Metadata = {
   title: { absolute: "Runway: know the day your cash runs out" },
   description:
-    "Runway reads your startup's bank feed, read-only, dates the day the cash runs out, and finds the spend pulling it closer. Every Monday, in Slack.",
+    "Runway reads your startup’s bank feed, read-only, dates the day the cash runs out, and finds the spend pulling it closer. Every Monday, in Slack.",
   alternates: { canonical: "/" },
 };
 
@@ -36,8 +37,8 @@ type Shot = { kind: "image"; src: string; w: number; h: number; alt: string } | 
 const STEPS: { name: string; text: string; shot: Shot }[] = [
   {
     name: "Read",
-    text: "Connects to Rho with a read-only token, or takes a CSV export from any bank. Twelve months of transactions; nothing else.",
-    shot: { kind: "image", src: "/shots/runway-summary.jpg", w: 1344, h: 496, alt: "Runway's summary card: 12.2 months of runway, cash runs out Nov 3, 2027" },
+    text: "Connects to Rho through its read endpoints, or takes a CSV export from any bank. Accounts and transactions; nothing else.",
+    shot: { kind: "image", src: "/shots/runway-summary.jpg", w: 1344, h: 496, alt: "Runway’s summary card: 12.2 months of runway, cash runs out Nov 3, 2027" },
   },
   {
     name: "Reduce",
@@ -54,15 +55,15 @@ const STEPS: { name: string; text: string; shot: Shot }[] = [
 const FAQ = [
   {
     q: "Which banks does it work with?",
-    a: "Rho today, through Rho's read-only API. The free grader takes CSV exports from any bank, including Mercury-style files. More direct connections come next, in the order people on the list ask for them.",
+    a: "Rho today, through Rho’s read-only API. The free grader takes CSV exports from any bank, including Mercury-style files. More direct connections come next, in the order people on the list ask for them.",
   },
   {
     q: "Can Runway move money or cancel anything?",
-    a: "No. The bank token is read-only, so it can't pay, transfer or cancel. Runway drafts cancellation emails and tickets; nothing leaves until a person approves it.",
+    a: "No. Runway only calls the bank’s read endpoints and has no code that pays, transfers or cancels. Use a read-only API token. Runway drafts cancellation emails and tickets; nothing leaves until a person approves it.",
   },
   {
     q: "Does AI see my transactions?",
-    a: "Burn, runway and savings are plain arithmetic with no AI. When the AI features are on, a language model labels unfamiliar vendor names, answers questions from the computed numbers and writes drafts. The grader uses no AI and runs entirely in your browser.",
+    a: "Burn, runway and savings are plain arithmetic with no AI. When the AI features are on, an OpenAI model labels unfamiliar vendors, answers questions using the computed figures and the transactions it looks up, and writes drafts. The grader uses no AI and runs entirely in your browser.",
   },
   {
     q: "How accurate are the findings?",
@@ -164,7 +165,7 @@ export default function Home() {
           </p>
         </section>
 
-        {/* The band between the halves: twelve months, counting down like a runway's distance markers. */}
+        {/* The band between the halves: twelve months, counting down like a runway’s distance markers. */}
         <section aria-label={`Twelve months counting down to the run-out date, ${formatDate(s.zeroCashDate!)}`} className="mt-[var(--gap-section)] bg-[#e7ebf0] py-[clamp(28px,4vw,56px)]">
           <div className="wrap">
             <ol className="countdown flex justify-between gap-1 sm:gap-2" data-reveal aria-hidden="true">
@@ -201,13 +202,13 @@ export default function Home() {
           <ol className="mt-10 grid gap-12 md:grid-cols-3 md:gap-6">
             {STEPS.map((step, i) => (
               <li key={step.name} className="rise" style={css({ "--i": i })}>
-                <p className="text-[length:var(--t-3)] font-bold">{step.name}</p>
+                <h3 className="text-[length:var(--t-3)] font-bold">{step.name}</h3>
                 <p className="mt-2 max-w-[38ch] text-[length:var(--t-2)]">{step.text}</p>
                 <div className="mt-6 aspect-[4/3] overflow-hidden bg-[#e7ebf0]">
                   {step.shot.kind === "image" ? (
                     <Image src={step.shot.src} width={step.shot.w} height={step.shot.h} alt={step.shot.alt} sizes="(min-width: 768px) 33vw, 100vw" className="h-full w-full object-cover object-left-top" />
                   ) : (
-                    <video src={step.shot.src} poster={step.shot.poster} aria-label={step.shot.label} autoPlay muted loop playsInline preload="metadata" className="h-full w-full object-cover object-left-top" />
+                    <LoopVideo src={step.shot.src} poster={step.shot.poster} label={step.shot.label} />
                   )}
                 </div>
               </li>
@@ -217,7 +218,7 @@ export default function Home() {
 
         {/* Trust: inset ink panel with the notched picture. */}
         <section aria-labelledby="trust-heading" className="mt-[var(--gap-section)] px-[10px] sm:px-5" data-reveal>
-          <div className="relative overflow-hidden bg-ink px-6 pb-[min(64vw,520px)] pt-12 text-[#e2e8f0] sm:px-14 sm:pt-14 lg:min-h-[110svh] lg:pb-14">
+          <div className="on-dark relative overflow-hidden bg-ink px-6 pb-[min(64vw,520px)] pt-12 text-[#e2e8f0] sm:px-14 sm:pt-14 lg:min-h-[110svh] lg:pb-14">
             <h2 id="trust-heading" className="rise max-w-[12ch] text-[length:var(--t-4)] text-white">
               Reads everything. Moves nothing.
             </h2>
@@ -225,7 +226,7 @@ export default function Home() {
               <div className="rise" style={css({ "--i": 1 })}>
                 <h3 className="text-[length:var(--t-3)] text-white">Read-only, by design</h3>
                 <ul className="bullet-list mt-4 space-y-2 text-[length:var(--t-2)]">
-                  <li>The bank token can read, never pay or transfer.</li>
+                  <li>It only calls read endpoints: no code pays or transfers.</li>
                   <li>Agents write drafts. A person approves each one.</li>
                   <li>The grader never uploads your file.</li>
                 </ul>
@@ -233,7 +234,7 @@ export default function Home() {
               <div className="rise" style={css({ "--i": 2 })}>
                 <h3 className="text-[length:var(--t-3)] text-white">Numbers you can check</h3>
                 <p className="mt-4 text-[length:var(--t-2)]">
-                  Burn, runway and savings are arithmetic on your transactions, in whole cents. Savings count as verified only when the next bill doesn&apos;t
+                  Burn, runway and savings are arithmetic on your transactions, in whole cents. Savings count as verified only when the next bill doesn’t
                   arrive.
                 </p>
               </div>
@@ -246,7 +247,7 @@ export default function Home() {
                 src="/shots/default-alive.jpg"
                 width={1344}
                 height={1516}
-                alt="Runway's default-alive planner: whether the demo company breaks even before its cash runs out"
+                alt="Runway’s default-alive planner: whether the demo company breaks even before its cash runs out"
                 sizes="(min-width: 1024px) 50vw, 86vw"
                 className="drift aspect-[4/3] w-full object-cover object-bottom"
               />
@@ -274,7 +275,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA: the product's first screen, already open. */}
+        {/* CTA: the product’s first screen, already open. */}
         <section id="early-access" aria-labelledby="cta-heading" className="mt-[var(--gap-section)] scroll-mt-0 bg-brand text-white" data-reveal>
           <div className="wrap grid min-h-[84svh] grid-cols-12 gap-x-6 gap-y-10 py-14 lg:min-h-[90svh] lg:py-10">
             <div className="col-span-12 flex flex-col justify-start lg:col-span-6 lg:justify-end lg:pb-8">
@@ -283,7 +284,7 @@ export default function Home() {
                 same cash
               </h2>
               <p className="rise mt-6 max-w-[40ch] text-[length:var(--t-2)]" style={css({ "--i": 1 })}>
-                Join the early-access list. We&apos;ll write when Runway can connect to your bank, and not otherwise.
+                Join the early-access list. We’ll write when Runway can connect to your bank, and not otherwise.
               </p>
             </div>
             <div className="rise col-span-12 flex items-center lg:col-span-5 lg:col-start-8" style={css({ "--i": 2 })}>

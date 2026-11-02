@@ -198,9 +198,20 @@
   }
 }
 
-/* The waste switch: a big square-knobbed toggle; the field changes colour with it. */
+/* The waste switch: a big square-knobbed toggle; the field changes colour with it (via data-cut). */
 .waste-field {
-  transition: background-color 420ms var(--ease-in-out), color 420ms var(--ease-in-out);
+  background: var(--ink);
+  transition: background-color 420ms var(--ease-in-out);
+}
+.waste-field[data-cut="true"] {
+  background: var(--accent);
+}
+
+/* On ink and teal fields the teal focus ring disappears: use white with an ink halo. */
+.on-dark :focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--ink); /* taste-skill-ignore: focus ring, not a resting shadow */
 }
 .switch-track {
   transition: background-color 300ms ease;
@@ -226,6 +237,13 @@
   .js .rise.is-in {
     opacity: 1;
     transform: none;
+  }
+  /* Keyboard focus never waits for an entrance: whatever holds focus shows at once. */
+  .js .rise:focus-within,
+  .js .rise:focus-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 
   /* Signature: the hero fragment opens from the bottom edge and settles from 1.12. */

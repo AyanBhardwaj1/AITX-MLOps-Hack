@@ -23,9 +23,9 @@ const schema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   /** Which data the daily Autopilot reviews: the demo company or the configured Rho feed. */
   AUTOPILOT_CRON_MODE: z.enum(["demo", "sandbox"]).default("demo"),
-  /** Slack incoming webhook for the Monday digest (https://hooks.slack.com/services/...). */
   /** Public contact for privacy and support requests, shown on the legal pages. */
   CONTACT_EMAIL: z.email().optional(),
+  /** Slack incoming webhook for the Monday digest (https://hooks.slack.com/services/...). */
   SLACK_WEBHOOK_URL: z.string().refine(isSlackWebhookUrl, "must be a https://hooks.slack.com/services/ URL").optional(),
 });
 

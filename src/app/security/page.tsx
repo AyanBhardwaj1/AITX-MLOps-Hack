@@ -15,15 +15,15 @@ export default function SecurityPage() {
   return (
     <LegalPage
       title="Security"
-      intro="Runway is built so the worst case is a wrong number on a screen, never money moving. This page says how, and what isn't finished yet."
-      updated="November 2, 2026"
+      intro="Runway is built so the worst case is a wrong number on a screen, never money moving. This page says how, and what isn’t finished yet."
+      updated="2026-11-02"
       sections={[
         {
-          heading: "It can't move money",
+          heading: "It can’t move money",
           body: (
             <>
               <p>
-                Runway only calls your bank&apos;s read endpoints: accounts and transactions. There is no code path that pays, transfers or cancels anything.
+                Runway only calls your bank’s read endpoints: accounts and transactions. There is no code path that pays, transfers or cancels anything.
               </p>
               <p>
                 The agents (Copilot and Autopilot) can only create drafts. A database rule rejects any action an agent tries to create in any state other than
@@ -37,7 +37,8 @@ export default function SecurityPage() {
           body: (
             <p>
               Burn, runway, forecasts and savings are computed by deterministic code, in whole cents, from your transactions. Language models only label
-              unfamiliar vendor names, answer questions using those computed numbers, and write drafts. Every finding links to the transactions behind it.
+              unfamiliar vendors, answer questions using those figures and the transactions they look up, and write drafts. The privacy page lists
+              exactly what is sent. Every finding links to the transactions behind it.
             </p>
           ),
         },
@@ -46,9 +47,9 @@ export default function SecurityPage() {
           body: (
             <ul className="bullet-list space-y-2">
               <li>HTTPS only, with HSTS. The database connection uses TLS with certificate verification.</li>
-              <li>Data lives in Postgres with row-level security on every table; the early-access list can&apos;t be read by any public or signed-in role.</li>
-              <li>A strict content security policy: the app loads nothing from other sites and can&apos;t be framed.</li>
-              <li>Writes from other websites are refused, and public endpoints are rate-limited.</li>
+              <li>Data lives in Postgres with row-level security on every table; the early-access list can’t be read by any public or signed-in role.</li>
+              <li>A content security policy that loads nothing from other sites, and the app can’t be framed.</li>
+              <li>Writes from other websites are refused, and the signup and agent endpoints are rate-limited.</li>
             </ul>
           ),
         },
@@ -56,8 +57,8 @@ export default function SecurityPage() {
           heading: "The free grader",
           body: (
             <p>
-              The <Link href="/grader" className="text-link font-medium text-brand">grader</Link> runs entirely in your browser. An automated test checks that its
-              code uses no network APIs, and a browser test confirmed zero requests after the page loads.
+              The <Link href="/grader" className="text-link font-medium text-brand">grader</Link> runs entirely in your browser. Your file is never uploaded: an
+              automated test checks that the grading code uses no network APIs, and a browser test saw no requests while a file was graded.
             </p>
           ),
         },
@@ -76,7 +77,7 @@ export default function SecurityPage() {
             <p>
               Please report security problems privately through{" "}
               <a href={`${REPO_URL}/security/advisories/new`} className="text-link font-medium text-brand">
-                GitHub&apos;s private vulnerability reporting
+                GitHub’s private vulnerability reporting
               </a>
               , not a public issue. <ContactLine email={email} />
             </p>

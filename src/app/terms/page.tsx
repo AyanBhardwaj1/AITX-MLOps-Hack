@@ -14,13 +14,13 @@ export default function TermsPage() {
     <LegalPage
       title="Terms"
       intro="Plain terms for early access. A fuller agreement comes with paid plans."
-      updated="November 2, 2026"
+      updated="2026-11-02"
       sections={[
         {
           heading: "Early access",
           body: (
             <p>
-              Runway is in early access. Features change, things can break, and we may pause or end early access. Joining the list doesn&apos;t guarantee a
+              Runway is in early access. Features change, things can break, and we may pause or end early access. Joining the list doesn’t guarantee a
               place or a price.
             </p>
           ),
@@ -47,7 +47,7 @@ export default function TermsPage() {
           heading: "Fair use",
           body: (
             <p>
-              Don&apos;t try to break, overload or get around the app&apos;s security, read other people&apos;s data, or use Runway for anything unlawful. We may
+              Don’t try to break, overload or get around the app’s security, read other people’s data, or use Runway for anything unlawful. We may
               suspend access that does.
             </p>
           ),
@@ -56,7 +56,7 @@ export default function TermsPage() {
           heading: "No warranty",
           body: (
             <p>
-              During early access Runway is provided as is, without warranties. To the extent the law allows, we aren&apos;t liable for indirect losses or for
+              During early access Runway is provided as is, without warranties. To the extent the law allows, we aren’t liable for indirect losses or for
               decisions made from its estimates.
             </p>
           ),

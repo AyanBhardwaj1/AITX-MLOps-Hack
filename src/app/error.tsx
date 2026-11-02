@@ -14,10 +14,10 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         Runway couldn&apos;t load this page. Nothing was changed or sent.{error.digest ? ` Reference: ${error.digest}` : ""}
       </p>
       <div className="mt-6 flex gap-3">
-        <button type="button" onClick={reset} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white">
+        <button type="button" onClick={reset} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-strong">
           Try again
         </button>
-        <Link href="/app" className="rounded-lg border border-line px-4 py-2 text-sm">
+        <Link href="/app" className="rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-panel">
           Open the demo company
         </Link>
       </div>

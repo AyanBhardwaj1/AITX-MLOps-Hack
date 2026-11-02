@@ -10,7 +10,9 @@ export function SiteHeader() {
         <span className="board w-8 text-[18px]" aria-hidden="true">
           R
         </span>
-        <span className="text-[18px] tracking-tight">Runway</span>
+        <span className="text-[18px] tracking-tight" translate="no">
+          Runway
+        </span>
       </Link>
       <nav aria-label="Main" className="flex items-center gap-5 sm:gap-7">
         <Link href="/#how" className="text-link hidden md:inline">
@@ -101,7 +103,9 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 text-[15px]">
-          <p>© 2026 Runway</p>
+          <p>
+            © 2026 <span translate="no">Runway</span>
+          </p>
           <Link href="/#early-access" className="btn btn-ink min-h-[44px] px-4">
             Get early access
           </Link>

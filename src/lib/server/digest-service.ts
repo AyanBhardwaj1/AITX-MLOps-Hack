@@ -14,9 +14,10 @@ export interface DigestPreview extends Digest {
 
 const COMPANY: Record<string, string> = { demo: "Taco Robotics, Inc. (demo data)", rho_sandbox: "Rho sandbox", rho: "your company" };
 
-function appUrl(): string | undefined {
+/** The product itself (the site root is the public landing page), on the digest's data source. */
+function appUrl(mode: DataMode): string | undefined {
   const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return host ? `https://${host}` : undefined;
+  return host ? `https://${host}/app${mode === "sandbox" ? "?mode=sandbox" : ""}` : undefined;
 }
 
 /** The digest for one data source, leaving out findings people dismissed. */
@@ -32,7 +33,7 @@ export async function buildDigestFor(mode: DataMode): Promise<DigestPreview> {
     console.error("[digest] couldn't read finding statuses", err);
   }
   const savings = await savingsFor(mode, dataset, analysis);
-  const input = digestInputFromAnalysis(analysis, { company: COMPANY[scopeFor(mode)] ?? dataset.label, exclude, appUrl: appUrl(), savings });
+  const input = digestInputFromAnalysis(analysis, { company: COMPANY[scopeFor(mode)] ?? dataset.label, exclude, appUrl: appUrl(mode), savings });
   return { ...buildDigest(input), changes: [...input.changes] };
 }
 

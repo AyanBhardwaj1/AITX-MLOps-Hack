@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format";
 import { Reveal } from "./reveal";
 import { REPO_URL, SiteFooter, SiteHeader } from "./site-chrome";
 
@@ -7,6 +8,7 @@ export interface LegalSection {
 }
 
 /** Shared layout for /privacy, /security and /terms: sticky title column, readable text column. */
+/** `updated` is an ISO date (YYYY-MM-DD). */
 export function LegalPage({ title, intro, updated, sections }: { title: string; intro: string; updated: string; sections: LegalSection[] }) {
   return (
     <div className="site">
@@ -16,7 +18,7 @@ export function LegalPage({ title, intro, updated, sections }: { title: string; 
         <div className="col-span-12 lg:sticky lg:top-10 lg:col-span-4 lg:self-start">
           <h1 className="text-[length:var(--t-4)]">{title}</h1>
           <p className="mt-5 max-w-[40ch] text-[length:var(--t-2)]">{intro}</p>
-          <p className="mt-4 text-[15px] text-muted">Last updated {updated}. Draft pending legal review.</p>
+          <p className="mt-4 text-[15px] text-muted">Last updated <time dateTime={updated}>{formatDate(updated)}</time>. Draft pending legal review.</p>
         </div>
         <div className="col-span-12 space-y-12 lg:col-span-7 lg:col-start-6">
           {sections.map((s) => (
@@ -36,7 +38,7 @@ export function LegalPage({ title, intro, updated, sections }: { title: string; 
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-/** How to reach us: the configured address, else replying to our email, plus public issues for non-private matters. */
+/** How to reach us privately: the configured address, else GitHub’s private reporting form (never a public issue). */
 export function ContactLine({ email }: { email: string | undefined }) {
   return email ? (
     <>
@@ -48,11 +50,11 @@ export function ContactLine({ email }: { email: string | undefined }) {
     </>
   ) : (
     <>
-      Reply to any email you have received from Runway. For anything that isn&apos;t private, you can also{" "}
-      <a href={`${REPO_URL}/issues`} className="text-link font-medium text-brand">
-        open an issue
-      </a>
-      .
+      Send a private message through{" "}
+      <a href={`${REPO_URL}/security/advisories/new`} className="text-link font-medium text-brand">
+        GitHub’s private reporting form
+      </a>{" "}
+      (only the maintainer can read it). Please don’t post personal details in a public issue.
     </>
   );
 }

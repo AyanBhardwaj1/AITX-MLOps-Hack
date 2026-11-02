@@ -109,6 +109,21 @@ describe("forecastCash", () => {
       expect(drop(20)).toBe(drop(22));
     });
 
+    it("ignores the empty months before the data starts and the partial month it starts in", () => {
+      // A bank export that starts mid-April: zeros, then a half month, then steady $8M months.
+      const partial = [0, 0, 0, 0, 0, 0, 3.5, 8, 8.2, 7.9, 8.1, 8].map((m, i) => month(i, 0, Math.round(m * 1_000_000)));
+      const f = forecastCash({ cashCents: 96_000_000, history: partial, netBurnCents: 8_000_000, asOf: "2026-10-26" });
+      expect(f.runwayMonths.p90).toBeLessThan(14);
+      expect(f.runwayMonths.p10).toBeGreaterThan(10.5);
+    });
+
+    it("doesn't invent a trend from five months of data and a zero-filled year", () => {
+      const young = [0, 0, 0, 0, 0, 0, 0, 8, 8.1, 7.9, 8, 8.05].map((m, i) => month(i, 0, Math.round(m * 1_000_000)));
+      const f = forecastCash({ cashCents: 96_000_000, history: young, netBurnCents: 8_000_000, asOf: "2026-10-26" });
+      expect(Number.isFinite(f.runwayMonths.p90)).toBe(true);
+      expect(f.runwayMonths.p90 - f.runwayMonths.p10).toBeLessThan(3);
+    });
+
     it("needs at least four months before it trusts a trend", () => {
       const short = [6, 7, 8].map((m, i) => month(i, 0, m * 1_000_000));
       const f = forecastCash({ cashCents: 70_000_000, history: short, netBurnCents: 7_000_000, asOf: "2026-10-26" });

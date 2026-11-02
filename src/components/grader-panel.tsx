@@ -185,10 +185,10 @@ export function GraderPanel() {
                 Connect read-only for a weekly digest, alerts when spend changes, and savings verified against your next bills.
               </p>
               <div className="mt-3 flex flex-wrap gap-3">
-                <Link href="/#early-access" className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-brand-soft">
+                <Link href="/#early-access" prefetch={false} className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-brand-soft">
                   Get early access
                 </Link>
-                <Link href="/app" className="inline-block rounded-lg px-4 py-2 text-sm font-medium text-white underline-offset-4 hover:underline">
+                <Link href="/app" prefetch={false} className="inline-block rounded-lg px-4 py-2 text-sm font-medium text-white underline-offset-4 hover:underline">
                   See the live demo
                 </Link>
               </div>
