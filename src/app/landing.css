@@ -1,0 +1,285 @@
+/*
+ * Public site. One motif: the runway distance-remaining marker, a square board with a numeral
+ * counting down what is left. It is the hero stage's notch, the buttons, the list bullets, the
+ * countdown band and the footer wordmark. Square corners everywhere.
+ */
+.site {
+  --ground: var(--color-canvas);
+  --step: #e7ebf0;
+  --ink: var(--color-ink);
+  --on-ink: #e2e8f0;
+  --accent: var(--color-brand);
+  --accent-strong: var(--color-brand-strong);
+  --accent-ink: #ffffff;
+  --pale: var(--color-brand-soft);
+
+  /* Five sizes do all the work. */
+  --t-1: 15px;
+  --t-2: 18px;
+  --t-3: clamp(22px, 2vw, 28px);
+  --t-4: clamp(36px, 4vw, 60px);
+  --t-5: clamp(38px, 5.6vw, 96px);
+
+  --margin: clamp(16px, 2.6vw, 40px);
+  --gap-section: clamp(96px, 12vw, 200px);
+  --notch: clamp(72px, 10vw, 168px);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  background: var(--ground);
+  color: var(--ink);
+  font-size: var(--t-2);
+  line-height: 1.5;
+  overflow-x: clip;
+}
+
+.site h1,
+.site h2,
+.site h3 {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+}
+
+.wrap {
+  padding-inline: var(--margin);
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+/* The board: a square marker with a numeral, the page's one shape. */
+.board {
+  display: inline-grid;
+  place-items: center;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  aspect-ratio: 1;
+}
+
+.bullet-list {
+  list-style: none;
+  padding: 0;
+}
+.bullet-list li {
+  position: relative;
+  padding-left: 1.4em;
+}
+.bullet-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.48em;
+  width: 0.55em;
+  height: 0.55em;
+  background: var(--accent);
+}
+
+/* Buttons: flat, square, one fill. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 48px;
+  padding: 0 22px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: var(--t-1);
+  border-radius: 0;
+  transition:
+    transform 120ms var(--ease-out),
+    background-color 160ms ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-ink {
+  background: var(--ink);
+}
+.btn-light {
+  background: #fff;
+  color: var(--ink);
+}
+.text-link {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 0.08em;
+  transition: text-decoration-color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    background: var(--accent-strong);
+  }
+  .btn-ink:hover {
+    background: #1e293b;
+  }
+  .btn-light:hover {
+    background: var(--pale);
+  }
+  .text-link:hover {
+    text-decoration-color: currentColor;
+  }
+}
+.site :focus-visible {
+  border-radius: 0;
+}
+
+/* Hero stage: a flat accent field with a square notch cut from its top-left corner. */
+.stage {
+  clip-path: polygon(var(--notch) 0, 100% 0, 100% 100%, 0 100%, 0 var(--notch), var(--notch) var(--notch));
+}
+
+/* The about picture: a board with the same notch. */
+.notched {
+  clip-path: polygon(18% 0, 100% 0, 100% 100%, 0 100%, 0 18%, 18% 18%);
+}
+
+/* The CTA dialog floats over the field, so it casts the product's own dialog shadow. */
+.dialog-float {
+  box-shadow: 0 24px 60px -20px rgb(15 23 42 / 0.45); /* taste-skill-ignore: a real open dialog */
+}
+
+/* Honeypot field: off-screen for people, still filled in by bots. */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px; /* taste-skill-ignore: not a rule, an off-screen field */
+  height: 1px; /* taste-skill-ignore */
+  overflow: hidden;
+}
+
+/* FAQ: filled tiles; the plus is two bars, one turns. */
+.faq-tile summary {
+  list-style: none;
+  cursor: pointer;
+}
+.faq-tile summary::-webkit-details-marker {
+  display: none;
+}
+.faq-tile .plus {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.faq-tile .plus::before,
+.faq-tile .plus::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 3px;
+  margin-top: -1.5px;
+  background: currentColor;
+  transition: transform 220ms var(--ease-out);
+}
+.faq-tile .plus::after {
+  transform: rotate(90deg);
+}
+.faq-tile[open] .plus::after {
+  transform: rotate(0deg);
+}
+.faq-tile {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+.faq-tile[open] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .faq-tile:not([open]):hover {
+    background: #dde3ea;
+  }
+}
+
+/* The waste switch: a big square-knobbed toggle; the field changes colour with it. */
+.waste-field {
+  transition: background-color 420ms var(--ease-in-out), color 420ms var(--ease-in-out);
+}
+.switch-track {
+  transition: background-color 300ms ease;
+}
+.switch-knob {
+  transition: transform 420ms var(--ease-out);
+}
+.switch[aria-checked="true"] .switch-knob {
+  transform: translateX(var(--travel));
+}
+
+/* ---------- Motion (step 9). Content is visible without script; travel only with .js. ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .js .rise {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 700ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 75ms);
+  }
+  .js .is-in .rise,
+  .js .rise.is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Signature: the hero fragment opens from the bottom edge and settles from 1.12. */
+  .js .shutter {
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path 1100ms var(--ease-in-out) 200ms;
+  }
+  .js .shutter > * {
+    transform: scale(1.12);
+    transform-origin: top left;
+    transition: transform 1500ms var(--ease-out) 200ms;
+  }
+  /* Triggered by the hero section (an element's own clip-path hides it from the observer). */
+  .js .is-in .shutter {
+    clip-path: inset(0);
+  }
+  .js .is-in .shutter > * {
+    transform: none;
+  }
+
+  /* The countdown band: boards drop in one after another, left to right. */
+  .js .countdown .board {
+    opacity: 0;
+    transform: translateY(-40%);
+    transition:
+      opacity 500ms var(--ease-out),
+      transform 600ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 35ms);
+  }
+  .js .countdown.is-in .board {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* One moving picture: a slow drift on the about screenshot. */
+  .drift {
+    animation: drift 22s var(--ease-in-out) infinite alternate;
+  }
+  @keyframes drift {
+    from {
+      transform: scale(1) translate(0, 0);
+    }
+    to {
+      transform: scale(1.07) translate(-2%, -3%);
+    }
+  }
+
+  /* Feed diagram: squares settle into place. */
+  .js .feed rect {
+    opacity: 0;
+    transition: opacity 600ms ease;
+    transition-delay: calc(var(--d, 0) * 1ms);
+  }
+  .js .feed.is-in rect {
+    opacity: 1;
+  }
+}

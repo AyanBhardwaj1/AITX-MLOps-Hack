@@ -17,7 +17,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         <button type="button" onClick={reset} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white">
           Try again
         </button>
-        <Link href="/" className="rounded-lg border border-line px-4 py-2 text-sm">
+        <Link href="/app" className="rounded-lg border border-line px-4 py-2 text-sm">
           Open the demo company
         </Link>
       </div>

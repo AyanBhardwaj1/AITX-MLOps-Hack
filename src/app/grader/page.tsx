@@ -12,7 +12,7 @@ export default function GraderPage() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <header className="mb-8">
         <Link href="/" className="text-sm text-muted hover:text-ink">
-          ← Runway for Rho
+          ← Runway
         </Link>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">How long is your runway, really?</h1>
         <p className="mt-2 max-w-2xl text-muted">

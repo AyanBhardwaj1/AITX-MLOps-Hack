@@ -6,7 +6,7 @@ export default function NotFound() {
       <h1 className="text-xl font-semibold">Page not found</h1>
       <p className="mt-2 text-sm text-muted">There&apos;s nothing at this address.</p>
       <Link href="/" className="mt-6 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white">
-        Back to the dashboard
+        Back to the home page
       </Link>
     </main>
   );

@@ -21,7 +21,7 @@ const registry: Registry = ((globalThis as Record<symbol, unknown>)[REGISTRY_KEY
 (globalThis as Record<symbol, unknown>)[REGISTRY_KEY] = registry;
 const stores = registry.stores;
 
-function getPool(): Pool {
+export function getPool(): Pool {
   let pool = registry.pool;
   if (!pool) {
     const e = env();

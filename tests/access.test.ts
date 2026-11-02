@@ -71,3 +71,19 @@ describe("isCrossSiteWrite", () => {
     expect(isCrossSiteWrite("POST", h({ origin: "null" }), "app.example.com")).toBe(true);
   });
 });
+
+describe("isPublicPath", () => {
+  it("keeps the marketing site, legal pages, grader and signup outside the site password", async () => {
+    const { isPublicPath } = await import("@/lib/access");
+    for (const p of ["/", "/grader", "/privacy", "/terms", "/security", "/api/waitlist", "/api/health", "/api/cron/digest", "/robots.txt", "/sitemap.xml"]) {
+      expect(isPublicPath(p), p).toBe(true);
+    }
+  });
+
+  it("keeps the app and its data APIs behind the password", async () => {
+    const { isPublicPath } = await import("@/lib/access");
+    for (const p of ["/app", "/app/anything", "/api/findings", "/api/actions", "/api/copilot", "/api/digest", "/api/waitlist/export", "/grader/../app", "/privacy-x"]) {
+      expect(isPublicPath(p), p).toBe(false);
+    }
+  });
+});

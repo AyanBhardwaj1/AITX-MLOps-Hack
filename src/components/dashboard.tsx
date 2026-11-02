@@ -139,9 +139,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Logo />
+          <Link href="/" aria-label="Runway home" className="rounded-lg">
+            <Logo />
+          </Link>
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold leading-tight tracking-tight">Runway for Rho</h1>
+            <h1 className="text-lg font-semibold leading-tight tracking-tight">Runway</h1>
             <p className="text-xs text-muted">
               {data.label === "demo" ? "Taco Robotics, Inc. · synthetic demo data" : "Live Rho sandbox feed"} · as of{" "}
               <time dateTime={data.asOf}>{formatDate(data.asOf)}</time>
@@ -157,6 +159,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           <Link href="/grader" className="rounded-full border border-line bg-panel px-2.5 py-1 text-muted transition-colors hover:border-brand hover:text-brand">
             Free CSV grader
           </Link>
+          {data.label === "demo" && (
+            <Link href="/#early-access" className="rounded-full bg-brand px-2.5 py-1 font-medium text-white transition-colors hover:bg-brand-strong">
+              Get early access
+            </Link>
+          )}
           <nav aria-label="Data source" className="flex overflow-hidden rounded-lg border border-line bg-panel">
             {(["demo", "sandbox"] as const).map((m) => (
               <a
