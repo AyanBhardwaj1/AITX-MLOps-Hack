@@ -97,4 +97,38 @@ do $$ begin
 end $$;
 
 reset role;
+
+-- Early-access emails: only the server's privileged role may read or write them.
+insert into public.waitlist (email, role) values ('maya@example.com', 'founder');
+do $$ begin
+  begin
+    insert into public.waitlist (email) values ('Not@Lowercase.com');
+    raise exception 'FAIL: unnormalized email accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+set role anon;
+do $$ begin
+  begin
+    perform count(*) from public.waitlist;
+    raise exception 'FAIL: anon read the waitlist';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.waitlist (email) values ('spam@example.com');
+    raise exception 'FAIL: anon wrote to the waitlist';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  begin
+    perform count(*) from public.waitlist;
+    raise exception 'FAIL: a signed-in user read the waitlist';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
 select 'ALL SCHEMA TESTS PASSED' as result;

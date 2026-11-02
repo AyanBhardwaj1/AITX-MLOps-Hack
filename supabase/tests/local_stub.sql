@@ -11,3 +11,6 @@ create function auth.uid() returns uuid language sql stable as $$
 $$;
 grant usage on schema auth to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
+-- Like Supabase: new tables in public are granted to the API roles by default, so migrations must
+-- revoke what they don't want exposed (RLS then decides which rows a granted role sees).
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
