@@ -1,10 +1,21 @@
-# Runway for Rho
+# Runway
 
-**Finds the wasted spend in a startup's Rho account and turns it into months of runway.**
+**Know the day your startup's cash runs out, and find the spend pulling it closer.**
+
+Runway reads a company's bank feed (read-only), works out burn, runway and the zero-cash date with plain arithmetic, finds wasted spend, and sends what changed to Slack every Monday. Agents draft the fixes; a person approves every one.
 
 [![CI](https://github.com/AyanBhardwaj1/AITX-MLOps-Hack/actions/workflows/ci.yml/badge.svg)](https://github.com/AyanBhardwaj1/AITX-MLOps-Hack/actions/workflows/ci.yml) [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAyanBhardwaj1%2FAITX-MLOps-Hack&project-name=runway-for-rho)
 
-Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–29, 2026). Tracks: 💳 Rho Fintech and 🤖 Antler Agents.
+**Status: early access.** Runway started as a hackathon project at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–29, 2026; Rho Fintech and Antler Agents tracks) and is now an independent product. It is not affiliated with Rho or any bank. The hackathon write-up is kept in [SUBMISSION.md](SUBMISSION.md).
+
+| Where | What |
+|---|---|
+| `/` | Public site: live runway calculator, what Runway finds, security, FAQ and the early-access form |
+| `/app` | The product, on a synthetic demo company by default (or your Rho feed, behind `APP_PASSWORD`) |
+| `/grader` | Free CSV runway grader; runs entirely in the browser |
+| `/privacy`, `/security`, `/terms` | Early-access policies (drafts pending legal review) |
+
+![Runway's public site](docs/landing.jpg)
 
 ![Runway dashboard](docs/screenshot.png)
 
@@ -18,7 +29,7 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
   - **Double charges.**
 - **Live what-if.** Tick findings and watch runway and the zero-cash date move.
 - **Cash forecast with a range, not a guess.**
-  - A 1,000-path bootstrap Monte Carlo replays the company's own month-to-month swings, giving a P10–P90 runway range and zero-cash dates.
+  - A 1,000-path Monte Carlo follows the last six months' burn trend (when it is statistically real) and the noise around it, giving a P10–P90 runway range and zero-cash dates. How it was chosen and how well it holds: [forecast-trend.md](sleep-research/runs/forecast-trend.md).
   - It sits alongside an "if you act" line that follows your what-if selection.
   - A stress line shows what happens if revenue falls 30%.
 - **Renewals calendar.** Every subscription charge due in the next 60 days, with annual, quarterly or $5k+ renewals flagged as decisions to make *before* they renew.
@@ -36,17 +47,18 @@ Built at the AITX & MLOps World Community Hackathon (Austin Tech Week, Oct 26–
 - **This week + Monday digest.** Deterministic alerts for spend spikes, large one-off payments, subscription price changes, new vendors, renewals due within 14 days and low runway. The same list, plus runway, the default-alive verdict and open waste, goes to Slack every Monday (incoming webhook).
 - **Plan ahead: default alive?** Paul Graham's test, computed: revenue growth is estimated from six months of the feed, and the planner projects month by month with hires, a raise, cut waste or a different growth rate. It shows break-even, the cash-out date and the minimum growth that keeps you alive.
 - **Verified savings.** After you act on a finding, Runway watches the next bills: a cancelled tool must stop charging, a price increase must drop back, a double charge needs its refund. Only verified money counts as saved, and anything still charging is flagged.
-- **Free CSV Runway Grader** (`/grader`, no signup). Drop a bank export (a generic Date/Description/Amount CSV, or Rho- and Mercury-*style* layouts; those column layouts are our assumptions and untested on real exports) and type today's cash. You get runway, a range from past swings and the top wasted spend. It runs in your browser: a Playwright check logged zero network requests during grading. It also states plainly what a given upload can't see, such as card waste in a checking-only export.
+- **Free CSV Runway Grader** (`/grader`, no signup). Drop a bank export (a generic Date/Description/Amount CSV, or Rho- and Mercury-*style* layouts; those column layouts are our assumptions and untested on real exports) and type today's cash. You get runway, a range with the burn trend and the top wasted spend. It runs in your browser: a Playwright check logged zero network requests during grading. It also states plainly what a given upload can't see, such as card waste in a checking-only export.
 - **Inbox ordered by what's at stake.** Drafts waiting for approval are sorted by the dollar impact of their finding, so the few approvals you make each week are the ones that matter.
 - **Investor update.** This month's update drafted from the bank feed: revenue and month-over-month change, burn, cash, runway, default alive, software spend moves and verified cuts. Wins, misses and asks stay marked for you to write.
 - **Read-only by design.** Rho's API can't move money, and neither can Runway. Agents can only create drafts; the database refuses anything else.
+- **Public site and early access.** The landing page's numbers are computed by the same engine from the demo company at build time. Signups go to `POST /api/waitlist` (validated, rate-limited, honeypot, same answer for new and repeat emails) and a `waitlist` table that no public or signed-in database role can read.
 
 ## Quick start
 
 ```bash
 npm install
 cp .env.example .env.local   # optional: add OPENAI_API_KEY for Copilot and LLM memos
-npm run dev                  # http://localhost:3000
+npm run dev                  # http://localhost:3000 (site), /app (product)
 ```
 
 The dashboard, what-if, detectors and Autopilot all work with **no keys at all** on the seeded demo company. Switch to **Rho sandbox** in the header to pull the live sandbox feed (`https://rhoapi-sandbox.rho.co/api/v1`, which accepts any token).
@@ -63,7 +75,7 @@ The dashboard, what-if, detectors and Autopilot all work with **no keys at all**
 
 ## Reproducing the demo
 
-1. `npm install && npm run dev`, then open http://localhost:3000. The demo company loads by default.
+1. `npm install && npm run dev`, then open http://localhost:3000/app. The demo company loads by default.
 2. Tick findings in **Waste found** to see the runway change, and click **Show N transactions** for the evidence.
 3. Open **Autopilot** → **Run now** to get the step log, the Runway Review memo and the task list.
 4. Open **Copilot** and click "Get me to 14 months of runway without touching payroll". Without `OPENAI_API_KEY` you get the instant (template) answer; with it, the agent plans live and you can ask anything.
@@ -106,11 +118,12 @@ Design choices worth knowing:
 ## Production readiness
 
 - **CI on every push** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
-  - typecheck, lint, the unit tests (367 at last count) and a production build;
+  - typecheck, lint, the unit tests (396 at last count) and a production build;
   - the detector eval, which fails the build below 95% precision or recall;
   - `npm audit`;
   - schema tests and the Postgres store contract against a real Postgres service.
 - **Security headers:** strict Content-Security-Policy (no third-party scripts or connections), HSTS, `X-Frame-Options: DENY`, `nosniff`, a tight referrer and permissions policy, and no `X-Powered-By`.
+- **Public pages stay public:** with `APP_PASSWORD` set, only `/app` and its data APIs ask for it; the site, legal pages, grader, signup, health check and cron routes don't (`isPublicPath` in `src/lib/access.ts`). `robots.txt` keeps `/app` and the API out of search.
 - **Health check:** `GET /api/health` reports whether the database is reachable (and the deployed commit). It never returns configuration values and sits outside the password gate so uptime monitors can reach it.
 - **Accessibility:** zero axe-core violations (WCAG 2.1 AA rules plus best practices) across all three agent tabs. The agent tabs are a keyboard-navigable ARIA tablist.
 - **Failure handling:** if the Rho feed or the database is down, the dashboard falls back to the demo company or in-memory decisions and says so. Friendly error, not-found and loading pages, plus link-preview cards for sharing.
@@ -182,7 +195,7 @@ The eval and two independent code reviews caught real bugs during development, e
 ## Known limitations and next steps
 
 - **There's one shared password, not per-user accounts.**
-  - With `APP_PASSWORD` set, every page and API needs it.
+  - With `APP_PASSWORD` set, the app and its APIs need it (the public site doesn't).
   - The app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
   - Multi-company use still needs Supabase Auth, per-org Rho tokens from Vault and an org-keyed cache. The schema already has `org_id` and RLS on every table.
 - **Basic abuse protection is in place:**
@@ -191,6 +204,7 @@ The eval and two independent code reviews caught real bugs during development, e
   - Output tokens are capped.
   - Also set a monthly spend limit on the OpenAI project.
 - **Jira filing checks for an existing issue first**, by the finding's label via `POST /rest/api/3/search/jql`, and fails closed if that check errors. The endpoint name changed in 2025, so verify it against your Atlassian site.
+- **Early-access signups need `DATABASE_URL` to persist.** Without it they live in server memory and are lost on restart. There is no confirmation email yet, and the signup rate limit is per server instance.
 - **Without `DATABASE_URL`, decisions live in the server's memory.** On serverless hosts that memory can reset at any time. Set `DATABASE_URL` for permanent storage.
 - **The LLM paths are built but haven't been run against the live OpenAI API** (no key in the build environment):
   - Copilot
@@ -199,11 +213,10 @@ The eval and two independent code reviews caught real bugs during development, e
 
   Their deterministic parts (tools, validation, the memo number check) are tested. Without a key, everything degrades to rules and templates.
 - **Zombie detection is a heuristic.** Bank data has no usage data, so "idle card" stands in for "unused". SSO or Google Workspace signals would make it precise.
-- **The forecast range covers past month-to-month swings, not trends or shocks, and is too narrow.** A backtest on generated history (`npx tsx scripts/runway-backtest.ts`) found:
-  - Realized cash landed inside the P10–P90 band only 59% / 41% of the time at 3 / 6 months.
-  - After a hiring ramp, a revenue drop or a big one-off bill, reality fell *below* P10 in 56–100% of cases at 6 months.
-  - The UI and Copilot therefore call it a "range from past swings". Use the scenario planner and the revenue-drop line for trends.
-  - A trend-aware range is the top next step.
+- **The forecast range now follows the burn trend, but is still too narrow.** On a fresh held-out set of generated companies (`npx tsx scripts/runway-backtest.ts --method trend --damping 1 --window 6 --seeds holdout2`):
+  - Realized cash landed inside the P10–P90 band 69% / 73% of the time at 3 / 6 months (the old swings-only band: 52% / 43%).
+  - Under a hiring ramp it held 54% / 57% (old: 7% / 0%), short of the 60% floor set before the test; shocks after the forecast date (a revenue drop, a big bill) can't be foreseen by any history-based range.
+  - The UI calls it a "range with trend" and says it is narrower than reality. Calibrating its width is the next step ([forecast-trend.md](sleep-research/runs/forecast-trend.md)).
 - **SaaS waste is one lever, not the biggest.** On the demo cohort, fixing all detected waste adds about 0.4 months of runway, while delaying one $15k/month hire by 3 months adds about 0.56 (`scripts/runway-levers.ts`; one company shape, illustrative).
 - **Not built yet** (ranked in [the product research](reports/Runway%20product%20go%20to%20market.md)):
   - Rho partner OAuth (needs Rho's partner approval) and a Mercury connector.
@@ -212,8 +225,6 @@ The eval and two independent code reviews caught real bugs during development, e
   - Email delivery for the digest; a multi-client view for fractional CFOs.
 - **The Rho field mapping is unverified.** It was built from Rho's public docs and earlier hackathon clients, and needs re-checking against the live sandbox and production API.
 
-## Team
+## Who builds it
 
-| Name | Role | Contact |
-|---|---|---|
-| Ayan Bhardwaj | Builder | _add contact_ |
+Runway is built by Ayan Bhardwaj. Questions, bugs and requests: [open an issue](https://github.com/AyanBhardwaj1/AITX-MLOps-Hack/issues). Security problems: use [private vulnerability reporting](https://github.com/AyanBhardwaj1/AITX-MLOps-Hack/security/advisories/new).

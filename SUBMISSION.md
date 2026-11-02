@@ -1,4 +1,6 @@
-# Submission kit
+# Submission kit (archived)
+
+> Kept for the record. The hackathon ended on Oct 29, 2026; Runway has since become its own product (see the README). Routes have moved: the dashboard is now at `/app` and `/` is the public site.
 
 Due **Thursday Oct 29, 5:00 PM CT** on the hackathon Airtable form. Submitting takes 15–20 minutes, so start by 3:30 PM.
 

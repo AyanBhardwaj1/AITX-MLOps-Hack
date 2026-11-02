@@ -5,7 +5,7 @@
 1. On GitHub, open the repo → **Settings → General → Default branch** and make sure it's `main`.
 2. Click **Deploy with Vercel** at the top of the README, or go to [vercel.com/new](https://vercel.com/new) and import `AyanBhardwaj1/AITX-MLOps-Hack`.
 3. Keep the defaults (Framework: Next.js; no environment variables needed) and click **Deploy**.
-4. When it finishes, open the URL. The demo company, Autopilot, the Inbox and Copilot's instant answers all work straight away. `https://<your-app>.vercel.app/api/health` should return `{"status":"ok",...}`.
+4. When it finishes, open the URL: the public site is at `/` and the product at `/app`. The demo company, Autopilot, the Inbox and Copilot's instant answers all work straight away. `https://<your-app>.vercel.app/api/health` should return `{"status":"ok",...}`.
 
 After that, every push to `main` redeploys automatically and other branches get preview URLs. The rest of this page switches on the optional pieces.
 
@@ -19,13 +19,14 @@ Never commit `.env.local`; it's gitignored.
 |---|---|---|
 | `OPENAI_API_KEY` | Copilot chat, GPT-written memos, AI labels for unknown vendors | platform.openai.com → API keys. **Set a monthly budget first** (Settings → Limits). |
 | `OPENAI_MODEL_FAST` / `OPENAI_MODEL_AGENT` | Model choice (optional) | Defaults: `gpt-6-luna` / `gpt-6.1-sol` |
-| `DATABASE_URL` | Decisions, Inbox and run history saved permanently | Supabase → **Connect** → *Transaction pooler* URI (port 6543), with your database password filled in |
+| `DATABASE_URL` | Early-access signups, decisions, Inbox and run history saved permanently (**set this before sharing the site**, or signups are lost on restart) | Supabase → **Connect** → *Transaction pooler* URI (port 6543), with your database password filled in |
 | `DATABASE_CA_CERT` | Verified TLS to Supabase | Supabase → Project Settings → Database → **SSL Configuration → Download certificate**. Paste the whole PEM (including `-----BEGIN CERTIFICATE-----`). |
-| `APP_PASSWORD` | Password prompt on the whole site (any username) | Pick one, at least 8 characters. **Required before using a real Rho account.** |
+| `APP_PASSWORD` | Password prompt on the app (`/app` and its APIs; any username). The public site, legal pages, grader and signup stay open. | Pick one, at least 8 characters. **Required before using a real Rho account.** |
 | `RHO_BASE_URL` / `RHO_API_TOKEN` | Your real Rho account instead of the sandbox | Rho → Settings → API. Production URL: `https://rhoapi.rho.co/api/v1`; tokens start with `rhobat_`. |
 | `CRON_SECRET` | Daily 8 AM (Austin) Autopilot run | Any random string of 16+ characters, e.g. `openssl rand -hex 24` |
 | `AUTOPILOT_CRON_MODE` | Which data the daily run and the Monday digest review | `demo` (default) or `sandbox` (the configured Rho feed) |
 | `SLACK_WEBHOOK_URL` | Monday digest in Slack (13:30 UTC, about 8 AM in Austin; needs `CRON_SECRET`); "Send to Slack now" also needs `APP_PASSWORD` | Slack → Apps → Incoming Webhooks → add to a channel. Must start with `https://hooks.slack.com/services/` |
+| `CONTACT_EMAIL` | The contact address shown on the privacy, security and terms pages | An inbox you read, e.g. `hello@yourdomain.com`. Without it the pages point to GitHub issues and replies. |
 | `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | "Approve & file" creates a Jira issue | `https://<site>.atlassian.net`, your Atlassian email, id.atlassian.com → Security → API tokens, and the project key (e.g. `RUN`) |
 
 ## Steps
@@ -48,13 +49,15 @@ Never commit `.env.local`; it's gitignored.
    - The crons in `vercel.json` (daily Autopilot, Monday digest) register automatically on deploy. They only run if `CRON_SECRET` is set.
 4. **Smoke test on the live URL:**
    - `/api/health` returns `"status":"ok"` and `"database":"ok"` (or `"not_configured"` without `DATABASE_URL`).
-   - The dashboard loads.
+   - The site loads at `/`, and joining early access with a test email answers "You're on the list". In Supabase → Table Editor → `waitlist` the row appears (delete it afterwards).
+   - The dashboard loads at `/app`.
    - **Autopilot → Run now** produces a memo and drafts in the **Inbox**.
    - Approving a ticket files it in Jira, if configured.
    - With an OpenAI key, Copilot answers "Get me to 14 months without touching payroll".
 
 ## Safety notes
 
-- There's no per-user login yet. With a real Rho token the app **refuses to show the account unless `APP_PASSWORD` is set**, and the password then protects every page and API.
+- There's no per-user login yet. With a real Rho token the app **refuses to show the account unless `APP_PASSWORD` is set**, and the password then protects the app and its APIs.
+- Early-access emails are personal data. Read them in Supabase (the table has row-level security on with no policies, so the public and signed-in API roles can't); export with `select email, role, bank, created_at from waitlist order by created_at;` in the SQL Editor.
 - Agents only ever create **drafts**. The database itself rejects anything else, and a person approves each one in the Inbox.
 - Rotate any key that was ever pasted into a chat or committed anywhere.
