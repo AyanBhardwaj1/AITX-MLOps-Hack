@@ -1,18 +1,36 @@
 /**
  * Honest backtest of the existing cash forecast (sleep-research C6): at past origins, forecast with only
  * the data available then, and check whether the P10-P90 band contained the cash that actually followed.
- * Usage: npx tsx scripts/runway-backtest.ts   (writes sleep-research/runs/runway-backtest.json and .md)
+ * Usage: npx tsx scripts/runway-backtest.ts [--method trend|swings] [--damping 0.9] [--window 12] [--seeds dev|holdout|holdout2]
+ *   Defaults reproduce the original run (swings, dev seeds) and write sleep-research/runs/runway-backtest.{json,md};
+ *   other settings write runway-backtest-<method>-<damping>-<seeds>.{json,md}.
+ *   Dev seeds are for choosing settings; held-out seeds are run once to confirm them.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { addDays, AVG_DAYS_PER_MONTH } from "../src/lib/dates";
-import { forecastCash } from "../src/lib/finance/forecast";
+import { forecastCash, type ForecastMethod } from "../src/lib/finance/forecast";
 import { monthlyHistory } from "../src/lib/finance/history";
 import { analyze } from "../src/lib/pipeline";
 import { cashBalanceCents } from "../src/lib/rho/map";
 import type { RhoTransaction } from "../src/lib/rho/schema";
 import { generateDemoCompany } from "../src/lib/seed/demo-company";
 
-const SEEDS = Array.from({ length: 20 }, (_, i) => i * 37 + 1);
+const arg = (name: string) => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+};
+const METHOD = (arg("method") ?? "swings") as ForecastMethod;
+const DAMPING = Number(arg("damping") ?? 0.9);
+const WINDOW = Number(arg("window") ?? 12);
+const SEED_SET = arg("seeds") ?? "dev";
+const SEED_OFFSET: Record<string, number> = { dev: 0, holdout: 20, holdout2: 40 };
+if (!["trend", "swings"].includes(METHOD) || !(SEED_SET in SEED_OFFSET) || !(DAMPING > 0 && DAMPING <= 1) || !(WINDOW >= 4 && WINDOW <= 12)) {
+  throw new Error("usage: --method trend|swings --damping (0,1] --window 4..12 --seeds dev|holdout|holdout2");
+}
+// Held-out seeds never overlap the development ones.
+const SEEDS = Array.from({ length: 20 }, (_, i) => (i + SEED_OFFSET[SEED_SET]!) * 37 + 1);
+const ORIGINAL = METHOD === "swings" && SEED_SET === "dev";
+const OUT = ORIGINAL ? "runway-backtest" : `runway-backtest-${METHOD}${METHOD === "trend" ? `-d${DAMPING}-w${WINDOW}` : ""}-${SEED_SET}`;
 const NOISE = ["clean", "noisy"] as const;
 const ASOF = "2026-10-26";
 const ORIGIN_MONTHS_BACK = [6, 7, 8, 9, 10];
@@ -72,7 +90,7 @@ for (const profile of PROFILES) {
         const origin = addDays(ASOF, -Math.round(back * AVG_DAYS_PER_MONTH));
         const cashAtOrigin = cashNow - cashFlowAfter(txns, origin);
         const a = analyze({ accounts: [{ id: "c", account_type: "checking", account_name: "c", balance: { amount: cashAtOrigin, currency: "USD" } }], transactions: txns.filter((t) => dateOf(t) <= origin), asOf: origin });
-        const f = forecastCash({ cashCents: cashAtOrigin, history: monthlyHistory(a.txns, origin, 12), netBurnCents: a.snapshot.netBurnCents, asOf: origin, horizonMonths: Math.max(...HORIZONS) + 1 });
+        const f = forecastCash({ cashCents: cashAtOrigin, history: monthlyHistory(a.txns, origin, 12), netBurnCents: a.snapshot.netBurnCents, asOf: origin, horizonMonths: Math.max(...HORIZONS) + 1, method: METHOD, trendDamping: DAMPING, trendWindowMonths: WINDOW });
         for (const h of HORIZONS) {
           if (h > back) continue;
           const point = f.points.find((p) => p.monthsAhead === h);
@@ -98,7 +116,7 @@ const lines = PROFILES.flatMap((p) =>
   }),
 );
 const md = [
-  `Backtest of the P10-P90 cash band: ${SEEDS.length} seeds × ${NOISE.length} noise levels × origins ${ORIGIN_MONTHS_BACK.join("/")} months before ${ASOF}. A well-calibrated 80% band contains realized cash about 80% of the time.`,
+  `Backtest of the P10-P90 cash band (method: ${METHOD}${METHOD === "trend" ? `, damping ${DAMPING}, window ${WINDOW} months` : ""}; ${SEED_SET} seeds): ${SEEDS.length} seeds × ${NOISE.length} noise levels × origins ${ORIGIN_MONTHS_BACK.join("/")} months before ${ASOF}. A well-calibrated 80% band contains realized cash about 80% of the time.`,
   "",
   "| Profile | Horizon | Forecasts | Inside band | Below P10 (worse than feared) | Above P90 | Median band width (% of P50) |",
   "|---|---|---|---|---|---|---|",
@@ -106,5 +124,5 @@ const md = [
 ].join("\n");
 console.log(md);
 mkdirSync(new URL("../sleep-research/runs/", import.meta.url), { recursive: true });
-writeFileSync(new URL("../sleep-research/runs/runway-backtest.json", import.meta.url), `${JSON.stringify({ generatedAt: new Date().toISOString(), results }, null, 2)}\n`);
-writeFileSync(new URL("../sleep-research/runs/runway-backtest.md", import.meta.url), `${md}\n`);
+writeFileSync(new URL(`../sleep-research/runs/${OUT}.json`, import.meta.url), `${JSON.stringify({ generatedAt: new Date().toISOString(), method: METHOD, damping: DAMPING, window: WINDOW, seeds: SEED_SET, results }, null, 2)}\n`);
+writeFileSync(new URL(`../sleep-research/runs/${OUT}.md`, import.meta.url), `${md}\n`);

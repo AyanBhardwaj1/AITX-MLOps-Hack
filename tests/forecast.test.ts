@@ -64,4 +64,63 @@ describe("forecastCash", () => {
     const f = forecastCash({ cashCents: 96_000_000, history: [], netBurnCents: 8_000_000, asOf: "2026-10-26" });
     expect(f.runwayMonths.p50).toBeCloseTo(12, 5);
   });
+
+  describe("trend", () => {
+    // Twelve months of net burn rising $500k/month (hiring), with a little noise.
+    const noise = [0.1, -0.2, 0.15, -0.05, 0.2, -0.1, 0.05, -0.15, 0.1, 0, -0.1, 0.05];
+    const rising = noise.map((n, i) => month(i % 12, 0, Math.round((6 + 0.5 * i + n) * 1_000_000)));
+    const falling = noise.map((n, i) => month(i % 12, 0, Math.round((12 - 0.5 * i + n) * 1_000_000)));
+    const recentAvg = (h: MonthHistory[]) => Math.round(h.slice(-3).reduce((s, m) => s + m.outflowCents - m.inflowCents, 0) / 3);
+
+    it("projects a rising burn forward, so the middle of the range falls below the straight line", () => {
+      const burn = recentAvg(rising);
+      const f = forecastCash({ cashCents: 150_000_000, history: rising, netBurnCents: burn, asOf: "2026-10-26" });
+      expect(f.trendCentsPerMonth).toBeGreaterThan(400_000);
+      expect(f.points[6]!.p50Cents).toBeLessThan(f.points[6]!.baseCents);
+      expect(f.runwayMonths.p50).toBeLessThan(150_000_000 / burn);
+    });
+
+    it("projects a falling burn (growing revenue) forward, so the middle of the range sits above it", () => {
+      const burn = recentAvg(falling);
+      const f = forecastCash({ cashCents: 80_000_000, history: falling, netBurnCents: burn, asOf: "2026-10-26" });
+      expect(f.trendCentsPerMonth).toBeLessThan(-400_000);
+      expect(f.points[6]!.p50Cents).toBeGreaterThan(f.points[6]!.baseCents);
+    });
+
+    it("treats a one-time step in burn as a new level, not a slide that keeps going", () => {
+      const stepped = [12, 12, 12, 12, 12, 12, 8, 8, 8, 8, 8, 8].map((m, i) => month(i, 0, m * 1_000_000));
+      const f = forecastCash({ cashCents: 96_000_000, history: stepped, netBurnCents: 8_000_000, asOf: "2026-10-26" });
+      expect(f.trendCentsPerMonth).toBe(0);
+      expect(f.runwayMonths.p50).toBeCloseTo(12, 0);
+    });
+
+    it("doesn't move the middle of the range for a slope that could be noise", () => {
+      const f = forecastCash({ cashCents: 90_000_000, history: bumpy, netBurnCents: 8_000_000, asOf: "2026-10-26" });
+      expect(f.trendCentsPerMonth).toBe(0);
+      expect(f.runwayMonths.p50).toBeGreaterThan(10.25);
+      expect(f.runwayMonths.p50).toBeLessThan(12.25);
+    });
+
+    it("stops a trend after a year instead of carrying it for ever", () => {
+      // Burn falling fast enough to turn cash-flow positive within a year if it continued for ever.
+      const steep = [20, 18, 16, 14, 12, 10].map((m, i) => month(i, 0, m * 1_000_000));
+      const f = forecastCash({ cashCents: 30_000_000, history: steep, netBurnCents: 12_000_000, asOf: "2026-10-26", horizonMonths: 24 });
+      const drop = (m: number) => f.points[m - 1]!.p50Cents - f.points[m]!.p50Cents;
+      expect(drop(20)).toBe(drop(22));
+    });
+
+    it("needs at least four months before it trusts a trend", () => {
+      const short = [6, 7, 8].map((m, i) => month(i, 0, m * 1_000_000));
+      const f = forecastCash({ cashCents: 70_000_000, history: short, netBurnCents: 7_000_000, asOf: "2026-10-26" });
+      expect(f.trendCentsPerMonth).toBe(0);
+    });
+
+    it("widens the range the further out it looks", () => {
+      const f = forecastCash({ cashCents: 150_000_000, history: rising, netBurnCents: recentAvg(rising), asOf: "2026-10-26" });
+      const width = (m: number) => f.points[m]!.p90Cents - f.points[m]!.p10Cents;
+      expect(width(3)).toBeGreaterThan(width(1));
+      expect(width(6)).toBeGreaterThan(width(3));
+    });
+  });
 });
+

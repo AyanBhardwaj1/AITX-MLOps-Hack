@@ -85,3 +85,7 @@ On generated history, the P10–P90 cash band is far too narrow: 1.4–2.5% of P
 ## Not a claim: pilot I1 (portfolio triage)
 
 The pilot is inconclusive by test design (plan review). Recall@5 was 96.5% vs 95.8% (`runs/portfolio-triage.md`). At similar runway (9–11 months), the composite separated better: AUC 0.747 vs 0.650, reproduced by the audit (session/trace evidence only).
+
+## Update, 2026-11-02: trend-aware range (follows C6)
+
+The band now follows the last 6 months' burn trend (sleep-research/runs/forecast-trend.md). On a fresh held-out seed set, run once, it holds realized cash 69–73% of the time for the generated company (old band: 43–52%) and 54–57% under a hiring ramp (old: 0–7%). It improves every profile tested but is still short of a calibrated 80%, and the pre-registered 60% floor was not met for the hiring ramp. Same scope limits as C6.

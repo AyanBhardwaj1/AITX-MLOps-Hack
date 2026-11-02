@@ -83,7 +83,9 @@ function howLong(a: Analysis): InstantAnswer {
   const snap = getFinancialSnapshot(a);
   const lines = [
     `At today's burn, about **${months(snap.runwayMonths)}**` + (snap.zeroCashDate ? ` (cash runs out around ${snap.zeroCashDate}).` : "."),
-    `From ${f.method}, the range is **${range(f.runwayMonths.p10, f.runwayMonths.p90)}**. It reflects past month-to-month swings only, not trends like new hires, a revenue drop or a big one-off bill, so treat the low end as a floor for steady times, not a worst case.`,
+    `From ${f.method}, the range is **${range(f.runwayMonths.p10, f.runwayMonths.p90)}**` +
+      (f.trendCentsPerMonth ? ` (burn ${f.trendCentsPerMonth > 0 ? "rising" : "falling"} about ${formatDollars(Math.abs(f.trendCentsPerMonth))} a month).` : ".") +
+      ` It can't foresee one-off shocks like a lost customer or a big bill, and in tests it was still narrower than reality, so the low end is not a worst case.`,
     `If revenue fell 30%, runway would be **${months(snap.runwayMonthsIfRevenueFalls30Pct)}**.`,
   ];
   return { question: INSTANT_QUESTIONS.how_long, tools: ["get_runway_forecast", "get_financial_snapshot"], text: lines.join("\n\n") };

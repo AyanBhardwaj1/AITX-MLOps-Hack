@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { aiSpendTrend } from "../finance/ai-spend";
-import { forecastCash } from "../finance/forecast";
+import { DEFAULT_TREND_WINDOW_MONTHS, forecastCash } from "../finance/forecast";
 import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
@@ -154,7 +154,7 @@ const FORECAST_HISTORY_MONTHS = 12;
 const AI_TREND_MONTHS = 6;
 
 export const forecastInput = z.object({});
-/** Monte Carlo runway range from past month-to-month swings. It excludes trends and one-off shocks, so p10 is not a worst case (see sleep-research/runs/runway-backtest.md). */
+/** Monte Carlo runway range with the recent burn trend. Narrower than reality and blind to shocks, so p10 is not a worst case (see sleep-research/runs/forecast-trend.md). */
 export function getForecast(a: Analysis) {
   const f = forecastCash({
     cashCents: a.snapshot.cashCents,
@@ -165,7 +165,8 @@ export function getForecast(a: Analysis) {
   return {
     runwayMonths: { p10: round1(f.runwayMonths.p10), p50: round1(f.runwayMonths.p50), p90: round1(f.runwayMonths.p90) },
     zeroCashDates: f.zeroCashDates,
-    method: `${f.simulations} bootstrap simulations of ${f.sampledMonths} months of the company's own cash-flow swings`,
+    trendCentsPerMonth: f.trendCentsPerMonth,
+    method: `${f.simulations} simulations of the last ${Math.min(DEFAULT_TREND_WINDOW_MONTHS, f.sampledMonths)} months' burn trend and its month-to-month noise`,
   };
 }
 

@@ -112,7 +112,7 @@ export function GraderPanel() {
           </p>
         )}
         {!result && !error && (
-          <div className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-muted">Your runway, its range from past swings and the biggest wasted spend will show here.</div>
+          <div className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-muted">Your runway, its likely range and the biggest wasted spend will show here.</div>
         )}
         {result && (
           <div className="space-y-4">
@@ -128,7 +128,7 @@ export function GraderPanel() {
                   <dd className="tabular font-medium">{result.zeroCashDate ? formatDate(result.zeroCashDate) : "Not at this burn"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted">Range from past swings</dt>
+                  <dt className="text-xs text-muted">Range with trend</dt>
                   <dd className="tabular font-medium">
                     {months(result.range.p10)}–{months(result.range.p90)} mo
                   </dd>

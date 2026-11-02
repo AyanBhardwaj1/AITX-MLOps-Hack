@@ -203,7 +203,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-4 text-sm lg:grid-cols-4">
               <Fact label="Cash runs out">{sim.zeroCashDate ? formatDate(sim.zeroCashDate) : "Not at this burn"}</Fact>
               {Number.isFinite(data.forecast.runwayMonths.p50) && (
-                <Fact label="Range from past swings">
+                <Fact label="Range with trend">
                   {months(data.forecast.runwayMonths.p10)}–{months(data.forecast.runwayMonths.p90)} mo
                 </Fact>
               )}
@@ -250,7 +250,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             </div>
             <span className="text-xs text-muted">
               {chartView === "forecast"
-                ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString("en-US")} simulations of past month-to-month swings (not trends or one-off shocks)`
+                ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString("en-US")} simulations of the last 6 months' burn trend and its noise. Still narrower than reality, and blind to one-off shocks.`
                 : "Internal transfers and card repayments excluded"}
             </span>
           </div>

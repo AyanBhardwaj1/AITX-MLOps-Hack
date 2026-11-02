@@ -2,20 +2,40 @@ import { monthKey, shiftMonth } from "../dates";
 import { createRng } from "../seed/rng";
 import type { Cents, IsoDate } from "../types";
 import type { MonthHistory } from "./history";
-import { zeroCashDate } from "./runway";
+import { DEFAULT_LOOKBACK_MONTHS, zeroCashDate } from "./runway";
+import { fitBurnTrend, type BurnTrendKind } from "./trend";
 
 /**
  * Cash forecast with uncertainty. The "base" and "act" lines use the snapshot's average burn
- * (the same number as the hero). The band comes from a seeded bootstrap Monte Carlo: each path
- * replays randomly drawn monthly deviations from the company's own history around today's burn.
- * It captures month-to-month volatility, not trends (e.g. revenue growth), so it is a range,
- * not a prediction.
+ * (the same number as the hero). The band is a seeded Monte Carlo:
+ * - "trend" (default): monthly net burn follows its fitted trend from today's burn, damped so it
+ *   levels off, with the slope drawn from its own uncertainty on each path, plus the month-to-month
+ *   noise the trend leaves unexplained. A one-time step in burn is a new level, not a trend.
+ * - "swings": the earlier model, past month-to-month deviations only (kept for the backtest).
+ * Neither can foresee a shock that hasn't happened yet (a lost customer, a big one-off bill).
  */
 
 export const DEFAULT_HORIZON_MONTHS = 24;
 const DEFAULT_SIMULATIONS = 1_000;
 /** Paths that survive this long are treated as "doesn't run out" for runway percentiles. */
 const MAX_SIMULATED_MONTHS = 240;
+/**
+ * How much of last month's trend carries into the next (1 = no damping). Chosen with the window on
+ * the development seeds of scripts/runway-backtest.ts (0.9 and 0.95 under-covered a hiring ramp),
+ * then confirmed once on fresh seeds: sleep-research/runs/forecast-trend.md.
+ */
+export const DEFAULT_TREND_DAMPING = 1;
+/** The trend is fitted on this many most recent months, so a change that started mid-year isn't diluted. Chosen like the damping. */
+export const DEFAULT_TREND_WINDOW_MONTHS = 6;
+/** A fitted slope is trusted only when it is at least this many standard errors from zero. */
+const MIN_TREND_T = 2;
+/**
+ * A trend runs at most this long, then burn holds level. An assumption, not a fitted value: the
+ * backtest only checks 3 and 6 months, and a straight line carried for years is not believable.
+ */
+export const TREND_HORIZON_MONTHS = 12;
+
+export type ForecastMethod = "trend" | "swings";
 
 export interface ForecastPoint {
   monthsAhead: number;
@@ -35,11 +55,19 @@ export interface Percentiles<T> {
 
 export interface Forecast {
   points: ForecastPoint[];
-  /** p10/p50/p90 of simulated runway from past month-to-month swings; excludes trends and one-off shocks, so it under-covers (see sleep-research/runs/runway-backtest.md). */
+  /**
+   * p10/p50/p90 of simulated runway with the burn trend. Still narrower than an honest 80% range: on
+   * fresh held-out synthetic companies it held realized cash 54-73% of the time, and it can't foresee shocks
+   * (sleep-research/runs/forecast-trend.md).
+   */
   runwayMonths: Percentiles<number>;
   zeroCashDates: Percentiles<IsoDate | null>;
   simulations: number;
   sampledMonths: number;
+  method: ForecastMethod;
+  /** Fitted change in monthly net burn per month (cents): positive means burn is rising. 0 when there is no trend. */
+  trendCentsPerMonth: number;
+  trendKind: BurnTrendKind;
 }
 
 interface ForecastInput {
@@ -51,6 +79,33 @@ interface ForecastInput {
   horizonMonths?: number;
   simulations?: number;
   seed?: number;
+  method?: ForecastMethod;
+  trendDamping?: number;
+  trendWindowMonths?: number;
+}
+
+/** Standard normal draw (Box-Muller) from the seeded uniform generator. */
+function normal(next: () => number): number {
+  const u = Math.max(next(), Number.MIN_VALUE);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * next());
+}
+
+/**
+ * dampedSteps[m]: how many slopes' worth burn has moved by future month m, measured from the middle
+ * of the months today's burn averages (so month 1 is already a step or more away).
+ */
+function dampedSteps(horizon: number, damping: number): number[] {
+  const lead = (DEFAULT_LOOKBACK_MONTHS - 1) / 2;
+  const out = [0];
+  let total = 0;
+  let weight = 1;
+  for (let k = 1; k <= horizon + Math.ceil(lead); k++) {
+    weight *= damping;
+    total += weight;
+    if (k >= 1 + Math.ceil(lead)) out.push(total);
+    if (out.length > TREND_HORIZON_MONTHS) weight = 0;
+  }
+  return out;
 }
 
 /** Nearest-rank percentile on a sorted array (works with Infinity). */
@@ -67,12 +122,22 @@ export function forecastCash({
   horizonMonths = DEFAULT_HORIZON_MONTHS,
   simulations = DEFAULT_SIMULATIONS,
   seed = 1,
+  method = "trend",
+  trendDamping = DEFAULT_TREND_DAMPING,
+  trendWindowMonths = DEFAULT_TREND_WINDOW_MONTHS,
 }: ForecastInput): Forecast {
-  // Recentred bootstrap: keep each month's deviation from the historical mean, but centre it on
-  // today's burn, so old months (e.g. before revenue grew) widen the band without shifting it.
   const raw = history.map((m) => m.outflowCents - m.inflowCents);
+  const fit = method === "trend" ? fitBurnTrend(raw.slice(-trendWindowMonths)) : null;
+  // "swings": recentred bootstrap, each month's deviation from the historical mean around today's burn.
   const mean = raw.length ? raw.reduce((s, x) => s + x, 0) / raw.length : 0;
-  const nets = raw.length ? raw.map((x) => netBurnCents + (x - mean)) : [netBurnCents];
+  const noise = fit ? fit.residuals : raw.map((x) => x - mean);
+  const deviations = noise.length ? noise : [0];
+  const slopeSe = fit?.slopeSeCents ?? 0;
+  // An insignificant slope still widens the range through its uncertainty, but doesn't move the middle.
+  const slope = fit && Math.abs(fit.slopeCents) >= MIN_TREND_T * slopeSe ? fit.slopeCents : 0;
+  // Today's burn is an average of a few noisy months, so its own level is uncertain too.
+  const levelSe = fit ? fit.residualSdCents / Math.sqrt(Math.min(DEFAULT_LOOKBACK_MONTHS, Math.max(1, raw.length))) : 0;
+  const steps = dampedSteps(MAX_SIMULATED_MONTHS, trendDamping);
   const rng = createRng(seed);
   const cashByMonth: number[][] = Array.from({ length: horizonMonths + 1 }, () => []);
   const runways: number[] = [];
@@ -80,9 +145,11 @@ export function forecastCash({
   for (let path = 0; path < simulations; path++) {
     let cash = cashCents;
     let runway = Number.POSITIVE_INFINITY;
+    const pathSlope = slope + slopeSe * (slopeSe ? normal(rng.next) : 0);
+    const pathLevel = netBurnCents + levelSe * (levelSe ? normal(rng.next) : 0);
     cashByMonth[0]!.push(cash);
     for (let m = 1; m <= MAX_SIMULATED_MONTHS; m++) {
-      const net = nets[rng.int(0, nets.length - 1)]!;
+      const net = pathLevel + pathSlope * steps[m]! + deviations[rng.int(0, deviations.length - 1)]!;
       const before = cash;
       cash -= net;
       if (m <= horizonMonths) cashByMonth[m]!.push(cash);
@@ -117,6 +184,9 @@ export function forecastCash({
       p90: zeroCashDate(asOf, runwayMonths.p90),
     },
     simulations,
-    sampledMonths: nets.length,
+    sampledMonths: raw.length,
+    method,
+    trendCentsPerMonth: Math.round(slope),
+    trendKind: fit?.kind === "trend" && slope === 0 ? "flat" : (fit?.kind ?? "flat"),
   };
 }
