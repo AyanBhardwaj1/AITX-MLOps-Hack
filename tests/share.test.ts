@@ -47,7 +47,11 @@ describe("share snapshot", () => {
     expect(snap).toMatchObject({ v: 1, company: "Taco Robotics, Inc.", asOf: a.asOf, cashCents: a.snapshot.cashCents, netBurnCents: a.snapshot.netBurnCents, zeroCashDate: a.snapshot.zeroCashDate });
     expect(snap.runwayMonths).toBeCloseTo(a.snapshot.runwayMonths, 6);
     expect(snap.history).toHaveLength(history.length);
-    expect(snap.waste.monthlyCents).toBe(a.findings.reduce((s, f) => s + f.monthlySavingsCents, 0));
+  });
+
+  it("doesn't disclose findings: what counts as waste is the team's call, not a number to send investors", () => {
+    expect(snap).not.toHaveProperty("waste");
+    expect(JSON.stringify(snap)).not.toMatch(/finding|waste|saving/i);
   });
 
   it("leaves out vendors, people and transactions", () => {

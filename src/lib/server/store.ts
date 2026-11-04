@@ -39,6 +39,8 @@ export function getPool(): Pool {
 }
 
 export const hasDatabase = () => Boolean(env().DATABASE_URL);
+/** On a hosted deployment (Vercel) memory lives in one short-lived instance: only a database persists. */
+export const persistentStorageReady = () => hasDatabase() || !process.env.VERCEL;
 
 /** One store per data scope ("demo", "rho_sandbox", "rho"): Postgres when DATABASE_URL is set, else in-memory. */
 export function getStore(scope: string): Store {

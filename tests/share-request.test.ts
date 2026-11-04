@@ -11,6 +11,7 @@ const deps = (store = createMemoryStore(), over: Partial<ShareDeps> = {}): Share
   canWrite: () => true,
   now: () => NOW,
   newToken: () => "T".repeat(43),
+  storageReady: () => true,
   ...over,
 });
 
@@ -34,6 +35,18 @@ describe("handleShare", () => {
 
   it("refuses a real account while the app won't show it (no password)", async () => {
     expect((await handleShare({ mode: "sandbox", action: "create", days: 7 }, deps(undefined, { canWrite: () => false }))).status).toBe(403);
+  });
+
+  it("refuses to make links that would only live in one server's memory", async () => {
+    const res = await handleShare({ mode: "sandbox", action: "create", days: 7 }, deps(undefined, { storageReady: () => false }));
+    expect(res.status).toBe(503);
+  });
+
+  it("puts the company name the founder typed on the investor page", async () => {
+    let asked: string | undefined;
+    await handleShare({ mode: "sandbox", action: "create", days: 7, company: "  Acme Robotics  " }, deps(undefined, { snapshotFor: async (_m, company) => ((asked = company), snapshot) }));
+    expect(asked).toBe("Acme Robotics");
+    expect((await handleShare({ mode: "sandbox", action: "create", days: 7, company: "x".repeat(81) }, deps())).status).toBe(400);
   });
 
   it("only offers the expiry choices on the screen", async () => {

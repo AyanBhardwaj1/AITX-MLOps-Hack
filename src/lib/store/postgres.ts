@@ -48,6 +48,7 @@ interface ShareRow {
   revoked_at: Date | null;
 }
 const SHARE_COLUMNS = "id, label, payload, created_at, expires_at, revoked_at";
+const MAX_LISTED_LINKS = 50;
 const toShareLink = (r: ShareRow): StoredShareLink => ({
   id: r.id,
   label: r.label,
@@ -334,6 +335,11 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
           [org, now.toISOString()],
         );
         if (Number(rows[0]!.active) >= maxActive) return "limit" as const;
+        // Housekeeping: links revoked or expired over a month ago are no longer worth keeping.
+        await c.query(
+          `delete from public.share_links where org_id = $1 and coalesce(revoked_at, expires_at) < $2::timestamptz - interval '30 days'`,
+          [org, now.toISOString()],
+        );
         const inserted = await c.query<{ id: string }>(
           `insert into public.share_links (org_id, token_hash, label, payload, expires_at) values ($1, $2, $3, $4, $5) returning id`,
           [org, tokenHash, label, JSON.stringify(payload), expiresAt],
@@ -350,7 +356,7 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
 
     async listShareLinks() {
       const org = await orgId();
-      const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where org_id = $1 order by created_at desc`, [org]);
+      const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where org_id = $1 order by created_at desc limit ${MAX_LISTED_LINKS}`, [org]);
       return rows.map(toShareLink);
     },
 

@@ -58,6 +58,14 @@ export interface StoredRun extends RunInput {
 }
 
 /** Thrown for missing records and invalid state transitions (safe to show to users). */
+/**
+ * Next bundles each route separately, so a StoreError thrown by a store created in another bundle
+ * isn't `instanceof` this class. Check by name and code instead.
+ */
+export function isStoreError(err: unknown, code?: StoreError["code"]): err is StoreError {
+  return err instanceof Error && err.name === "StoreError" && (code === undefined || (err as StoreError).code === code);
+}
+
 export class StoreError extends Error {
   constructor(
     message: string,

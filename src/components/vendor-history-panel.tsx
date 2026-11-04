@@ -35,7 +35,9 @@ export function VendorHistoryPanel({ id, vendorName, history }: { id: string; ve
       </div>
       <div>
         <p className="font-medium text-ink">Price changes</p>
-        {history.priceChanges.length === 0 ? (
+        {history.usageBased ? (
+          <p className="mt-1 text-muted">Usage-based: the bill moves with usage each month, so there&apos;s no single price to track.</p>
+        ) : history.priceChanges.length === 0 ? (
           <p className="mt-1 text-muted">None in this history.</p>
         ) : (
           <ul className="mt-1 space-y-0.5">

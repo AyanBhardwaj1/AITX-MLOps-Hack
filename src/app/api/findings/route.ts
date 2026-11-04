@@ -4,7 +4,7 @@ import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { getStore } from "@/lib/server/store";
 import { scopeFor } from "@/lib/server/scope";
-import { StoreError } from "@/lib/store/types";
+import { isStoreError } from "@/lib/store/types";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     await getStore(scopeFor(parseMode(parsed.data.mode))).setFindingStatus(parsed.data.fingerprint, parsed.data.status);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    if (err instanceof StoreError) return NextResponse.json({ error: err.message }, { status: err.code === "not_found" ? 404 : 409 });
+    if (isStoreError(err)) return NextResponse.json({ error: err.message }, { status: err.code === "not_found" ? 404 : 409 });
     console.error("[findings] status update failed", err);
     return NextResponse.json({ error: "Couldn't save that. Try again." }, { status: 500 });
   }

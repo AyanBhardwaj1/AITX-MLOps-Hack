@@ -3,7 +3,7 @@ import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
 import { snapshotFor } from "@/lib/server/share";
-import { getStore } from "@/lib/server/store";
+import { getStore, persistentStorageReady } from "@/lib/server/store";
 import { canWriteRealData } from "@/lib/server/write-guard";
 import { handleShare } from "@/lib/share/request";
 import { newShareToken, shareLinkState } from "@/lib/share/token";
@@ -20,7 +20,8 @@ export async function GET(request: Request) {
   if (!allowRead(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   if (mode === "demo") return NextResponse.json({ links: [], sample: "/s/demo" }, { headers: noStore });
-  if (!canWriteRealData(mode)) return NextResponse.json({ error: "Set APP_PASSWORD first." }, { status: 403 });
+  if (!canWriteRealData(mode)) return NextResponse.json({ error: "Set APP_PASSWORD before making share links." }, { status: 403 });
+  if (!persistentStorageReady()) return NextResponse.json({ error: "Set DATABASE_URL to make share links." }, { status: 503 });
   try {
     const links = await getStore(scopeFor(mode)).listShareLinks();
     return NextResponse.json(
@@ -40,10 +41,11 @@ export async function POST(request: Request) {
   try {
     const result = await handleShare(body, {
       storeFor: (mode) => getStore(scopeFor(mode)),
-      snapshotFor: (mode) => snapshotFor(mode),
+      snapshotFor: (mode, company) => snapshotFor(mode, company),
       canWrite: canWriteRealData,
       now: () => new Date(),
       newToken: newShareToken,
+      storageReady: persistentStorageReady,
     });
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   } catch (err) {

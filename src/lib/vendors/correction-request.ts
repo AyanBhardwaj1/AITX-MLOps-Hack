@@ -29,7 +29,7 @@ export async function handleCorrection(raw: unknown, deps: CorrectionDeps): Prom
   const parsed = request.safeParse(raw);
   if (!parsed.success) return { status: 400, body: { error: "Invalid correction" } };
   const req = parsed.data;
-  if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before changing a real account's numbers." } };
+  if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before saving changes to a connected account." } };
   const sink = deps.sinkFor(req.mode);
   if (req.action === "clear") {
     await sink.clearCorrection(req.vendorKey);

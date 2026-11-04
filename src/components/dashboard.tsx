@@ -383,8 +383,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {data.streams.map((s) => {
-                      const rowKey = `${s.vendorKey}|${s.cardholders.join(",")}`;
+                    {data.streams.map((s, index) => {
+                      // A second workspace of the same vendor and card is its own stream: the index keeps keys unique.
+                      const rowKey = `${s.vendorKey}|${s.cardholders.join(",")}|${index}`;
                       const historyId = `history-${rowKey.replace(/[^a-z0-9]+/gi, "-")}`;
                       const expanded = openHistory === rowKey;
                       return (
@@ -395,11 +396,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                             type="button"
                             onClick={() => setOpenHistory(expanded ? null : rowKey)}
                             aria-expanded={expanded}
-                            aria-controls={historyId}
+                            aria-controls={expanded ? historyId : undefined}
                             className="rounded text-left font-medium underline-offset-2 hover:underline"
                           >
                             {s.vendorName}
-                            <span className="sr-only">: {expanded ? "hide" : "show"} history</span>
+                            <span className="sr-only"> history</span>
                           </button>{" "}
                           <span className="text-xs text-muted">{categoryName(s.category)}</span>{" "}
                           {s.corrected && <span className="rounded bg-brand-soft px-1 text-[11px] font-medium text-brand-strong">your fix</span>}{" "}

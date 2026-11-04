@@ -40,6 +40,13 @@ describe("vendorHistory", () => {
     expect(h.priceChanges).toEqual([{ date: "2026-08-05", fromCents: 10_000, toCents: 15_000 }]);
   });
 
+  it("doesn't call a usage-based bill's normal swings price changes", () => {
+    const swings = [10_000, 11_000, 9_500, 12_000, 10_500].map((c, i) => txn(`u${i}`, `2026-0${5 + i}-05`, -c));
+    const h = vendorHistory(stream(swings.map((t) => t.id)), new Map(swings.map((t) => [t.id, t])), "2026-10-26");
+    expect(h.usageBased).toBe(true);
+    expect(h.priceChanges).toEqual([]);
+  });
+
   it("works on every recurring charge of the demo company", () => {
     const demo = generateDemoCompany();
     const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });

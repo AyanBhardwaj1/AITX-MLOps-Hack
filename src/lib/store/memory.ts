@@ -98,6 +98,10 @@ export function createMemoryStore(): Store {
     async createShareLink(link, maxActive, now) {
       const active = shareLinks.filter((l) => !l.revokedAt && Date.parse(l.expiresAt) > now.getTime()).length;
       if (active >= maxActive) return "limit";
+      const cutoff = now.getTime() - 30 * 86_400_000;
+      for (let i = shareLinks.length - 1; i >= 0; i--) {
+        if (Date.parse(shareLinks[i]!.revokedAt ?? shareLinks[i]!.expiresAt) < cutoff) shareLinks.splice(i, 1);
+      }
       const id = crypto.randomUUID();
       shareLinks.push({ ...link, id, createdAt: new Date().toISOString(), revokedAt: null });
       return { id };
@@ -107,7 +111,7 @@ export function createMemoryStore(): Store {
       return l ? withoutHash(l) : null;
     },
     async listShareLinks() {
-      return [...shareLinks].reverse().map(withoutHash);
+      return [...shareLinks].reverse().slice(0, 50).map(withoutHash);
     },
     async revokeShareLink(id) {
       const l = shareLinks.find((x) => x.id === id);

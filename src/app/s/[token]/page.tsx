@@ -68,12 +68,6 @@ function Snapshot({ s }: { s: ShareSnapshot }) {
         </table>
       </section>
 
-      {s.waste.findings > 0 && (
-        <p className="mt-6 rounded-xl bg-canvas p-4 text-sm">
-          Runway found <span className="font-semibold tabular">{formatDollars(s.waste.monthlyCents)}/mo</span> of avoidable spend across {s.waste.findings}{" "}
-          {s.waste.findings === 1 ? "item" : "items"} in the bank feed.
-        </p>
-      )}
     </>
   );
 }
@@ -85,7 +79,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   if (found.kind === "gone") notFound();
   const s = found.snapshot;
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <header className="mb-6">
         <p className="text-sm text-muted">
           {found.kind === "sample" ? "Sample link: a fictional demo company" : "Shared read-only snapshot"} · as of {formatDate(s.asOf)}
@@ -93,9 +87,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{s.company}</h1>
         {found.kind === "link" && <p className="mt-1 text-xs text-muted">This link stops working on {formatDate(found.expiresAt.slice(0, 10))}.</p>}
       </header>
-      <main id="main">
-        <Snapshot s={s} />
-      </main>
+      <Snapshot s={s} />
       <footer className="mt-10 border-t border-line pt-4 text-xs text-muted">
         Numbers computed from the company&apos;s bank feed by{" "}
         <Link href="/" className="font-medium text-brand hover:underline">
@@ -103,6 +95,6 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         </Link>
         : read-only, no AI in the math. Know the day your cash runs out.
       </footer>
-    </div>
+    </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { formatDate } from "@/lib/format";
 
 type Mode = "demo" | "sandbox";
@@ -18,6 +18,9 @@ export function ShareLinksPanel({ mode }: { mode: Mode }) {
   const id = useId();
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [label, setLabel] = useState("");
+  const [company, setCompany] = useState("");
+  const [status, setStatus] = useState("");
+  const listHeading = useRef<HTMLParagraphElement>(null);
   const [days, setDays] = useState("30");
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -59,7 +62,7 @@ export function ShareLinksPanel({ mode }: { mode: Mode }) {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    const body = await post({ action: "create", days: Number(days), label: label.trim() || undefined });
+    const body = await post({ action: "create", days: Number(days), label: label.trim() || undefined, company: company.trim() || undefined });
     if (body?.url) {
       setCreated(new URL(body.url, window.location.origin).toString());
       setCopied(false);
@@ -69,7 +72,12 @@ export function ShareLinksPanel({ mode }: { mode: Mode }) {
   }
 
   async function revoke(linkId: string) {
-    if (await post({ action: "revoke", id: linkId })) reload();
+    if (await post({ action: "revoke", id: linkId })) {
+      setStatus("Link revoked. It no longer opens.");
+      // The Revoke button disappears with the change: keep keyboard focus on the list.
+      listHeading.current?.focus();
+      reload();
+    }
   }
 
   async function copy() {
@@ -102,6 +110,18 @@ export function ShareLinksPanel({ mode }: { mode: Mode }) {
         ) : (
           <>
             <form onSubmit={create} className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1 text-xs text-muted" htmlFor={`${id}-company`}>
+                Company name investors see
+                <input
+                  id={`${id}-company`}
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  maxLength={80}
+                  placeholder="e.g. Acme Robotics…"
+                  autoComplete="organization"
+                  className="rounded-lg border border-line bg-panel px-2 py-1.5 text-sm text-ink focus-visible:border-brand"
+                />
+              </label>
               <label className="flex flex-col gap-1 text-xs text-muted" htmlFor={`${id}-label`}>
                 Who it&apos;s for (only you see this)
                 <input
@@ -138,8 +158,16 @@ export function ShareLinksPanel({ mode }: { mode: Mode }) {
                 </div>
               )}
             </div>
+            <p role="status" className="sr-only">
+              {status}
+            </p>
             {links.length > 0 && (
-              <ul className="mt-4 divide-y divide-line rounded-lg border border-line text-xs">
+              <p ref={listHeading} tabIndex={-1} className="mt-4 text-xs font-medium outline-none">
+                Your links
+              </p>
+            )}
+            {links.length > 0 && (
+              <ul className="mt-1 divide-y divide-line rounded-lg border border-line text-xs">
                 {links.map((l) => (
                   <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                     <span>

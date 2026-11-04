@@ -5,7 +5,8 @@ import type { Analysis } from "../pipeline";
 
 /**
  * What an investor share link shows: the headline numbers frozen at the moment it was made.
- * Deliberately no vendor names, people or transactions. Validated again whenever it is read.
+ * Deliberately no vendor names, people, transactions or findings (what counts as waste is the
+ * team's call). Validated again whenever it is read; older payloads' extra fields are dropped.
  */
 
 const finiteOrNull = z.number().finite().nullable();
@@ -24,7 +25,6 @@ export const shareSnapshot = z.object({
   zeroCashDate: isoDate.nullable(),
   range: z.object({ p10: finiteOrNull, p90: finiteOrNull }),
   history: z.array(z.object({ date: isoDate, runwayMonths: finiteOrNull, cashCents: cents })).max(24),
-  waste: z.object({ monthlyCents: cents, findings: z.number().int().min(0) }),
 });
 
 export type ShareSnapshot = z.infer<typeof shareSnapshot>;
@@ -43,6 +43,5 @@ export function buildShareSnapshot({ company, analysis: a, forecast, history }: 
     zeroCashDate: a.snapshot.zeroCashDate,
     range: { p10: finite(forecast.runwayMonths.p10), p90: finite(forecast.runwayMonths.p90) },
     history: history.map((p) => ({ date: p.date, runwayMonths: finite(p.runwayMonths), cashCents: p.cashCents })),
-    waste: { monthlyCents: a.findings.reduce((s, f) => s + f.monthlySavingsCents, 0), findings: a.findings.length },
   });
 }

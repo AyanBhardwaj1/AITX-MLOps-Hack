@@ -6,7 +6,7 @@ import { hasJira } from "@/lib/server/env";
 import { fileJiraTicket } from "@/lib/server/jira-client";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
-import { StoreError } from "@/lib/store/types";
+import { isStoreError } from "@/lib/store/types";
 
 export const runtime = "nodejs";
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ action });
   } catch (err) {
-    if (err instanceof StoreError) return NextResponse.json({ error: err.message }, { status: err.code === "not_found" ? 404 : 409 });
+    if (isStoreError(err)) return NextResponse.json({ error: err.message }, { status: err.code === "not_found" ? 404 : 409 });
     console.error("[actions] decision failed", err);
     return NextResponse.json({ error: "Couldn't save that. Try again." }, { status: 500 });
   }

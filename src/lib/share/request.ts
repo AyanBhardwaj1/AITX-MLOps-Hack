@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StoreError, type Store } from "../store/types";
+import { isStoreError, type Store } from "../store/types";
 import type { ShareSnapshot } from "./snapshot";
 import { hashShareToken } from "./token";
 
@@ -16,6 +16,8 @@ const request = z.discriminatedUnion("action", [
     action: z.literal("create"),
     days: z.union([z.literal(7), z.literal(30), z.literal(90)]),
     label: z.string().trim().max(80).optional(),
+    /** The name investors see at the top of the page. */
+    company: z.string().trim().min(1).max(80).optional(),
   }),
   z.object({ mode, action: z.literal("revoke"), id: z.string().max(64) }),
 ]);
@@ -23,16 +25,18 @@ const request = z.discriminatedUnion("action", [
 export interface ShareDeps {
   storeFor: (mode: Mode) => Pick<Store, "createShareLink" | "revokeShareLink">;
   /** Today's numbers for this data source, frozen into the link. */
-  snapshotFor: (mode: Mode) => Promise<ShareSnapshot>;
+  snapshotFor: (mode: Mode, company?: string) => Promise<ShareSnapshot>;
   /** False where the app refuses to show the data (a real account with no password set). */
   canWrite: (mode: Mode) => boolean;
   now: () => Date;
   newToken: () => string;
+  /** False where links would only live in one server's memory (hosted without DATABASE_URL). */
+  storageReady: () => boolean;
 }
 
 export type ShareResult =
   | { status: 200; body: { url: string; id?: string; expiresAt?: string; sample?: true } | { ok: true } }
-  | { status: 400 | 403 | 404 | 409; body: { error: string } };
+  | { status: 400 | 403 | 404 | 409 | 503; body: { error: string } };
 
 export async function handleShare(raw: unknown, deps: ShareDeps): Promise<ShareResult> {
   const parsed = request.safeParse(raw);
@@ -40,14 +44,15 @@ export async function handleShare(raw: unknown, deps: ShareDeps): Promise<ShareR
   const req = parsed.data;
   // The public demo never writes: its "link" is the live sample page.
   if (req.mode === "demo") return req.action === "create" ? { status: 200, body: { url: "/s/demo", sample: true } } : { status: 404, body: { error: "Demo links can't be revoked." } };
-  if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before sharing a real account's numbers." } };
+  if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before making share links." } };
+  if (!deps.storageReady()) return { status: 503, body: { error: "Set DATABASE_URL to make share links: without a database they wouldn't survive." } };
   const store = deps.storeFor(req.mode);
   if (req.action === "revoke") {
     try {
       await store.revokeShareLink(req.id);
       return { status: 200, body: { ok: true } };
     } catch (err) {
-      if (err instanceof StoreError && err.code === "not_found") return { status: 404, body: { error: "That link doesn't exist." } };
+      if (isStoreError(err, "not_found")) return { status: 404, body: { error: "That link doesn't exist." } };
       throw err;
     }
   }
@@ -55,7 +60,7 @@ export async function handleShare(raw: unknown, deps: ShareDeps): Promise<ShareR
   const token = deps.newToken();
   const expiresAt = new Date(now.getTime() + req.days * DAY_MS).toISOString();
   const created = await store.createShareLink(
-    { tokenHash: hashShareToken(token), label: req.label || null, payload: await deps.snapshotFor(req.mode), expiresAt },
+    { tokenHash: hashShareToken(token), label: req.label || null, payload: await deps.snapshotFor(req.mode, req.company), expiresAt },
     MAX_ACTIVE_LINKS,
     now,
   );
