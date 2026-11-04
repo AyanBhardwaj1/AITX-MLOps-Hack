@@ -1,4 +1,5 @@
 import type { Finding } from "../types";
+import type { VendorCorrection } from "../vendors/corrections";
 
 export type FindingStatus = "open" | "accepted" | "dismissed" | "resolved";
 export type ActionKind = "cancel_email" | "downgrade_request" | "card_limit_checklist" | "jira_ticket";
@@ -82,4 +83,10 @@ export interface Store {
   markActionSent(id: string, externalRef: string): Promise<void>;
   recordRun(run: RunInput): Promise<string>;
   listRuns(limit: number): Promise<StoredRun[]>;
+  /** People's category fixes for this scope, one per vendor. */
+  listCorrections(): Promise<VendorCorrection[]>;
+  /** Saves a fix, replacing any earlier one for the same vendor. */
+  setCorrection(correction: VendorCorrection): Promise<void>;
+  /** Removes a vendor's fix (no-op when there is none). */
+  clearCorrection(vendorKey: string): Promise<void>;
 }

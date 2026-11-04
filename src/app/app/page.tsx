@@ -8,6 +8,7 @@ import { detectChanges } from "@/lib/insights/changes";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { canSendSlackFromApp, hasJira, hasOpenAI } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
+import { KNOWN_JOBS } from "@/lib/vendors/catalog";
 import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingStatus } from "@/lib/store/types";
@@ -79,7 +80,14 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
         lastDate: s.lastDate,
         nextExpected: s.nextExpected,
         cardholders: s.cardholders,
+        job: s.job,
+        corrected: dataset.corrections?.has(s.vendorKey) ?? false,
       })),
+    corrections: [...(dataset.corrections?.values() ?? [])].map((c) => ({
+      ...c,
+      vendorName: a.txns.find((t) => t.vendor.key === c.vendorKey)?.vendor.name ?? c.vendorKey,
+    })),
+    jobs: KNOWN_JOBS,
     forecast: forecastCash({
       cashCents: a.snapshot.cashCents,
       history,

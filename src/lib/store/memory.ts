@@ -1,4 +1,5 @@
 import type { Finding } from "../types";
+import type { VendorCorrection } from "../vendors/corrections";
 import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
 
 /**
@@ -11,6 +12,7 @@ export function createMemoryStore(): Store {
   const acceptedAt = new Map<string, string>();
   const actions: StoredAction[] = [];
   const runs: StoredRun[] = [];
+  const corrections = new Map<string, VendorCorrection>();
 
   const findAction = (id: string) => {
     const action = actions.find((a) => a.id === id);
@@ -79,6 +81,15 @@ export function createMemoryStore(): Store {
     },
     async listRuns(limit) {
       return [...runs].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, limit);
+    },
+    async listCorrections() {
+      return [...corrections.values()].map((c) => ({ ...c }));
+    },
+    async setCorrection(correction) {
+      corrections.set(correction.vendorKey, { ...correction });
+    },
+    async clearCorrection(vendorKey) {
+      corrections.delete(vendorKey);
     },
   };
 }

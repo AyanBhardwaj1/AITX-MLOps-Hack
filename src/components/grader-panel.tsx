@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader";
 import { formatDollars } from "@/lib/money";
+import { GraderSignup } from "./grader-signup";
 
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -62,9 +63,9 @@ export function GraderPanel() {
 
   const field = "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm transition-colors focus-visible:border-brand";
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
+    <div className="grid gap-6 lg:grid-cols-5 print:block">
       <form
-        className="space-y-4 rounded-xl border border-line bg-panel p-5 lg:col-span-2"
+        className="space-y-4 rounded-xl border border-line bg-panel p-5 lg:col-span-2 print:hidden"
         onSubmit={(e) => {
           e.preventDefault();
           run();
@@ -116,6 +117,18 @@ export function GraderPanel() {
         )}
         {result && (
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-muted">
+                {result.transactions.toLocaleString("en-US")} transactions, data through {formatDate(result.asOf)}.
+              </p>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-lg border border-line bg-panel px-3 py-1.5 text-sm font-medium transition-colors hover:bg-canvas print:hidden"
+              >
+                Print or save as PDF
+              </button>
+            </div>
             <div className="rounded-xl border border-line bg-panel p-5">
               <p className="text-sm font-medium text-muted">Runway</p>
               <p className="mt-1 flex items-baseline gap-2">
@@ -179,20 +192,17 @@ export function GraderPanel() {
               </div>
             )}
 
-            <div className="rounded-xl bg-ink p-5 text-white">
+            <div className="rounded-xl bg-ink p-5 text-white print:hidden">
               <p className="font-semibold">Get this every Monday, and see the savings land.</p>
               <p className="mt-1 text-sm text-white/80">
                 Connect read-only for a weekly digest, alerts when spend changes, and savings verified against your next bills.
               </p>
-              <div className="mt-3 flex flex-wrap gap-3">
-                <Link href="/#early-access" prefetch={false} className="inline-block rounded-lg bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-brand-soft">
-                  Get early access
-                </Link>
-                <Link href="/app" prefetch={false} className="inline-block rounded-lg px-4 py-2 text-sm font-medium text-white underline-offset-4 hover:underline">
-                  See the live demo
-                </Link>
-              </div>
+              <GraderSignup />
+              <Link href="/app" prefetch={false} className="mt-3 inline-block text-sm font-medium text-white underline underline-offset-4 hover:text-brand-soft">
+                Or see the live demo first
+              </Link>
             </div>
+            <p className="hidden text-xs text-muted print:block">Graded with Runway&apos;s free grader. The files were read in the browser and never uploaded.</p>
           </div>
         )}
       </section>

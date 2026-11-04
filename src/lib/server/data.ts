@@ -9,6 +9,9 @@ import { assertSafeToServe } from "../access";
 import { unknownMerchants } from "../enrich/vendor-labels";
 import { env, hasOpenAI } from "./env";
 import { labelUnknownVendors } from "./vendor-llm";
+import { scopeFor } from "./scope";
+import { getStore } from "./store";
+import type { VendorCorrection } from "../vendors/corrections";
 
 export type DataMode = "demo" | "sandbox";
 
@@ -44,20 +47,35 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
   return data;
 }
 
-export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo> };
+export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };
 
-/** The dataset plus LLM labels for vendors the rules couldn't place (when OpenAI is configured). */
-export async function loadLabelledDataset(mode: DataMode): Promise<LabelledDataset> {
-  const dataset = await loadDataset(mode);
-  if (!hasOpenAI()) return dataset;
-  const unknown = unknownMerchants(analyze(dataset).txns);
-  if (unknown.length === 0) return dataset;
-  // Rules first; only vendors they couldn't place go to the cheap model (cached per vendor).
-  const vendorLabels = await labelUnknownVendors(unknown);
-  return vendorLabels.size ? { ...dataset, vendorLabels } : dataset;
+/** People's category fixes for this data source. A storage outage means none, not a failed page. */
+async function loadCorrections(mode: DataMode): Promise<ReadonlyMap<string, VendorCorrection> | undefined> {
+  try {
+    const list = await getStore(scopeFor(mode)).listCorrections();
+    return list.length ? new Map(list.map((c) => [c.vendorKey, c])) : undefined;
+  } catch (err) {
+    console.error("[data] couldn't load vendor corrections; using the automatic categories", err);
+    return undefined;
+  }
 }
 
-export async function loadAnalysis(mode: DataMode): Promise<{ dataset: Dataset; analysis: Analysis }> {
+/**
+ * The dataset plus LLM labels for vendors the rules couldn't place (when OpenAI is configured)
+ * and people's own corrections, which win over both.
+ */
+export async function loadLabelledDataset(mode: DataMode): Promise<LabelledDataset> {
+  const [dataset, corrections] = await Promise.all([loadDataset(mode), loadCorrections(mode)]);
+  const withCorrections: LabelledDataset = corrections ? { ...dataset, corrections } : dataset;
+  if (!hasOpenAI()) return withCorrections;
+  const unknown = unknownMerchants(analyze(dataset).txns);
+  if (unknown.length === 0) return withCorrections;
+  // Rules first; only vendors they couldn't place go to the cheap model (cached per vendor).
+  const vendorLabels = await labelUnknownVendors(unknown);
+  return vendorLabels.size ? { ...withCorrections, vendorLabels } : withCorrections;
+}
+
+export async function loadAnalysis(mode: DataMode): Promise<{ dataset: LabelledDataset; analysis: Analysis }> {
   const dataset = await loadLabelledDataset(mode);
   return { dataset, analysis: analyze(dataset) };
 }

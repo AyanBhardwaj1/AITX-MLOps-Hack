@@ -4,6 +4,7 @@ import { analyze, type Analysis } from "../pipeline";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
 import type { FindingStatus } from "../store/types";
 import type { Finding, VendorInfo } from "../types";
+import type { VendorCorrection } from "../vendors/corrections";
 import { draftAction, simulatePlan, type ActionDraft } from "./tools";
 
 /**
@@ -48,6 +49,7 @@ export interface AutopilotDeps {
     asOf?: string;
     label: string;
     vendorLabels?: ReadonlyMap<string, VendorInfo>;
+    corrections?: ReadonlyMap<string, VendorCorrection>;
   }>;
   /** Optional LLM memo writer. Without it, the template memo is used. */
   writeMemo?: (facts: MemoFacts) => Promise<{ text: string; model: string; inputTokens?: number; outputTokens?: number }>;
@@ -177,7 +179,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
     });
 
     const a = await step("analyze", async () => {
-      const result = analyze({ accounts: data.accounts, transactions: data.transactions, asOf: data.asOf, vendorLabels: data.vendorLabels });
+      const result = analyze({ accounts: data.accounts, transactions: data.transactions, asOf: data.asOf, vendorLabels: data.vendorLabels, corrections: data.corrections });
       // Respect people's decisions: a dismissed finding is out of the plan, the memo and the tickets.
       let kept = result.findings;
       let lookup: Record<string, unknown> = {};

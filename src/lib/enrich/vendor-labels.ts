@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES, type EnrichedTxn, type VendorInfo } from "../types";
-import { VENDOR_CATALOG } from "../vendors/catalog";
+import { KNOWN_JOBS } from "../vendors/catalog";
 import { cleanDescriptor } from "../vendors/normalize";
 
 /**
@@ -14,7 +14,6 @@ export const LABEL_PROMPT_VERSION = "v1";
 export const MIN_LABEL_CONFIDENCE = 0.6;
 const MAX_DESCRIPTOR_CHARS = 60;
 
-const KNOWN_JOBS = [...new Set(VENDOR_CATALOG.map((e) => e.job).filter((j): j is string => j !== null))] as [string, ...string[]];
 
 export const llmLabelSchema = z.object({
   vendorKey: z.string(),

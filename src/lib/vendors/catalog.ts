@@ -84,3 +84,6 @@ const JOB_LABELS: Readonly<Record<string, string>> = {
 export function jobLabel(job: string): string {
   return JOB_LABELS[job] ?? job.replaceAll("_", " ");
 }
+
+/** Every job-to-be-done the catalog knows: the closed list LLM labels and user corrections choose from. */
+export const KNOWN_JOBS = [...new Set(VENDOR_CATALOG.map((e) => e.job).filter((j): j is string => j !== null))].sort() as [string, ...string[]];

@@ -117,5 +117,20 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(runs[0]!.steps[0]!.detail).toEqual({ transactions: 10 });
       expect(await store.listRuns(1)).toHaveLength(1);
     });
+
+    it("keeps a vendor correction, replaces it on a second edit, and forgets it when cleared", async () => {
+      const store = await makeStore();
+      expect(await store.listCorrections()).toEqual([]);
+      await store.setCorrection({ vendorKey: "loom", category: "software", job: "video_meetings" });
+      await store.setCorrection({ vendorKey: "brazos_properties", category: "transfer", job: null });
+      await store.setCorrection({ vendorKey: "loom", category: "marketing", job: null });
+      const byKey = new Map((await store.listCorrections()).map((c) => [c.vendorKey, c]));
+      expect(byKey.size).toBe(2);
+      expect(byKey.get("loom")).toEqual({ vendorKey: "loom", category: "marketing", job: null });
+      expect(byKey.get("brazos_properties")).toEqual({ vendorKey: "brazos_properties", category: "transfer", job: null });
+      await store.clearCorrection("loom");
+      await store.clearCorrection("never_set");
+      expect(await store.listCorrections()).toEqual([{ vendorKey: "brazos_properties", category: "transfer", job: null }]);
+    });
   });
 }

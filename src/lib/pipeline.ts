@@ -4,6 +4,7 @@ import { detectStreams } from "./detect/recurring";
 import { computeSnapshot, type Snapshot } from "./finance/runway";
 import { cashBalanceCents, mapTransaction } from "./rho/map";
 import type { RhoAccount, RhoTransaction } from "./rho/schema";
+import { applyCorrections, type VendorCorrection } from "./vendors/corrections";
 import type { EnrichedTxn, Finding, IsoDate, RecurringStream, VendorInfo } from "./types";
 
 export interface Analysis {
@@ -24,6 +25,8 @@ export interface AnalyzeInput {
   asOf?: IsoDate;
   /** LLM labels for vendors the catalog doesn't know (see enrich/vendor-labels). */
   vendorLabels?: ReadonlyMap<string, VendorInfo>;
+  /** People's own category fixes, keyed by vendor key; applied last, so they win (see vendors/corrections). */
+  corrections?: ReadonlyMap<string, VendorCorrection>;
 }
 
 function timed<T>(fn: () => T): [T, number] {
@@ -33,10 +36,11 @@ function timed<T>(fn: () => T): [T, number] {
 }
 
 /** Rho data in, runway and findings out. Pure and deterministic: no network, no LLM. */
-export function analyze({ accounts, transactions, asOf, vendorLabels }: AnalyzeInput): Analysis {
+export function analyze({ accounts, transactions, asOf, vendorLabels, corrections }: AnalyzeInput): Analysis {
   const [txns, mapMs] = timed(() => {
     const mapped = transactions.map(mapTransaction).filter((t): t is EnrichedTxn => t !== null);
-    return vendorLabels?.size ? applyVendorLabels(mapped, vendorLabels) : mapped;
+    const labelled = vendorLabels?.size ? applyVendorLabels(mapped, vendorLabels) : mapped;
+    return corrections?.size ? applyCorrections(labelled, corrections) : labelled;
   });
   const latest = txns.reduce<IsoDate>((max, t) => (t.postedAt > max ? t.postedAt : max), "0000-00-00");
   const effectiveAsOf = asOf ?? latest;

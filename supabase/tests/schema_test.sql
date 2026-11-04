@@ -131,4 +131,27 @@ do $$ begin
   end;
 end $$;
 reset role;
+
+-- Vendor corrections: members read their own org's fixes only, and never write them directly.
+insert into public.vendor_corrections (org_id, vendor_key, category, job) values
+  ('00000000-0000-0000-0000-00000000000a', 'loom', 'software', 'video_meetings'),
+  ('00000000-0000-0000-0000-00000000000b', 'zoom', 'marketing', null);
+do $$ begin
+  begin
+    insert into public.vendor_corrections (org_id, vendor_key, category) values ('00000000-0000-0000-0000-00000000000a', 'x', 'snacks');
+    raise exception 'FAIL: unknown category accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if (select count(*) from public.vendor_corrections) <> 1 then raise exception 'FAIL: saw another org''s corrections'; end if;
+  begin
+    update public.vendor_corrections set category = 'rent';
+    raise exception 'FAIL: member wrote a correction directly';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
 select 'ALL SCHEMA TESTS PASSED' as result;

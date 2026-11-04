@@ -51,7 +51,8 @@ export interface VendorInfo {
   category: Category;
   /** Job-to-be-done for software, e.g. "video_meetings". Used to spot overlapping tools. */
   job: string | null;
-  source: "catalog" | "llm" | "fallback";
+  /** "user": a person corrected it, which overrides every other source. */
+  source: "catalog" | "llm" | "fallback" | "user";
 }
 
 export interface EnrichedTxn extends Txn {

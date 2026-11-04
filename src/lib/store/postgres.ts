@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import type { Finding } from "../types";
+import type { VendorCorrection } from "../vendors/corrections";
 import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
 
 /**
@@ -269,6 +270,29 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
             .map((s) => ({ seq: s.seq, name: s.name, status: s.status, durationMs: s.duration_ms ?? 0, detail: s.detail })),
         }),
       );
+    },
+
+    async listCorrections() {
+      const org = await orgId();
+      const { rows } = await pool.query<{ vendor_key: string; category: VendorCorrection["category"]; job: string | null }>(
+        `select vendor_key, category, job from public.vendor_corrections where org_id = $1 order by vendor_key`,
+        [org],
+      );
+      return rows.map((r) => ({ vendorKey: r.vendor_key, category: r.category, job: r.job }));
+    },
+
+    async setCorrection({ vendorKey, category, job }) {
+      const org = await orgId();
+      await pool.query(
+        `insert into public.vendor_corrections (org_id, vendor_key, category, job) values ($1, $2, $3, $4)
+         on conflict (org_id, vendor_key) do update set category = excluded.category, job = excluded.job, updated_at = now()`,
+        [org, vendorKey, category, job],
+      );
+    },
+
+    async clearCorrection(vendorKey) {
+      const org = await orgId();
+      await pool.query(`delete from public.vendor_corrections where org_id = $1 and vendor_key = $2`, [org, vendorKey]);
     },
   };
 }

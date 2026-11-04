@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CorrectionEditor, CorrectionsList } from "./vendor-correction";
 import { useMemo, useState } from "react";
 import { simulateSavings, stressRunway, type Snapshot } from "@/lib/finance/runway";
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
@@ -53,7 +54,13 @@ export interface DashboardData {
     lastDate: string;
     nextExpected: string;
     cardholders: string[];
+    job: string | null;
+    corrected: boolean;
   }[];
+  /** People's category fixes, including vendors a fix took out of the table (e.g. marked as transfers). */
+  corrections: { vendorKey: string; vendorName: string; category: string; job: string | null }[];
+  /** The jobs a software vendor can be assigned (the catalog's closed list). */
+  jobs: string[];
   forecast: Forecast;
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
@@ -335,7 +342,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             <section className="rounded-xl border border-line bg-panel">
               <div className="border-b border-line px-5 py-3">
                 <h2 className="font-semibold">Recurring charges ({data.streams.length})</h2>
-                <p className="text-xs text-muted">Detected from billing cadence. No setup or receipts needed.</p>
+                <p className="text-xs text-muted">Detected from billing cadence. No setup or receipts needed. Wrong category? Fix it and every number follows.</p>
               </div>
               <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="Recurring charges">
                 <table className="w-full text-sm">
@@ -352,7 +359,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                     {data.streams.map((s) => (
                       <tr key={`${s.vendorKey}|${s.cardholders.join(",")}`}>
                         <td className="px-5 py-2">
-                          {s.vendorName} <span className="text-xs text-muted">{categoryName(s.category)}</span>
+                          {s.vendorName} <span className="text-xs text-muted">{categoryName(s.category)}</span>{" "}
+                          {s.corrected && <span className="rounded bg-brand-soft px-1 text-[11px] font-medium text-brand-strong">your fix</span>}{" "}
+                          <CorrectionEditor mode={data.mode} vendorKey={s.vendorKey} vendorName={s.vendorName} category={s.category} job={s.job} jobs={data.jobs} />
                         </td>
                         <td className="px-2 py-2 text-muted">{s.cadence}</td>
                         <td className="tabular whitespace-nowrap px-2 py-2 text-right">{formatMoney(s.monthlyCostCents)}</td>
@@ -365,6 +374,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                   </tbody>
                 </table>
               </div>
+              <CorrectionsList mode={data.mode} corrections={data.corrections} />
             </section>
           </div>
 

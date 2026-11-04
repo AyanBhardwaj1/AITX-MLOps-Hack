@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { submitSignup } from "@/lib/waitlist/client";
 
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "done" } | { kind: "error"; message: string };
 
@@ -33,24 +34,14 @@ export function EarlyAccessForm() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     setState({ kind: "sending" });
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: String(form.get("email") ?? ""),
-          role,
-          bank: String(form.get("bank") ?? "") || undefined,
-          source: "landing",
-          website: String(form.get("website") ?? "") || undefined,
-        }),
-      });
-      if (res.ok) return setState({ kind: "done" });
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      setState({ kind: "error", message: body?.error ?? "That didn’t go through. Try again." });
-    } catch {
-      setState({ kind: "error", message: "You seem to be offline. Try again when you’re connected." });
-    }
+    const outcome = await submitSignup({
+      email: String(form.get("email") ?? ""),
+      role,
+      bank: String(form.get("bank") ?? ""),
+      source: "landing",
+      website: String(form.get("website") ?? ""),
+    });
+    setState(outcome.ok ? { kind: "done" } : { kind: "error", message: outcome.error });
   }
 
   if (state.kind === "done") {
