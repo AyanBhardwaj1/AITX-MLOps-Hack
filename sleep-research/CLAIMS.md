@@ -89,3 +89,7 @@ The pilot is inconclusive by test design (plan review). Recall@5 was 96.5% vs 95
 ## Update, 2026-11-02: trend-aware range (follows C6)
 
 The band now follows the last 6 months' burn trend (sleep-research/runs/forecast-trend.md). On a fresh held-out seed set, run once, it holds realized cash 69–73% of the time for the generated company (old band: 43–52%) and 54–57% under a hiring ramp (old: 0–7%). It improves every profile tested but is still short of a calibrated 80%, and the pre-registered 60% floor was not met for the hiring ramp. Same scope limits as C6.
+
+## Update, 2026-11-04: calibrated range
+
+Uncertainty scaled ×1.5 (chosen on dev seeds). On a fresh seed set, run once: 80% / 82% coverage at 3 / 6 months for the generated company and 73% / 68% under a hiring ramp; the pre-registered 70% floor was missed by 2 points for the hiring ramp at 6 months (sleep-research/runs/forecast-trend.md, "Calibration").

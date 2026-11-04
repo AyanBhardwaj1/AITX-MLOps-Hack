@@ -154,7 +154,7 @@ const FORECAST_HISTORY_MONTHS = 12;
 const AI_TREND_MONTHS = 6;
 
 export const forecastInput = z.object({});
-/** Monte Carlo runway range with the recent burn trend. Narrower than reality and blind to shocks, so p10 is not a worst case (see sleep-research/runs/forecast-trend.md). */
+/** Monte Carlo runway range with the recent burn trend. Calibrated toward 80% on backtests but blind to shocks, so p10 is not a worst case (see sleep-research/runs/forecast-trend.md). */
 export function getForecast(a: Analysis) {
   const f = forecastCash({
     cashCents: a.snapshot.cashCents,

@@ -124,6 +124,15 @@ describe("forecastCash", () => {
       expect(f.runwayMonths.p90 - f.runwayMonths.p10).toBeLessThan(3);
     });
 
+    it("widens the range around the same middle when asked for more uncertainty", () => {
+      const base = { cashCents: 150_000_000, history: rising, netBurnCents: recentAvg(rising), asOf: "2026-10-26" } as const;
+      const narrow = forecastCash({ ...base, uncertaintyScale: 1 });
+      const wide = forecastCash({ ...base, uncertaintyScale: 2 });
+      const width = (f: typeof narrow) => f.points[6]!.p90Cents - f.points[6]!.p10Cents;
+      expect(width(wide)).toBeGreaterThan(1.7 * width(narrow));
+      expect(Math.abs(wide.points[6]!.p50Cents - narrow.points[6]!.p50Cents)).toBeLessThan(0.2 * width(narrow));
+    });
+
     it("needs at least four months before it trusts a trend", () => {
       const short = [6, 7, 8].map((m, i) => month(i, 0, m * 1_000_000));
       const f = forecastCash({ cashCents: 70_000_000, history: short, netBurnCents: 7_000_000, asOf: "2026-10-26" });

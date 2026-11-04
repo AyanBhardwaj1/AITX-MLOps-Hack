@@ -34,6 +34,12 @@ const MIN_TREND_T = 2;
  * backtest only checks 3 and 6 months, and a straight line carried for years is not believable.
  */
 export const TREND_HORIZON_MONTHS = 12;
+/**
+ * Multiplies every source of uncertainty in the trend model (slope, level, monthly noise). Fitted
+ * uncertainty from a few months of history is too small; this widens the range toward an honest
+ * 80% (chosen on dev seeds, confirmed on fresh ones: sleep-research/runs/forecast-trend.md).
+ */
+export const DEFAULT_UNCERTAINTY_SCALE = 1.5;
 
 export type ForecastMethod = "trend" | "swings";
 
@@ -56,8 +62,8 @@ export interface Percentiles<T> {
 export interface Forecast {
   points: ForecastPoint[];
   /**
-   * p10/p50/p90 of simulated runway with the burn trend. Still narrower than an honest 80% range: on
-   * fresh held-out synthetic companies it held realized cash 54-73% of the time, and it can't foresee shocks
+   * p10/p50/p90 of simulated runway with the burn trend, calibrated toward an honest 80% range: on
+   * fresh held-out synthetic companies it held realized cash 68-82% of the time, and it can't foresee shocks
    * (sleep-research/runs/forecast-trend.md).
    */
   runwayMonths: Percentiles<number>;
@@ -82,6 +88,7 @@ interface ForecastInput {
   method?: ForecastMethod;
   trendDamping?: number;
   trendWindowMonths?: number;
+  uncertaintyScale?: number;
 }
 
 /** Standard normal draw (Box-Muller) from the seeded uniform generator. */
@@ -136,7 +143,9 @@ export function forecastCash({
   method = "trend",
   trendDamping = DEFAULT_TREND_DAMPING,
   trendWindowMonths = DEFAULT_TREND_WINDOW_MONTHS,
+  uncertaintyScale = DEFAULT_UNCERTAINTY_SCALE,
 }: ForecastInput): Forecast {
+  if (!(uncertaintyScale > 0)) throw new Error("uncertaintyScale must be positive");
   const raw = history.map((m) => m.outflowCents - m.inflowCents);
   const observed = observedMonths(history);
   const fit = method === "trend" ? fitBurnTrend(observed.slice(-trendWindowMonths)) : null;
@@ -150,6 +159,8 @@ export function forecastCash({
   // Today's burn is an average of a few noisy months, so its own level is uncertain too.
   const levelSe = fit ? fit.residualSdCents / Math.sqrt(Math.min(DEFAULT_LOOKBACK_MONTHS, Math.max(1, observed.length))) : 0;
   const steps = dampedSteps(MAX_SIMULATED_MONTHS, trendDamping);
+  // The "swings" model is kept exactly as it was, for comparison.
+  const spread = method === "trend" ? uncertaintyScale : 1;
   const rng = createRng(seed);
   const cashByMonth: number[][] = Array.from({ length: horizonMonths + 1 }, () => []);
   const runways: number[] = [];
@@ -157,11 +168,11 @@ export function forecastCash({
   for (let path = 0; path < simulations; path++) {
     let cash = cashCents;
     let runway = Number.POSITIVE_INFINITY;
-    const pathSlope = slope + slopeSe * (slopeSe ? normal(rng.next) : 0);
-    const pathLevel = netBurnCents + levelSe * (levelSe ? normal(rng.next) : 0);
+    const pathSlope = slope + spread * slopeSe * (slopeSe ? normal(rng.next) : 0);
+    const pathLevel = netBurnCents + spread * levelSe * (levelSe ? normal(rng.next) : 0);
     cashByMonth[0]!.push(cash);
     for (let m = 1; m <= MAX_SIMULATED_MONTHS; m++) {
-      const net = pathLevel + pathSlope * steps[m]! + deviations[rng.int(0, deviations.length - 1)]!;
+      const net = pathLevel + pathSlope * steps[m]! + spread * deviations[rng.int(0, deviations.length - 1)]!;
       const before = cash;
       cash -= net;
       if (m <= horizonMonths) cashByMonth[m]!.push(cash);

@@ -54,3 +54,27 @@ Seed sets (20 seeds × 2 noise levels × 5 origins = 200 forecasts per row): dev
 Limits: one generated company shape (Taco Robotics), synthetic perturbations written by the same author as the model, and the 200 forecasts per row are 40 runs × 5 overlapping origins, not independent. The dev-grid files for windows 6 and 9 come from the first model; `runway-backtest-trend-d1-w6-dev.md` and `-holdout.md` were re-run with the final model and no longer show the numbers in steps 1–2, which are recorded here.
 
 Next step: calibrate the width (e.g. scale it so backtest coverage reaches 80% on dev, confirm on a fresh set), and model payroll changes from hiring plans rather than history.
+
+## Calibration (2026-11-04)
+
+The fitted uncertainty from six months of history was too small, so every source of it (slope, level, monthly noise) is now multiplied by one factor, `DEFAULT_UNCERTAINTY_SCALE`. Criteria written before any run: on a fresh seed set, coverage 70–90% for *as generated* and *hiring ramp* at 3 and 6 months, median width at 6 months ≤ 30% of P50.
+
+Dev seeds, inside-band rates (as generated 3/6 mo · hiring ramp 3/6 mo · hiring width at 6 mo):
+
+| Scale | As generated | Hiring ramp | Width |
+|---|---|---|---|
+| 1.5 | 84% / 87% | 73% / 71% | 19.5% |
+| 2 | 91% / 93% | 83% / 81% | 26.3% |
+| 2.5 | 95% / 96% | 88% / 87% | 32.4% |
+| 3 | 97% / 97% | 90% / 89% | 39.3% |
+
+1.5 was the only scale inside 70–90% on dev. **Holdout3 (seeds 60–79, run once)**, `runway-backtest-trend-d1-w6-s1.5-holdout3.md`:
+
+| Profile | 3 mo | 6 mo | Median width at 6 mo |
+|---|---|---|---|
+| as generated | 80% | 82% | 9.8% |
+| hiring ramp | 73% | **68%** | 18.3% |
+| revenue drop | 79% | 77% | 9.8% |
+| one-off bill | 65% | 67% | 9.8% |
+
+Three of four criterion cells pass; hiring ramp at 6 months misses the 70% floor by 2 points (misses fall below P10: the model still under-reads an accelerating payroll). On the same seeds the uncalibrated trend model held 54–70% and the original swings band 1–51% (`runway-backtest-trend-d1-w6-holdout3.md`, `runway-backtest-swings-holdout3.md`). Shipped as the default with that result stated.

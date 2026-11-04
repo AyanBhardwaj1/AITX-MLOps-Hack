@@ -213,10 +213,10 @@ The eval and two independent code reviews caught real bugs during development, e
 
   Their deterministic parts (tools, validation, the memo number check) are tested. Without a key, everything degrades to rules and templates.
 - **Zombie detection is a heuristic.** Bank data has no usage data, so "idle card" stands in for "unused". SSO or Google Workspace signals would make it precise.
-- **The forecast range now follows the burn trend, but is still too narrow.** On a fresh held-out set of generated companies (`npx tsx scripts/runway-backtest.ts --method trend --damping 1 --window 6 --seeds holdout2`):
-  - Realized cash landed inside the P10–P90 band 69% / 73% of the time at 3 / 6 months (the old swings-only band: 52% / 43%).
-  - Under a hiring ramp it held 54% / 57% (old: 7% / 0%), short of the 60% floor set before the test; shocks after the forecast date (a revenue drop, a big bill) can't be foreseen by any history-based range.
-  - The UI calls it a "range with trend" and says it is narrower than reality. Calibrating its width is the next step ([forecast-trend.md](sleep-research/runs/forecast-trend.md)).
+- **The forecast range follows the burn trend and is calibrated, but only on synthetic companies.** On a fresh held-out set (`npx tsx scripts/runway-backtest.ts --method trend --damping 1 --window 6 --scale 1.5 --seeds holdout3`):
+  - Realized cash landed inside the P10–P90 band 80% / 82% of the time at 3 / 6 months for a steady company (the original swings-only band: 51% / 33%).
+  - Under a hiring ramp it held 73% / 68% (original: 12% / 1%); the 6-month figure missed the 70% floor set before the test by 2 points.
+  - Shocks after the forecast date (a revenue drop, a big bill) can't be foreseen by any history-based range. Full procedure: [forecast-trend.md](sleep-research/runs/forecast-trend.md).
 - **SaaS waste is one lever, not the biggest.** On the demo cohort, fixing all detected waste adds about 0.4 months of runway, while delaying one $15k/month hire by 3 months adds about 0.56 (`scripts/runway-levers.ts`; one company shape, illustrative).
 - **Not built yet** (ranked in [the product research](reports/Runway%20product%20go%20to%20market.md)):
   - Rho partner OAuth (needs Rho's partner approval) and a Mercury connector.

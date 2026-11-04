@@ -85,7 +85,7 @@ function howLong(a: Analysis): InstantAnswer {
     `At today's burn, about **${months(snap.runwayMonths)}**` + (snap.zeroCashDate ? ` (cash runs out around ${snap.zeroCashDate}).` : "."),
     `From ${f.method}, the range is **${range(f.runwayMonths.p10, f.runwayMonths.p90)}**` +
       (f.trendCentsPerMonth ? ` (burn ${f.trendCentsPerMonth > 0 ? "rising" : "falling"} about ${formatDollars(Math.abs(f.trendCentsPerMonth))} a month).` : ".") +
-      ` It can't foresee one-off shocks like a lost customer or a big bill, and in tests it was still narrower than reality, so the low end is not a worst case.`,
+      ` It can't foresee one-off shocks like a lost customer or a big bill, and in tests it held the real outcome about 7–8 times in 10, so the low end is not a worst case.`,
     `If revenue fell 30%, runway would be **${months(snap.runwayMonthsIfRevenueFalls30Pct)}**.`,
   ];
   return { question: INSTANT_QUESTIONS.how_long, tools: ["get_runway_forecast", "get_financial_snapshot"], text: lines.join("\n\n") };
