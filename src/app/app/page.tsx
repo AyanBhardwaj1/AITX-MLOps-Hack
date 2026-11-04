@@ -9,6 +9,7 @@ import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { canSendSlackFromApp, hasJira, hasOpenAI } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { KNOWN_JOBS } from "@/lib/vendors/catalog";
+import { categorySpend } from "@/lib/finance/category-spend";
 import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingStatus } from "@/lib/store/types";
@@ -88,6 +89,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
       vendorName: a.txns.find((t) => t.vendor.key === c.vendorKey)?.vendor.name ?? c.vendorKey,
     })),
     jobs: KNOWN_JOBS,
+    categorySpend: categorySpend(a.txns, a.asOf),
     forecast: forecastCash({
       cashCents: a.snapshot.cashCents,
       history,

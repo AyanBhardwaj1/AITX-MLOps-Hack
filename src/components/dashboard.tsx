@@ -24,6 +24,9 @@ import { ForecastChart } from "./forecast-chart";
 import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { RunwayChart } from "./runway-chart";
 import { SavingsTracker } from "./savings-tracker";
+import { CategorySpendCard } from "./category-spend-card";
+import type { CategorySpendRow } from "@/lib/finance/category-spend";
+import { RunwayGoalCard } from "./runway-goal-card";
 import { ScenarioPlanner } from "./scenario-planner";
 import { ThisWeekCard } from "./this-week-card";
 
@@ -61,6 +64,7 @@ export interface DashboardData {
   corrections: { vendorKey: string; vendorName: string; category: string; job: string | null }[];
   /** The jobs a software vendor can be assigned (the catalog's closed list). */
   jobs: string[];
+  categorySpend: CategorySpendRow[];
   forecast: Forecast;
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
@@ -272,6 +276,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           )}
         </section>
 
+        <CategorySpendCard rows={data.categorySpend} />
+        <RunwayGoalCard snapshot={data.snapshot} findings={data.findings} />
         <ScenarioPlanner
           history={data.history}
           cashCents={data.snapshot.cashCents}
@@ -297,6 +303,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 <div className="text-right">
                   <p className="tabular text-lg font-semibold text-brand">{formatDollars(monthly.reduce((s, f) => s + f.monthlySavingsCents, 0))}/mo</p>
                   {oneTime > 0 && <p className="text-xs text-muted">+ {formatCents(oneTime)} to reclaim</p>}
+                  <a href={`/api/export?mode=${data.mode}&kind=findings`} download className="text-xs font-medium text-brand hover:underline">
+                    Download CSV
+                  </a>
                 </div>
               </div>
               {statusError && <p className="mx-5 mt-3 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{statusError}</p>}
@@ -344,7 +353,12 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 <h2 id={RECURRING_HEADING_ID} tabIndex={-1} className="font-semibold outline-none">
                   Recurring charges ({data.streams.length})
                 </h2>
-                <p className="text-xs text-muted">Detected from billing cadence. No setup or receipts needed. Wrong category? Fix it and every number follows.</p>
+                <p className="text-xs text-muted">
+                  Detected from billing cadence. No setup or receipts needed. Wrong category? Fix it and every number follows.{" "}
+                  <a href={`/api/export?mode=${data.mode}&kind=recurring`} download className="font-medium text-brand hover:underline">
+                    Download CSV
+                  </a>
+                </p>
               </div>
               <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="Recurring charges">
                 <table className="w-full text-sm">
