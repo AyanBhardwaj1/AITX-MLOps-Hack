@@ -11,6 +11,9 @@ import { canSendSlackFromApp, hasJira, hasOpenAI } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { KNOWN_JOBS } from "@/lib/vendors/catalog";
 import { categorySpend } from "@/lib/finance/category-spend";
+import { runwayHistory } from "@/lib/finance/runway-history";
+import { vendorHistory } from "@/lib/finance/vendor-history";
+import { cashAccountIds } from "@/lib/rho/map";
 import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingStatus } from "@/lib/store/types";
@@ -89,6 +92,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
         cardholders: s.cardholders,
         job: s.job,
         corrected: dataset.corrections?.has(s.vendorKey) ?? false,
+        history: vendorHistory(s, byId, a.asOf),
       })),
     corrections: [...(dataset.corrections?.values() ?? [])].map((c) => ({
       ...c,
@@ -96,6 +100,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     })),
     jobs: KNOWN_JOBS,
     categorySpend: categorySpend(a.txns, a.asOf),
+    runwayHistory: runwayHistory({ txns: a.txns, cashAccountIds: cashAccountIds(dataset.accounts), cashCents: a.snapshot.cashCents, asOf: a.asOf }),
     forecast: forecastCash({
       cashCents: a.snapshot.cashCents,
       history,

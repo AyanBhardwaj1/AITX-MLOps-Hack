@@ -1,5 +1,6 @@
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
+import type { ShareSnapshot } from "../share/snapshot";
 
 export type FindingStatus = "open" | "accepted" | "dismissed" | "resolved";
 export type ActionKind = "cancel_email" | "downgrade_request" | "card_limit_checklist" | "jira_ticket";
@@ -92,4 +93,25 @@ export interface Store {
   setCorrection(correction: VendorCorrection, max: number): Promise<"saved" | "limit">;
   /** Removes a vendor's fix (no-op when there is none). */
   clearCorrection(vendorKey: string): Promise<void>;
+  /** Saves a share link (by token hash). Refused ("limit") when `maxActive` unexpired, unrevoked links exist; atomic. */
+  createShareLink(link: ShareLinkInput, maxActive: number, now: Date): Promise<{ id: string } | "limit">;
+  /** A link by its token hash, in any state, or null. */
+  findShareLink(tokenHash: string): Promise<StoredShareLink | null>;
+  /** This scope's links, newest first. */
+  listShareLinks(): Promise<StoredShareLink[]>;
+  /** Revokes one of this scope's links; StoreError("not_found") otherwise. */
+  revokeShareLink(id: string): Promise<void>;
+}
+
+export interface ShareLinkInput {
+  tokenHash: string;
+  label: string | null;
+  payload: ShareSnapshot;
+  expiresAt: string;
+}
+
+export interface StoredShareLink extends Omit<ShareLinkInput, "tokenHash"> {
+  id: string;
+  createdAt: string;
+  revokedAt: string | null;
 }

@@ -51,6 +51,11 @@ export function mapTransaction(t: RhoTransaction): EnrichedTxn | null {
   };
 }
 
+/** Accounts that hold cash (not cards): the ones whose transactions move the cash balance. */
+export function cashAccountIds(accounts: readonly RhoAccount[]): Set<string> {
+  return new Set(accounts.filter((a) => CASH_ACCOUNT_TYPES.has(a.account_type)).map((a) => a.id));
+}
+
 export function cashBalanceCents(accounts: readonly RhoAccount[]): Cents {
   return accounts.filter((a) => CASH_ACCOUNT_TYPES.has(a.account_type)).reduce((s, a) => s + a.balance.amount, 0);
 }

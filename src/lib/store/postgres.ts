@@ -1,7 +1,8 @@
 import type { Pool, PoolClient } from "pg";
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
-import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
+import type { ShareSnapshot } from "../share/snapshot";
+import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
  * Postgres store on the schema in supabase/migrations. The server connects with a privileged
@@ -37,6 +38,24 @@ function toAction(r: ActionRow): StoredAction {
     createdAt: r.created_at.toISOString(),
   };
 }
+
+interface ShareRow {
+  id: string;
+  label: string | null;
+  payload: ShareSnapshot;
+  created_at: Date;
+  expires_at: Date;
+  revoked_at: Date | null;
+}
+const SHARE_COLUMNS = "id, label, payload, created_at, expires_at, revoked_at";
+const toShareLink = (r: ShareRow): StoredShareLink => ({
+  id: r.id,
+  label: r.label,
+  payload: r.payload,
+  createdAt: r.created_at.toISOString(),
+  expiresAt: r.expires_at.toISOString(),
+  revokedAt: r.revoked_at ? r.revoked_at.toISOString() : null,
+});
 
 async function inTransaction<T>(pool: Pool, fn: (c: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
@@ -303,6 +322,43 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
     async clearCorrection(vendorKey) {
       const org = await orgId();
       await pool.query(`delete from public.vendor_corrections where org_id = $1 and vendor_key = $2`, [org, vendorKey]);
+    },
+
+    async createShareLink({ tokenHash, label, payload, expiresAt }, maxActive, now) {
+      const org = await orgId();
+      return inTransaction(pool, async (c) => {
+        // One writer per organization, so the active-link cap can't be raced past.
+        await c.query(`select pg_advisory_xact_lock(hashtextextended('share_links:' || $1::text, 0))`, [org]);
+        const { rows } = await c.query<{ active: string }>(
+          `select count(*) as active from public.share_links where org_id = $1 and revoked_at is null and expires_at > $2`,
+          [org, now.toISOString()],
+        );
+        if (Number(rows[0]!.active) >= maxActive) return "limit" as const;
+        const inserted = await c.query<{ id: string }>(
+          `insert into public.share_links (org_id, token_hash, label, payload, expires_at) values ($1, $2, $3, $4, $5) returning id`,
+          [org, tokenHash, label, JSON.stringify(payload), expiresAt],
+        );
+        return { id: inserted.rows[0]!.id };
+      });
+    },
+
+    async findShareLink(tokenHash) {
+      const org = await orgId();
+      const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where org_id = $1 and token_hash = $2`, [org, tokenHash]);
+      return rows[0] ? toShareLink(rows[0]) : null;
+    },
+
+    async listShareLinks() {
+      const org = await orgId();
+      const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where org_id = $1 order by created_at desc`, [org]);
+      return rows.map(toShareLink);
+    },
+
+    async revokeShareLink(id) {
+      const org = await orgId();
+      if (!/^[0-9a-f-]{36}$/i.test(id)) throw new StoreError("Share link not found", "not_found");
+      const { rowCount } = await pool.query(`update public.share_links set revoked_at = coalesce(revoked_at, now()) where org_id = $1 and id = $2`, [org, id]);
+      if (!rowCount) throw new StoreError("Share link not found", "not_found");
     },
   };
 }

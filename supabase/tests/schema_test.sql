@@ -154,4 +154,29 @@ do $$ begin
   end;
 end $$;
 reset role;
+
+-- Share links: anon reads nothing; members see their own org's links only and can't write.
+insert into public.share_links (org_id, token_hash, payload, expires_at) values
+  ('00000000-0000-0000-0000-00000000000a', repeat('a', 64), '{}', now() + interval '7 days'),
+  ('00000000-0000-0000-0000-00000000000b', repeat('b', 64), '{}', now() + interval '7 days');
+set role anon;
+do $$ begin
+  begin
+    perform count(*) from public.share_links;
+    raise exception 'FAIL: anon read share links';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if (select count(*) from public.share_links) <> 1 then raise exception 'FAIL: saw another org''s share links'; end if;
+  begin
+    update public.share_links set revoked_at = now();
+    raise exception 'FAIL: member revoked a link directly';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
 select 'ALL SCHEMA TESTS PASSED' as result;

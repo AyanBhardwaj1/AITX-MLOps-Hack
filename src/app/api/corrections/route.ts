@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { assertSafeToServe } from "@/lib/access";
 import { analyze } from "@/lib/pipeline";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadDataset } from "@/lib/server/data";
-import { env } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
+import { canWriteRealData } from "@/lib/server/write-guard";
 import { getStore } from "@/lib/server/store";
 import type { VendorCorrection } from "@/lib/vendors/corrections";
 import { handleCorrection, type CorrectionSink } from "@/lib/vendors/correction-request";
@@ -41,16 +40,6 @@ function demoSink(initial: VendorCorrection[]) {
   return { sink, changed: () => changed, value: () => encodeDemoCorrections([...fixes.values()]) };
 }
 
-function canWrite(mode: "demo" | "sandbox"): boolean {
-  if (mode === "demo") return true;
-  try {
-    const e = env();
-    assertSafeToServe({ rhoBaseUrl: e.RHO_BASE_URL, appPassword: e.APP_PASSWORD });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /** Set or clear a person's category fix for one vendor. Behind APP_PASSWORD when set; cross-site writes are refused by the proxy. */
 export async function POST(request: Request) {
@@ -61,7 +50,7 @@ export async function POST(request: Request) {
     const result = await handleCorrection(body, {
       sinkFor: (mode) => (mode === "demo" ? demo.sink : getStore(scopeFor(mode))),
       knownVendorKeys: async (mode) => new Set(analyze(await loadDataset(mode)).txns.map((t) => t.vendor.key)),
-      canWrite,
+      canWrite: canWriteRealData,
     });
     const res = NextResponse.json(result.body, { status: result.status });
     if (demo.changed()) {

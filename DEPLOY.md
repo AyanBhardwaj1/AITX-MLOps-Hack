@@ -51,6 +51,7 @@ Never commit `.env.local`; it's gitignored.
    - `/api/health` returns `"status":"ok"` and `"database":"ok"` (or `"not_configured"` without `DATABASE_URL`).
    - The site loads at `/`, and joining early access with a test email answers "You're on the list". In Supabase → Table Editor → `waitlist` the row appears (delete it afterwards).
    - The dashboard loads at `/app`.
+   - `/s/demo` shows the sample investor link without a password; with your account connected, **Share with investors** creates a private link that opens without the password and stops working when revoked.
    - **Autopilot → Run now** produces a memo and drafts in the **Inbox**.
    - Approving a ticket files it in Jira, if configured.
    - With an OpenAI key, Copilot answers "Get me to 14 months without touching payroll".

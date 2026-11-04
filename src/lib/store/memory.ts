@@ -1,6 +1,6 @@
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
-import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun } from "./types";
+import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
  * In-process store: used when DATABASE_URL isn't set. State lives as long as the server
@@ -13,6 +13,8 @@ export function createMemoryStore(): Store {
   const actions: StoredAction[] = [];
   const runs: StoredRun[] = [];
   const corrections = new Map<string, VendorCorrection>();
+  const shareLinks: (StoredShareLink & { tokenHash: string })[] = [];
+  const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
     const action = actions.find((a) => a.id === id);
@@ -92,6 +94,25 @@ export function createMemoryStore(): Store {
     },
     async clearCorrection(vendorKey) {
       corrections.delete(vendorKey);
+    },
+    async createShareLink(link, maxActive, now) {
+      const active = shareLinks.filter((l) => !l.revokedAt && Date.parse(l.expiresAt) > now.getTime()).length;
+      if (active >= maxActive) return "limit";
+      const id = crypto.randomUUID();
+      shareLinks.push({ ...link, id, createdAt: new Date().toISOString(), revokedAt: null });
+      return { id };
+    },
+    async findShareLink(tokenHash) {
+      const l = shareLinks.find((x) => x.tokenHash === tokenHash);
+      return l ? withoutHash(l) : null;
+    },
+    async listShareLinks() {
+      return [...shareLinks].reverse().map(withoutHash);
+    },
+    async revokeShareLink(id) {
+      const l = shareLinks.find((x) => x.id === id);
+      if (!l) throw new StoreError("Share link not found", "not_found");
+      l.revokedAt ??= new Date().toISOString();
     },
   };
 }

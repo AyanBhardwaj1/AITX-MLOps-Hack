@@ -133,6 +133,40 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.listCorrections()).toEqual([{ vendorKey: "brazos_properties", category: "transfer", job: null }]);
     });
 
+    it("stores share links by token hash, lists them newest first and revokes them", async () => {
+      const store = await makeStore();
+      const now = new Date();
+      const later = new Date(now.getTime() + 86_400_000).toISOString();
+      const hash = (n: number) => String(n).padStart(64, "a");
+      const payload = { v: 1, company: "Co" } as never;
+      const first = await store.createShareLink({ tokenHash: hash(1), label: "Seed investors", payload, expiresAt: later }, 5, now);
+      const second = await store.createShareLink({ tokenHash: hash(2), label: null, payload, expiresAt: later }, 5, now);
+      expect(first).not.toBe("limit");
+      expect(await store.findShareLink(hash(1))).toMatchObject({ label: "Seed investors", revokedAt: null, payload });
+      expect(await store.findShareLink(hash(9))).toBeNull();
+      const listed = await store.listShareLinks();
+      expect(listed.map((l) => l.label)).toEqual([null, "Seed investors"]);
+      await store.revokeShareLink((first as { id: string }).id);
+      expect((await store.findShareLink(hash(1)))!.revokedAt).not.toBeNull();
+      await expect(store.revokeShareLink("00000000-0000-0000-0000-000000000000")).rejects.toBeInstanceOf(StoreError);
+      expect(second).not.toBe("limit");
+    });
+
+    it("caps active share links, not revoked or expired ones", async () => {
+      const store = await makeStore();
+      const now = new Date();
+      const later = new Date(now.getTime() + 86_400_000).toISOString();
+      const past = new Date(now.getTime() - 1_000).toISOString();
+      const hash = (n: number) => String(n).padStart(64, "b");
+      const payload = { v: 1 } as never;
+      const a = await store.createShareLink({ tokenHash: hash(1), label: null, payload, expiresAt: later }, 2, now);
+      await store.createShareLink({ tokenHash: hash(2), label: null, payload, expiresAt: past }, 2, now);
+      expect(await store.createShareLink({ tokenHash: hash(3), label: null, payload, expiresAt: later }, 2, now)).not.toBe("limit");
+      expect(await store.createShareLink({ tokenHash: hash(4), label: null, payload, expiresAt: later }, 2, now)).toBe("limit");
+      await store.revokeShareLink((a as { id: string }).id);
+      expect(await store.createShareLink({ tokenHash: hash(5), label: null, payload, expiresAt: later }, 2, now)).not.toBe("limit");
+    });
+
     it("never stores more corrections than the limit, even when requests race", async () => {
       const store = await makeStore();
       const limit = 5;

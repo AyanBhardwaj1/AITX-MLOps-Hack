@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CORRECTIONS_STATUS_ID, CorrectionEditor, CorrectionsList, RECURRING_HEADING_ID } from "./vendor-correction";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { simulateSavings, stressRunway, type Snapshot } from "@/lib/finance/runway";
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
 import type { Forecast } from "@/lib/finance/forecast";
@@ -27,7 +27,12 @@ import { SavingsTracker } from "./savings-tracker";
 import { CategorySpendCard } from "./category-spend-card";
 import type { CategorySpendRow } from "@/lib/finance/category-spend";
 import { RunwayGoalCard } from "./runway-goal-card";
+import { RunwayTrendCard } from "./runway-trend-card";
+import { VendorHistoryPanel } from "./vendor-history-panel";
+import type { VendorHistory } from "@/lib/finance/vendor-history";
+import type { RunwayPoint } from "@/lib/finance/runway-history";
 import { ScenarioPlanner } from "./scenario-planner";
+import { ShareLinksPanel } from "./share-links-panel";
 import { ThisWeekCard } from "./this-week-card";
 
 export interface EvidenceRow {
@@ -60,12 +65,14 @@ export interface DashboardData {
     cardholders: string[];
     job: string | null;
     corrected: boolean;
+    history: VendorHistory;
   }[];
   /** People's category fixes, including vendors a fix took out of the table (e.g. marked as transfers). */
   corrections: { vendorKey: string; vendorName: string; category: string; job: string | null }[];
   /** The jobs a software vendor can be assigned (the catalog's closed list). */
   jobs: string[];
   categorySpend: CategorySpendRow[];
+  runwayHistory: RunwayPoint[];
   forecast: Forecast;
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
@@ -94,6 +101,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const [statusError, setStatusError] = useState<string | null>(null);
   const router = useRouter();
   const [showDismissed, setShowDismissed] = useState(false);
+  const [openHistory, setOpenHistory] = useState<string | null>(null);
   const live = data.findings.filter((f) => statuses[f.id] !== "dismissed");
   const dismissed = data.findings.filter((f) => statuses[f.id] === "dismissed");
   const monthly = live.filter((f) => f.monthlySavingsCents > 0);
@@ -277,6 +285,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           )}
         </section>
 
+        <RunwayTrendCard points={data.runwayHistory} />
         <CategorySpendCard rows={data.categorySpend} />
         <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />
         <ScenarioPlanner
@@ -287,6 +296,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         />
 
         <InvestorUpdateCard mode={data.mode} />
+        <ShareLinksPanel mode={data.mode} />
 
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <RenewalsCard renewals={data.renewals} />
@@ -373,10 +383,25 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {data.streams.map((s) => (
-                      <tr key={`${s.vendorKey}|${s.cardholders.join(",")}`}>
+                    {data.streams.map((s) => {
+                      const rowKey = `${s.vendorKey}|${s.cardholders.join(",")}`;
+                      const historyId = `history-${rowKey.replace(/[^a-z0-9]+/gi, "-")}`;
+                      const expanded = openHistory === rowKey;
+                      return (
+                      <Fragment key={rowKey}>
+                      <tr>
                         <td className="px-5 py-2">
-                          {s.vendorName} <span className="text-xs text-muted">{categoryName(s.category)}</span>{" "}
+                          <button
+                            type="button"
+                            onClick={() => setOpenHistory(expanded ? null : rowKey)}
+                            aria-expanded={expanded}
+                            aria-controls={historyId}
+                            className="rounded text-left font-medium underline-offset-2 hover:underline"
+                          >
+                            {s.vendorName}
+                            <span className="sr-only">: {expanded ? "hide" : "show"} history</span>
+                          </button>{" "}
+                          <span className="text-xs text-muted">{categoryName(s.category)}</span>{" "}
                           {s.corrected && <span className="rounded bg-brand-soft px-1 text-[11px] font-medium text-brand-strong">your fix</span>}{" "}
                           <CorrectionEditor mode={data.mode} vendorKey={s.vendorKey} vendorName={s.vendorName} category={s.category} job={s.job} jobs={data.jobs} />
                         </td>
@@ -387,7 +412,16 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                         </td>
                         <td className="px-5 py-2 text-muted">{s.cardholders.join(", ") || "—"}</td>
                       </tr>
-                    ))}
+                      {expanded && (
+                        <tr>
+                          <td colSpan={5} className="p-0">
+                            <VendorHistoryPanel id={historyId} vendorName={s.vendorName} history={s.history} />
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
