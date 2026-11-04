@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
-    const { dataset, analysis } = await loadAnalysis(mode);
+    const { dataset, analysis } = await loadAnalysis(mode, { visitorFixes: true });
     const savings = await savingsFor(mode, dataset, analysis);
     return NextResponse.json(buildInvestorUpdate(investorUpdateInput(analysis, { company: COMPANY[mode], verifiedSavingsCents: savings.verifiedMonthlyCents })));
   } catch (err) {

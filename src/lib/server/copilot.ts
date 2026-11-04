@@ -48,7 +48,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 /** Persists a draft and returns what the model should see (never sends anything). */
 export type SaveDraft = (draft: ActionDraft) => Promise<{ id: string; status: string }>;
 
-export function createCopilot(a: Analysis, saveDraft: SaveDraft) {
+export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: ReadonlySet<string> = new Set()) {
   return new ToolLoopAgent({
     model: openai(env().OPENAI_MODEL_AGENT),
     instructions: INSTRUCTIONS,
@@ -78,7 +78,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft) {
       plan_to_target: tool({
         description: "Pick the highest-value findings until runway reaches the target number of months; reports any remaining monthly gap in cents.",
         inputSchema: goalSeekInput,
-        execute: async (input) => planToTarget(a, input),
+        execute: async (input) => planToTarget(a, input, dismissed),
       }),
       get_runway_forecast: tool({
         description: "Monte Carlo runway range (p10, p50, p90 months) and zero-cash dates from the last 6 months' burn trend (trendCentsPerMonth: positive means burn is rising) and its noise. In backtests it held real outcomes 68-82% of the time (aim: 80%), and it can't foresee one-off shocks, so say that p10 is not a worst case.",

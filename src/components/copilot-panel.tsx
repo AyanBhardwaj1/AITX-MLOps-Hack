@@ -42,7 +42,7 @@ function ToolChip({ name, state }: { name: string; state: "done" | "running" | "
 type InstantEntry = { id: InstantQuestion; question: string; answer?: InstantAnswer; error?: string };
 
 /** Without an OpenAI key: the suggested questions, answered by the same tools through a fixed template. */
-function InstantCopilot({ mode }: { mode: "demo" | "sandbox" }) {
+function InstantCopilot({ mode, dismissed }: { mode: "demo" | "sandbox"; dismissed: readonly string[] }) {
   const [entries, setEntries] = useState<InstantEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -63,7 +63,7 @@ function InstantCopilot({ mode }: { mode: "demo" | "sandbox" }) {
       const res = await fetch("/api/copilot/instant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, question: id }),
+        body: JSON.stringify({ mode, question: id, dismissed }),
       });
       const json = (await res.json()) as InstantAnswer & { error?: string };
       settle(res.ok ? { answer: json } : { error: json.error ?? "Something went wrong." });
@@ -128,7 +128,7 @@ function InstantCopilot({ mode }: { mode: "demo" | "sandbox" }) {
   );
 }
 
-export function CopilotPanel({ mode, enabled }: { mode: "demo" | "sandbox"; enabled: boolean }) {
+export function CopilotPanel({ mode, enabled, dismissed = [] }: { mode: "demo" | "sandbox"; enabled: boolean; dismissed?: readonly string[] }) {
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/copilot", body: { mode } }), [mode]);
   const { messages, sendMessage, status, error, stop } = useChat({ transport });
   const [input, setInput] = useState("");
@@ -140,7 +140,7 @@ export function CopilotPanel({ mode, enabled }: { mode: "demo" | "sandbox"; enab
     setInput("");
   };
 
-  if (!enabled) return <InstantCopilot mode={mode} />;
+  if (!enabled) return <InstantCopilot mode={mode} dismissed={dismissed} />;
 
   return (
     <div className="flex h-[560px] flex-col">

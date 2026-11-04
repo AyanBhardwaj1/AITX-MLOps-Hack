@@ -40,22 +40,22 @@ export function RunwayGoalCard({ snapshot, findings }: { snapshot: Snapshot; fin
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             aria-invalid={!valid}
-            aria-describedby={`${id}-result`}
+            aria-describedby={`${id}-summary`}
             className="w-20 rounded-lg border border-line bg-panel px-2 py-1 text-right tabular-nums focus-visible:border-brand"
           />
           months
         </label>
       </div>
       <div id={`${id}-result`} className="px-5 py-4 text-sm" aria-live="polite">
-        {!goal && <p className="text-warn">Enter a goal between {MIN_GOAL_MONTHS} and {MAX_GOAL_MONTHS} months.</p>}
+        {!goal && <p id={`${id}-summary`} className="text-warn">Enter a goal between {MIN_GOAL_MONTHS} and {MAX_GOAL_MONTHS} months.</p>}
         {goal?.status === "met" && (
-          <p>
+          <p id={`${id}-summary`}>
             <span className="font-semibold">Already there.</span> At today&apos;s burn you have {months(snapshot.runwayMonths)} months.
           </p>
         )}
         {goal && goal.status !== "met" && (
           <>
-            <p>
+            <p id={`${id}-summary`}>
               You have <span className="font-semibold tabular">{months(snapshot.runwayMonths)}</span> months.{" "}
               {goal.cuts.length > 0 ? (
                 <>

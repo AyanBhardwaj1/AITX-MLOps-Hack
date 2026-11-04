@@ -5,6 +5,7 @@ import { forecastCash } from "@/lib/finance/forecast";
 import { monthlyHistory } from "@/lib/finance/history";
 import { upcomingRenewals } from "@/lib/finance/renewals";
 import { detectChanges } from "@/lib/insights/changes";
+import { analyze } from "@/lib/pipeline";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { canSendSlackFromApp, hasJira, hasOpenAI } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
@@ -47,8 +48,12 @@ async function findingStatuses(mode: DataMode, findings: Parameters<ReturnType<t
 }
 
 async function buildData(mode: DataMode): Promise<DashboardData> {
-  const { dataset, analysis: a } = await loadAnalysis(mode);
-  const { statuses, storeOk } = await findingStatuses(mode, a.findings);
+  const { dataset, analysis: a } = await loadAnalysis(mode, { visitorFixes: true });
+  // A demo visitor's own fixes can surface findings nobody else has. They're shown as a preview, but
+  // only findings from the shared data are recorded in the shared store (and can be acted on).
+  const visitorOnly = mode === "demo" && dataset.corrections;
+  const shared = visitorOnly ? new Set(analyze({ ...dataset, corrections: undefined }).findings.map((f) => f.id)) : null;
+  const { statuses, storeOk } = await findingStatuses(mode, shared ? a.findings.filter((f) => shared.has(f.id)) : a.findings);
   const savings = await savingsFor(mode, dataset, a);
   const byId = new Map(a.txns.map((t) => [t.id, t]));
   const history = monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS);
@@ -64,6 +69,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     findings: a.findings.map((f) => ({
       ...f,
       status: statuses.get(f.id) ?? "open",
+      preview: shared ? !shared.has(f.id) : false,
       evidence: f.evidenceTxnIds
         .slice(-MAX_EVIDENCE_ROWS)
         .map((id) => byId.get(id))

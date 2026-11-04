@@ -94,3 +94,16 @@ describe("getFinancialSnapshot with corrections", () => {
   });
 });
 
+describe("planToTarget with dismissals", () => {
+  it("never recommends a finding someone dismissed", async () => {
+    const { generateDemoCompany } = await import("@/lib/seed/demo-company");
+    const { analyze } = await import("@/lib/pipeline");
+    const { planToTarget } = await import("@/lib/agent/tools");
+    const demo = generateDemoCompany();
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });
+    const top = planToTarget(a, { targetRunwayMonths: 24 }).chosenFindings[0]!;
+    const plan = planToTarget(a, { targetRunwayMonths: 24 }, new Set([top.id]));
+    expect(plan.chosenFindings.map((f) => f.id)).not.toContain(top.id);
+  });
+});
+

@@ -60,8 +60,18 @@ async function demoCorrections(): Promise<VendorCorrection[]> {
   }
 }
 
+export interface LoadOptions {
+  /**
+   * Apply the demo visitor's own fixes (from their cookie). Only for views shown back to that
+   * visitor; anything that writes shared demo state (Autopilot, Copilot drafts, the digest) leaves
+   * them out, so one visitor can't change what others see.
+   */
+  visitorFixes?: boolean;
+}
+
 /** People's category fixes for this data source. A storage outage means none, not a failed page. */
-async function loadCorrections(mode: DataMode): Promise<ReadonlyMap<string, VendorCorrection> | undefined> {
+async function loadCorrections(mode: DataMode, { visitorFixes = false }: LoadOptions): Promise<ReadonlyMap<string, VendorCorrection> | undefined> {
+  if (mode === "demo" && !visitorFixes) return undefined;
   try {
     const list = mode === "demo" ? await demoCorrections() : await getStore(scopeFor(mode)).listCorrections();
     return list.length ? new Map(list.map((c) => [c.vendorKey, c])) : undefined;
@@ -75,8 +85,8 @@ async function loadCorrections(mode: DataMode): Promise<ReadonlyMap<string, Vend
  * The dataset plus LLM labels for vendors the rules couldn't place (when OpenAI is configured)
  * and people's own corrections, which win over both.
  */
-export async function loadLabelledDataset(mode: DataMode): Promise<LabelledDataset> {
-  const [dataset, corrections] = await Promise.all([loadDataset(mode), loadCorrections(mode)]);
+export async function loadLabelledDataset(mode: DataMode, options: LoadOptions = {}): Promise<LabelledDataset> {
+  const [dataset, corrections] = await Promise.all([loadDataset(mode), loadCorrections(mode, options)]);
   const withCorrections: LabelledDataset = corrections ? { ...dataset, corrections } : dataset;
   if (!hasOpenAI()) return withCorrections;
   const unknown = unknownMerchants(analyze(dataset).txns);
@@ -86,7 +96,7 @@ export async function loadLabelledDataset(mode: DataMode): Promise<LabelledDatas
   return vendorLabels.size ? { ...withCorrections, vendorLabels } : withCorrections;
 }
 
-export async function loadAnalysis(mode: DataMode): Promise<{ dataset: LabelledDataset; analysis: Analysis }> {
-  const dataset = await loadLabelledDataset(mode);
+export async function loadAnalysis(mode: DataMode, options: LoadOptions = {}): Promise<{ dataset: LabelledDataset; analysis: Analysis }> {
+  const dataset = await loadLabelledDataset(mode, options);
   return { dataset, analysis: analyze(dataset) };
 }

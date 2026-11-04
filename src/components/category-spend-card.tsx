@@ -2,9 +2,14 @@ import { formatCompactDollars, categoryName } from "@/lib/format";
 import type { CategorySpendRow } from "@/lib/finance/category-spend";
 import { formatDollars } from "@/lib/money";
 
-/** Two shades of the brand hue: the earlier period light (and hollow), the recent one dark (and filled). */
-const PRIOR = "#7cc4b8";
-const RECENT = "#0f766e";
+/**
+ * Two shades of the brand hue, validated (scripts/validate_palette.js): CVD ΔE 22.5, both ≥3:1 on
+ * white. The earlier period is also hollow and the recent one filled, so shape tells them apart too.
+ */
+const PRIOR = "#3f9488";
+const RECENT = "#134e4a";
+/** The connecting range, ≥3:1 against the panel. */
+const RANGE = "#64748b";
 
 const label = (c: CategorySpendRow["category"]) => (c === "rest" ? "Everything else" : categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1));
 
@@ -45,18 +50,15 @@ export function CategorySpendCard({ rows }: { rows: CategorySpendRow[] }) {
         {rows.map((r) => {
           const lo = Math.min(r.recentCents, r.priorCents);
           const hi = Math.max(r.recentCents, r.priorCents);
-          const summary = `${label(r.category)}: ${formatDollars(r.recentCents)} a month in the last 3 months, ${formatDollars(r.priorCents)} the 3 before (${change(r)}).`;
           return (
             <li
               key={r.category}
-              tabIndex={0}
-              aria-label={summary}
-              className="group relative grid grid-cols-[8.5rem_1fr_7.5rem] items-center gap-3 rounded-md py-1.5 text-sm outline-none hover:bg-canvas focus-visible:bg-canvas sm:grid-cols-[10rem_1fr_8rem]"
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-1.5 text-sm sm:grid-cols-[10rem_minmax(4rem,1fr)_auto]"
             >
-              <span className="truncate">{label(r.category)}</span>
-              <span className="relative h-4" aria-hidden="true">
+              <span className="min-w-0 truncate">{label(r.category)}</span>
+              <span className="relative col-span-2 row-start-2 h-4 sm:col-span-1 sm:col-start-2 sm:row-start-1" aria-hidden="true">
                 <span className="absolute inset-y-[7px] left-0 right-0 rounded bg-line/60" />
-                <span className="absolute inset-y-[7px] bg-[#94a3b8]" style={{ left: x(lo), width: `calc(${x(hi)} - ${x(lo)})` }} />
+                <span className="absolute inset-y-[7px]" style={{ left: x(lo), width: `calc(${x(hi)} - ${x(lo)})`, background: RANGE }} />
                 <span
                   className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-panel"
                   style={{ left: x(r.priorCents), borderColor: PRIOR }}
@@ -67,15 +69,10 @@ export function CategorySpendCard({ rows }: { rows: CategorySpendRow[] }) {
                 />
               </span>
               <span className="tabular text-right">
-                {formatCompactDollars(r.recentCents / 100)}/mo <span className="text-xs text-muted">{change(r)}</span>
-              </span>
-              <span
-                role="presentation"
-                className="pointer-events-none absolute bottom-full left-[8.5rem] z-20 mb-1 hidden rounded-lg border border-line bg-panel px-3 py-2 text-xs shadow-lg group-hover:block group-focus-visible:block sm:left-[10rem]"
-              >
-                <span className="block font-medium">{label(r.category)}</span>
-                <span className="block tabular">Last 3 months: {formatDollars(r.recentCents)}/mo</span>
-                <span className="block tabular text-muted">3 months before: {formatDollars(r.priorCents)}/mo</span>
+                {formatCompactDollars(r.recentCents / 100)}/mo{" "}
+                <span className="block text-xs text-muted sm:inline">
+                  was {formatCompactDollars(r.priorCents / 100)} · {change(r)}
+                </span>
               </span>
             </li>
           );

@@ -47,7 +47,8 @@ export interface DashboardData {
   timingsMs: Record<string, number>;
   snapshot: Snapshot;
   history: MonthHistory[];
-  findings: (Finding & { evidence: EvidenceRow[]; status: FindingStatus })[];
+  /** `preview`: only exists because of this demo visitor's own category fixes, so it can't be acted on. */
+  findings: (Finding & { evidence: EvidenceRow[]; status: FindingStatus; preview?: boolean })[];
   streams: {
     vendorKey: string;
     vendorName: string;
@@ -277,7 +278,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         </section>
 
         <CategorySpendCard rows={data.categorySpend} />
-        <RunwayGoalCard snapshot={data.snapshot} findings={data.findings} />
+        <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />
         <ScenarioPlanner
           history={data.history}
           cashCents={data.snapshot.cashCents}
@@ -416,7 +417,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               </div>
               {/* Panels stay mounted so switching tabs keeps the chat and the last run. */}
               <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" hidden={tab !== "copilot"}>
-                <CopilotPanel mode={data.mode} enabled={data.capabilities.copilot} />
+                <CopilotPanel mode={data.mode} enabled={data.capabilities.copilot} dismissed={dismissed.map((f) => f.id)} />
               </div>
               <div id="panel-autopilot" role="tabpanel" aria-labelledby="tab-autopilot" hidden={tab !== "autopilot"}>
                 <AutopilotPanel mode={data.mode} llm={data.capabilities.copilot} onOpenInbox={() => setTab("inbox")} />
@@ -528,7 +529,9 @@ function FindingRow({
             >
               {open ? "Hide" : "Show"} {f.evidence.length} transactions
             </button>
-            {status !== "accepted" ? (
+            {f.preview ? (
+              <span className="rounded-md bg-canvas px-2 py-1 text-muted">Preview from your category fixes</span>
+            ) : status !== "accepted" ? (
               <button
                 type="button"
                 onClick={() => onStatus("accepted")}
@@ -541,9 +544,11 @@ function FindingRow({
                 Undo
               </button>
             )}
-            <button type="button" onClick={() => onStatus("dismissed")} className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
-              Dismiss
-            </button>
+            {!f.preview && (
+              <button type="button" onClick={() => onStatus("dismissed")} className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
+                Dismiss
+              </button>
+            )}
           </div>
           {open && (
             <table className="mt-2 w-full text-xs">

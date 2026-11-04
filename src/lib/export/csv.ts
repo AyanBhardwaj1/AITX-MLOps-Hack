@@ -10,16 +10,21 @@ import type { Finding } from "../types";
 type Cell = string | number | null;
 
 const FORMULA_START = /^[=+\-@\t\r]/;
+/** Excel in semicolon locales (de, fr, es…) splits on ";", so a formula after one would start a new cell. */
+const FORMULA_AFTER_SEPARATOR = /([;,]\s*)([=+\-@\t\r])/g;
+/** Without it, Excel on Windows reads the file as ANSI and garbles names like "José". */
+const UTF8_BOM = "\uFEFF";
 
 function cell(v: Cell): string {
   if (v === null) return "";
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : "";
-  const safe = FORMULA_START.test(v) ? `'${v}` : v;
-  return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+  const inner = v.replace(FORMULA_AFTER_SEPARATOR, "$1'$2");
+  const safe = FORMULA_START.test(inner) ? `'${inner}` : inner;
+  return /[",;\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }
 
 export function toCsv(header: readonly string[], rows: readonly (readonly Cell[])[]): string {
-  return [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+  return UTF8_BOM + [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
 }
 
 const dollars = (cents: number) => Math.round(cents) / 100;
@@ -30,7 +35,7 @@ export function recurringCsv(a: Analysis): string {
     a.streams
       .filter((s) => s.active)
       .toSorted((x, y) => y.monthlyCostCents - x.monthlyCostCents)
-      .map((s) => [s.vendorName, s.category, s.job, s.cadence, dollars(s.monthlyCostCents), s.lastDate, s.nextExpected, s.cardholders.join("; ")]),
+      .map((s) => [s.vendorName, s.category, s.job, s.cadence, dollars(s.monthlyCostCents), s.lastDate, s.nextExpected, s.cardholders.join(" / ")]),
   );
 }
 

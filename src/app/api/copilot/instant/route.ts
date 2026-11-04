@@ -10,6 +10,8 @@ const allow = createRateLimiter({ limit: 30, windowMs: 60_000 });
 const body = z.object({
   mode: z.enum(["demo", "sandbox"]).default("demo"),
   question: instantQuestionInput,
+  /** Findings this person dismissed on the page; read-only, so asking never writes shared state. */
+  dismissed: z.array(z.string().max(200)).max(100).default([]),
 });
 
 /** Copilot's suggested questions answered from the tools alone (no LLM), for when OpenAI isn't configured. */
@@ -18,8 +20,8 @@ export async function POST(request: Request) {
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
-    const { analysis } = await loadAnalysis(parsed.data.mode);
-    return NextResponse.json(instantAnswer(analysis, parsed.data.question));
+    const { analysis } = await loadAnalysis(parsed.data.mode, { visitorFixes: true });
+    return NextResponse.json(instantAnswer(analysis, parsed.data.question, new Set(parsed.data.dismissed)));
   } catch (err) {
     console.error("[copilot/instant] failed", err);
     return NextResponse.json({ error: "Couldn't load the data. Try again." }, { status: 500 });

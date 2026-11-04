@@ -101,8 +101,13 @@ export function simulatePlan(a: Analysis, input: z.infer<typeof simulatePlanInpu
 export const goalSeekInput = z.object({
   targetRunwayMonths: z.number().positive().max(120),
 });
-export function planToTarget(a: Analysis, input: z.infer<typeof goalSeekInput>) {
-  const plan = goalSeek(a.snapshot, a.findings, input.targetRunwayMonths);
+/** `dismissed`: findings people said no to are never recommended (same rule as the Runway goal card). */
+export function planToTarget(a: Analysis, input: z.infer<typeof goalSeekInput>, dismissed: ReadonlySet<string> = new Set()) {
+  const plan = goalSeek(
+    a.snapshot,
+    a.findings.filter((f) => !dismissed.has(f.id)),
+    input.targetRunwayMonths,
+  );
   const gapCents = plan.reachesTarget
     ? 0
     : Math.max(0, Math.ceil(a.snapshot.netBurnCents - plan.monthlySavingsCents - a.snapshot.cashCents / input.targetRunwayMonths));

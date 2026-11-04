@@ -30,8 +30,8 @@ const PROTECTED = new Set(["payroll", "rent", "revenue", "transfer"]);
 const months = (n: number | null) => (n === null ? "unlimited" : `${n.toFixed(1)} months`);
 const range = (lo: number | null, hi: number | null) => (lo === null || hi === null ? `${months(lo)} to ${months(hi)}` : `${lo.toFixed(1)} to ${hi.toFixed(1)} months`);
 
-function target14(a: Analysis): InstantAnswer {
-  const plan = planToTarget(a, { targetRunwayMonths: TARGET_MONTHS });
+function target14(a: Analysis, dismissed: ReadonlySet<string>): InstantAnswer {
+  const plan = planToTarget(a, { targetRunwayMonths: TARGET_MONTHS }, dismissed);
   const snap = getFinancialSnapshot(a);
   const lines = [
     `You have **${months(snap.runwayMonths)}** of runway today (cash ${formatDollars(snap.cashCents)}, net burn ${formatDollars(snap.netBurnCentsPerMonth)}/month).`,
@@ -140,7 +140,7 @@ function whatChanged(a: Analysis): InstantAnswer {
   return { question: INSTANT_QUESTIONS.what_changed, tools: ["get_recent_changes"], text };
 }
 
-const ANSWERS: Record<InstantQuestion, (a: Analysis) => InstantAnswer> = {
+const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
   how_long: howLong,
@@ -149,6 +149,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis) => InstantAnswer> = {
   what_changed: whatChanged,
 };
 
-export function instantAnswer(a: Analysis, question: InstantQuestion): InstantAnswer {
-  return ANSWERS[question](a);
+/** `dismissed`: finding ids the person said no to, never recommended. */
+export function instantAnswer(a: Analysis, question: InstantQuestion, dismissed: ReadonlySet<string> = new Set()): InstantAnswer {
+  return ANSWERS[question](a, dismissed);
 }

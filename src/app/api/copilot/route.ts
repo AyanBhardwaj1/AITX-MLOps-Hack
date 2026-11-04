@@ -44,12 +44,16 @@ export async function POST(request: Request) {
   const { analysis } = await loadAnalysis(parsed.data.mode);
   const store = getStore(scopeFor(parsed.data.mode));
   // Findings must exist in the store so drafts can link to them; a database hiccup shouldn't block chat.
-  await store.syncFindings(analysis.findings).catch((err) => console.error("[copilot] finding sync failed", err));
+  const statuses = await store.syncFindings(analysis.findings).catch((err) => {
+    console.error("[copilot] finding sync failed", err);
+    return new Map<string, string>();
+  });
+  const dismissed = new Set([...statuses].filter(([, s]) => s === "dismissed").map(([id]) => id));
   const saveDraft: SaveDraft = async (d) => {
     const [saved] = await store.saveDrafts([
       { fingerprint: d.fingerprint, findingFingerprint: d.findingId, kind: d.kind, title: d.title, body: d.body, createdBy: "copilot" },
     ]);
     return { id: saved!.id, status: saved!.status };
   };
-  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft), uiMessages: messages.messages });
+  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed), uiMessages: messages.messages });
 }

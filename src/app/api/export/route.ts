@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring or kind=findings" }, { status: 400 });
   const { mode, kind } = parsed.data;
   try {
-    const { analysis } = await loadAnalysis(mode);
+    const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     let body: string;
     if (kind === "recurring") body = recurringCsv(analysis);
     else {

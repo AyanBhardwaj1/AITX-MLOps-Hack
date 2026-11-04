@@ -4,17 +4,27 @@ import { analyze } from "@/lib/pipeline";
 import { generateDemoCompany } from "@/lib/seed/demo-company";
 
 describe("toCsv", () => {
+  it("starts with a UTF-8 byte-order mark so Excel reads accents correctly", () => {
+    expect(toCsv(["a"], [["José"]]).startsWith("\uFEFF")).toBe(true);
+  });
+
   it("quotes commas, quotes and newlines the way spreadsheets expect", () => {
-    expect(toCsv(["a", "b"], [["x,y", 'say "hi"'], ["line\nbreak", 3]])).toBe('a,b\r\n"x,y","say ""hi"""\r\n"line\nbreak",3\r\n');
+    expect(toCsv(["a", "b"], [["x,y", 'say "hi"'], ["line\nbreak", 3]])).toBe('\uFEFFa,b\r\n"x,y","say ""hi"""\r\n"line\nbreak",3\r\n');
+  });
+
+  it("defuses formulas that follow a separator, which semicolon-locale Excel splits into new cells", () => {
+    const [, row] = toCsv(["v"], [['Alice; Bob;=HYPERLINK("http://x","y")']]).split("\r\n");
+    expect(row).not.toMatch(/;\s*=/);
+    expect(row).toContain(";'=HYPERLINK");
   });
 
   it("defuses cells a spreadsheet would run as a formula (bank descriptors are untrusted)", () => {
-    const out = toCsv(["v"], [["=HYPERLINK(\"http://evil\")"], ["+1+1"], ["-2"], ["@SUM(A1)"], ["\tcmd"], ["safe"]]);
+    const out = toCsv(["v"], [["=HYPERLINK(\"http://evil\")"], ["+1+1"], ["-2"], ["@SUM(A1)"], ["\tcmd"], ["safe"]]).replace(/^\uFEFF/, "");
     expect(out.split("\r\n").slice(1, -1)).toEqual(['"\'=HYPERLINK(""http://evil"")"', "'+1+1", "'-2", "'@SUM(A1)", "'\tcmd", "safe"]);
   });
 
   it("leaves plain numbers as numbers, including negatives written by the app itself", () => {
-    expect(toCsv(["n"], [[-12.5], [0]])).toBe("n\r\n-12.5\r\n0\r\n");
+    expect(toCsv(["n"], [[-12.5], [0]])).toBe("\uFEFFn\r\n-12.5\r\n0\r\n");
   });
 });
 
@@ -23,7 +33,7 @@ describe("exports from the demo company", () => {
   const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });
 
   it("lists every active recurring charge with dollars, not cents", () => {
-    const lines = recurringCsv(a).trim().split("\r\n");
+    const lines = recurringCsv(a).replace(/^\uFEFF/, "").trim().split("\r\n");
     expect(lines[0]).toBe("Vendor,Category,What it does,Cadence,Per month (USD),Last charge,Next charge,Cardholders");
     expect(lines.length - 1).toBe(a.streams.filter((s) => s.active).length);
     const datadog = lines.find((l) => l.startsWith("Datadog,"))!;
@@ -32,7 +42,7 @@ describe("exports from the demo company", () => {
   });
 
   it("lists findings with their savings and the status people gave them", () => {
-    const lines = findingsCsv(a.findings, new Map([[a.findings[0]!.id, "dismissed"]])).trim().split("\r\n");
+    const lines = findingsCsv(a.findings, new Map([[a.findings[0]!.id, "dismissed"]])).replace(/^\uFEFF/, "").trim().split("\r\n");
     expect(lines[0]).toBe("Finding,Kind,Monthly savings (USD),One-time (USD),Confidence,Status,Detail");
     expect(lines).toHaveLength(a.findings.length + 1);
     expect(lines.some((l) => l.includes(",dismissed,"))).toBe(true);

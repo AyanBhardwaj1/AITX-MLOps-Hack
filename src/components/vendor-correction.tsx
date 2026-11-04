@@ -18,19 +18,35 @@ function announce(message: string) {
   if (region) region.textContent = message;
 }
 
-/** If `el` is removed by the refresh that follows a change, move focus to the nearest stable place. */
+let pendingWatch: (() => void) | null = null;
+
+/** Stops any earlier focus watch (e.g. the person reopened an editor and is working in it). */
+function stopFocusWatch() {
+  pendingWatch?.();
+  pendingWatch = null;
+}
+
+/**
+ * If `el` is removed by the refresh that follows a change and focus went with it, move focus to the
+ * nearest stable place. Never steals focus the person has moved somewhere else.
+ */
 function keepFocusNear(el: HTMLElement | null) {
+  stopFocusWatch();
+  const lost = () => document.activeElement === null || document.activeElement === document.body;
   const fallback = () => document.getElementById(RECURRING_HEADING_ID)?.focus();
   if (!el) return fallback();
   el.focus();
   const watch = new MutationObserver(() => {
-    if (!el.isConnected) {
-      watch.disconnect();
-      fallback();
-    }
+    if (el.isConnected) return;
+    stopFocusWatch();
+    if (lost()) fallback();
   });
   watch.observe(document.body, { childList: true, subtree: true });
-  window.setTimeout(() => watch.disconnect(), 5_000);
+  const timer = window.setTimeout(stopFocusWatch, 5_000);
+  pendingWatch = () => {
+    watch.disconnect();
+    window.clearTimeout(timer);
+  };
 }
 const jobName = (job: string) => job.replaceAll("_", " ");
 
@@ -82,6 +98,7 @@ export function CorrectionEditor({
   }, [open]);
 
   function openEditor() {
+    stopFocusWatch();
     // Start from what is saved now, not from an earlier unsaved pick.
     setNextCategory(category);
     setNextJob(job ?? "");
