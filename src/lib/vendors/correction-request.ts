@@ -1,32 +1,44 @@
 import { z } from "zod";
 import type { Store } from "../store/types";
-import { correctionInput } from "./corrections";
+import { correctionFields, correctionInput } from "./corrections";
 
-/** Enough for any real company; stops a public demo from being filled with junk. */
+/** Enough for any real company; stops one scope from being filled with junk. */
 export const MAX_CORRECTIONS = 100;
 
+type Mode = "demo" | "sandbox";
 const mode = z.enum(["demo", "sandbox"]);
 const request = z.discriminatedUnion("action", [
-  correctionInput.extend({ mode, action: z.literal("set") }),
-  z.object({ mode, action: z.literal("clear"), vendorKey: correctionInput.shape.vendorKey }),
+  correctionFields.extend({ mode, action: z.literal("set") }),
+  z.object({ mode, action: z.literal("clear"), vendorKey: correctionFields.shape.vendorKey }),
 ]);
 
-export type CorrectionResult = { status: 200; body: { ok: true } } | { status: 400 | 409; body: { error: string } };
+export type CorrectionSink = Pick<Store, "setCorrection" | "clearCorrection">;
 
-/** Validates and applies one correction change. `storeFor` picks the data source's store. */
-export async function handleCorrection(raw: unknown, storeFor: (mode: "demo" | "sandbox") => Store): Promise<CorrectionResult> {
+export interface CorrectionDeps {
+  /** Where this data source's fixes are kept (the demo uses the visitor's own cookie). */
+  sinkFor: (mode: Mode) => CorrectionSink;
+  /** Vendor keys present in this data source, so only real vendors can be corrected. */
+  knownVendorKeys: (mode: Mode) => Promise<ReadonlySet<string>>;
+  /** False where the app refuses to show the data (a real account with no password set). */
+  canWrite: (mode: Mode) => boolean;
+}
+
+export type CorrectionResult = { status: 200; body: { ok: true } } | { status: 400 | 403 | 409; body: { error: string } };
+
+export async function handleCorrection(raw: unknown, deps: CorrectionDeps): Promise<CorrectionResult> {
   const parsed = request.safeParse(raw);
   if (!parsed.success) return { status: 400, body: { error: "Invalid correction" } };
-  const store = storeFor(parsed.data.mode);
-  if (parsed.data.action === "clear") {
-    await store.clearCorrection(parsed.data.vendorKey);
+  const req = parsed.data;
+  if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before changing a real account's numbers." } };
+  const sink = deps.sinkFor(req.mode);
+  if (req.action === "clear") {
+    await sink.clearCorrection(req.vendorKey);
     return { status: 200, body: { ok: true } };
   }
-  const { vendorKey, category, job } = parsed.data;
-  const existing = await store.listCorrections();
-  if (existing.length >= MAX_CORRECTIONS && !existing.some((c) => c.vendorKey === vendorKey)) {
-    return { status: 409, body: { error: `You can correct up to ${MAX_CORRECTIONS} vendors. Clear one to add another.` } };
-  }
-  await store.setCorrection({ vendorKey, category, job });
+  const fix = correctionInput.safeParse({ vendorKey: req.vendorKey, category: req.category, job: req.job });
+  if (!fix.success) return { status: 400, body: { error: "Only software, cloud and AI tools can have a job." } };
+  if (!(await deps.knownVendorKeys(req.mode)).has(req.vendorKey)) return { status: 400, body: { error: "That vendor isn't in this data." } };
+  const outcome = await sink.setCorrection(fix.data, MAX_CORRECTIONS);
+  if (outcome === "limit") return { status: 409, body: { error: `You can correct up to ${MAX_CORRECTIONS} vendors. Undo one to add another.` } };
   return { status: 200, body: { ok: true } };
 }

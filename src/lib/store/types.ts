@@ -85,8 +85,11 @@ export interface Store {
   listRuns(limit: number): Promise<StoredRun[]>;
   /** People's category fixes for this scope, one per vendor. */
   listCorrections(): Promise<VendorCorrection[]>;
-  /** Saves a fix, replacing any earlier one for the same vendor. */
-  setCorrection(correction: VendorCorrection): Promise<void>;
+  /**
+   * Saves a fix, replacing any earlier one for the same vendor. A new vendor is refused ("limit")
+   * when the scope already has `max` fixes; the check and the write are atomic.
+   */
+  setCorrection(correction: VendorCorrection, max: number): Promise<"saved" | "limit">;
   /** Removes a vendor's fix (no-op when there is none). */
   clearCorrection(vendorKey: string): Promise<void>;
 }

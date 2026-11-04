@@ -42,7 +42,7 @@ export default function PrivacyPage() {
           heading: "What we don’t do",
           body: (
             <p>
-              We don’t sell or rent your data, show ads, or use advertising or analytics trackers. The public site sets no cookies. Bank data is used only to
+              We don’t sell or rent your data, show ads, or use advertising or analytics trackers. The public site sets no cookies; the live demo keeps any category fixes you make in a cookie in your own browser, so nobody else sees them. Bank data is used only to
               produce your own analysis.
             </p>
           ),

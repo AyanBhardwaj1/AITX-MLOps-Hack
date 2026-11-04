@@ -281,13 +281,23 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       return rows.map((r) => ({ vendorKey: r.vendor_key, category: r.category, job: r.job }));
     },
 
-    async setCorrection({ vendorKey, category, job }) {
+    async setCorrection({ vendorKey, category, job }, max) {
       const org = await orgId();
-      await pool.query(
-        `insert into public.vendor_corrections (org_id, vendor_key, category, job) values ($1, $2, $3, $4)
-         on conflict (org_id, vendor_key) do update set category = excluded.category, job = excluded.job, updated_at = now()`,
-        [org, vendorKey, category, job],
-      );
+      return inTransaction(pool, async (c) => {
+        // One writer per organization at a time, so the count check can't be raced past the limit.
+        await c.query(`select pg_advisory_xact_lock(hashtextextended('vendor_corrections:' || $1::text, 0))`, [org]);
+        const { rows } = await c.query<{ total: string; has_key: boolean }>(
+          `select count(*) as total, bool_or(vendor_key = $2) as has_key from public.vendor_corrections where org_id = $1`,
+          [org, vendorKey],
+        );
+        if (!rows[0]!.has_key && Number(rows[0]!.total) >= max) return "limit" as const;
+        await c.query(
+          `insert into public.vendor_corrections (org_id, vendor_key, category, job) values ($1, $2, $3, $4)
+           on conflict (org_id, vendor_key) do update set category = excluded.category, job = excluded.job, updated_at = now()`,
+          [org, vendorKey, category, job],
+        );
+        return "saved" as const;
+      });
     },
 
     async clearCorrection(vendorKey) {

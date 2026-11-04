@@ -45,6 +45,8 @@ export function GraderSignup() {
           spellCheck={false}
           maxLength={254}
           placeholder="you@company.com…"
+          aria-invalid={state.kind === "error"}
+          aria-describedby={`${id}-note`}
           className="min-w-0 flex-1 rounded-lg border border-white/40 bg-white px-3 py-2 text-sm text-ink focus-visible:border-white"
         />
         <button
@@ -60,11 +62,13 @@ export function GraderSignup() {
         <input id={`${id}-website`} name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
       {state.kind === "error" ? (
-        <p role="alert" className="mt-2 text-sm font-medium text-warn-soft">
+        <p id={`${id}-note`} role="alert" className="mt-2 text-sm font-medium text-warn-soft">
           {state.message}
         </p>
       ) : (
-        <p className="mt-2 text-xs text-white/70">Only your email is sent. Your files stay in this tab.</p>
+        <p id={`${id}-note`} className="mt-2 text-xs text-white/70">
+          Only your email is sent. Your files stay in this tab.
+        </p>
       )}
     </form>
   );

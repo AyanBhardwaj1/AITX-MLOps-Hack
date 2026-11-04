@@ -85,8 +85,10 @@ export function createMemoryStore(): Store {
     async listCorrections() {
       return [...corrections.values()].map((c) => ({ ...c }));
     },
-    async setCorrection(correction) {
+    async setCorrection(correction, max) {
+      if (!corrections.has(correction.vendorKey) && corrections.size >= max) return "limit";
       corrections.set(correction.vendorKey, { ...correction });
+      return "saved";
     },
     async clearCorrection(vendorKey) {
       corrections.delete(vendorKey);

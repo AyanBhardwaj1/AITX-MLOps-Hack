@@ -47,6 +47,8 @@ describe("correctionInput", () => {
       { vendorKey: "Loom Inc", category: "software", job: null },
       { vendorKey: "", category: "software", job: null },
       { vendorKey: "x".repeat(81), category: "software", job: null },
+      // A job only means something for tools: payroll can't be a "video meetings" product.
+      { vendorKey: "gusto", category: "payroll", job: "video_meetings" },
     ]) {
       expect(correctionInput.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }

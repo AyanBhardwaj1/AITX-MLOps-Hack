@@ -9,6 +9,8 @@ create table public.vendor_corrections (
     'legal_accounting', 'insurance', 'hardware', 'fees', 'revenue', 'transfer', 'other'
   )),
   job text check (job ~ '^[a-z_]{2,40}$'),
+  -- Only tools have a job-to-be-done (used to spot overlapping tools).
+  constraint vendor_corrections_job_needs_tool check (job is null or category in ('software', 'cloud', 'ai_api')),
   updated_at timestamptz not null default now(),
   primary key (org_id, vendor_key)
 );

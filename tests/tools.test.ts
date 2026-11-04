@@ -80,3 +80,17 @@ describe("insight tools", () => {
     expect(getAiSpend(a).latestMonthCents).toBeGreaterThan(0);
   });
 });
+
+describe("getFinancialSnapshot with corrections", () => {
+  it("leaves vendors someone marked as transfers out of the spend breakdown, so it adds up to burn", async () => {
+    const { generateDemoCompany } = await import("@/lib/seed/demo-company");
+    const { analyze } = await import("@/lib/pipeline");
+    const demo = generateDemoCompany();
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, corrections: new Map([["brazos_properties", { vendorKey: "brazos_properties", category: "transfer" as const, job: null }]]) });
+    const s = getFinancialSnapshot(a);
+    expect(s.avgMonthlySpendByCategoryCents).not.toHaveProperty("transfer");
+    const total = Object.values(s.avgMonthlySpendByCategoryCents).reduce((x, y) => x + y, 0);
+    expect(Math.abs(total - s.grossBurnCentsPerMonth)).toBeLessThan(100);
+  });
+});
+

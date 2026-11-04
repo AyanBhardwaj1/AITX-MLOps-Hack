@@ -1,13 +1,37 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { categoryName } from "@/lib/format";
 import { CATEGORIES } from "@/lib/types";
 
 type Mode = "demo" | "sandbox";
 
 const JOB_CATEGORIES = new Set(["software", "cloud", "ai_api"]);
+/** The dashboard's persistent status region (rows can vanish after a fix, so it can't live in a row). */
+export const CORRECTIONS_STATUS_ID = "corrections-status";
+/** The Recurring charges heading: where focus lands when the focused control disappears. */
+export const RECURRING_HEADING_ID = "recurring-heading";
+
+function announce(message: string) {
+  const region = document.getElementById(CORRECTIONS_STATUS_ID);
+  if (region) region.textContent = message;
+}
+
+/** If `el` is removed by the refresh that follows a change, move focus to the nearest stable place. */
+function keepFocusNear(el: HTMLElement | null) {
+  const fallback = () => document.getElementById(RECURRING_HEADING_ID)?.focus();
+  if (!el) return fallback();
+  el.focus();
+  const watch = new MutationObserver(() => {
+    if (!el.isConnected) {
+      watch.disconnect();
+      fallback();
+    }
+  });
+  watch.observe(document.body, { childList: true, subtree: true });
+  window.setTimeout(() => watch.disconnect(), 5_000);
+}
 const jobName = (job: string) => job.replaceAll("_", " ");
 
 async function send(body: Record<string, unknown>): Promise<string | null> {
@@ -44,6 +68,30 @@ export function CorrectionEditor({
   const [nextJob, setNextJob] = useState(job ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fixButton = useRef<HTMLButtonElement>(null);
+  const firstField = useRef<HTMLSelectElement>(null);
+  const returnFocus = useRef(false);
+
+  // Opening moves focus into the form; closing returns it to the Fix button.
+  useEffect(() => {
+    if (open) firstField.current?.focus();
+    else if (returnFocus.current) {
+      returnFocus.current = false;
+      keepFocusNear(fixButton.current);
+    }
+  }, [open]);
+
+  function openEditor() {
+    // Start from what is saved now, not from an earlier unsaved pick.
+    setNextCategory(category);
+    setNextJob(job ?? "");
+    setError(null);
+    setOpen(true);
+  }
+  function close() {
+    returnFocus.current = true;
+    setOpen(false);
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -51,22 +99,37 @@ export function CorrectionEditor({
     const problem = await send({ mode, action: "set", vendorKey, category: nextCategory, job: JOB_CATEGORIES.has(nextCategory) && nextJob ? nextJob : null });
     setBusy(false);
     if (problem) return setError(problem);
-    setOpen(false);
+    announce(`Saved: ${vendorName} is now ${categoryName(nextCategory)}. The numbers are updating.`);
+    close();
     router.refresh();
   }
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-xs font-medium text-brand underline-offset-2 hover:underline" aria-label={`Fix the category for ${vendorName}`}>
+      <button
+        ref={fixButton}
+        type="button"
+        onClick={openEditor}
+        className="text-xs font-medium text-brand underline-offset-2 hover:underline"
+        aria-label={`Fix the category for ${vendorName}`}
+      >
         Fix
       </button>
     );
   }
+  const errorId = `${id}-error`;
   return (
-    <form onSubmit={save} className="mt-2 flex flex-wrap items-end gap-2 rounded-lg bg-canvas p-2 text-xs">
+    <form onSubmit={save} className="mt-2 flex flex-wrap items-end gap-2 rounded-lg bg-canvas p-2 text-xs" aria-label={`Category for ${vendorName}`}>
       <label className="flex flex-col gap-1" htmlFor={`${id}-cat`}>
         <span className="text-muted">Category</span>
-        <select id={`${id}-cat`} value={nextCategory} onChange={(e) => setNextCategory(e.target.value)} className="rounded-md border border-line bg-panel px-2 py-1">
+        <select
+          ref={firstField}
+          id={`${id}-cat`}
+          value={nextCategory}
+          onChange={(e) => setNextCategory(e.target.value)}
+          aria-describedby={error ? errorId : undefined}
+          className="rounded-md border border-line bg-panel px-2 py-1"
+        >
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {categoryName(c)}
@@ -90,11 +153,11 @@ export function CorrectionEditor({
       <button type="submit" disabled={busy} className="rounded-md bg-brand px-2.5 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-60">
         {busy ? "Saving…" : "Save"}
       </button>
-      <button type="button" onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-muted hover:text-ink">
+      <button type="button" onClick={close} className="rounded-md px-2 py-1 text-muted hover:text-ink">
         Cancel
       </button>
       {error && (
-        <p role="alert" className="basis-full text-warn">
+        <p id={errorId} role="alert" className="basis-full text-warn">
           {error}
         </p>
       )}
@@ -106,23 +169,41 @@ export function CorrectionEditor({
 export function CorrectionsList({ mode, corrections }: { mode: Mode; corrections: readonly { vendorKey: string; vendorName: string; category: string; job: string | null }[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  if (corrections.length === 0) return null;
-  async function undo(vendorKey: string) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const heading = useRef<HTMLParagraphElement>(null);
+  async function undo(vendorKey: string, vendorName: string) {
+    if (busy) return;
+    setBusy(vendorKey);
     const problem = await send({ mode, action: "clear", vendorKey });
+    setBusy(null);
     if (problem) return setError(problem);
     setError(null);
+    announce(`Undone: ${vendorName} is back to its automatic category.`);
+    // The item disappears (and the whole list with the last one): keep keyboard focus nearby.
+    keepFocusNear(heading.current);
     router.refresh();
   }
+  if (corrections.length === 0) return null;
   return (
     <div className="border-t border-line px-5 py-3 text-xs">
-      <p className="font-medium">Your category fixes ({corrections.length})</p>
+      <p ref={heading} tabIndex={-1} className="font-medium outline-none">
+        Your category fixes ({corrections.length})
+      </p>
       <ul className="mt-1 space-y-1">
         {corrections.map((c) => (
           <li key={c.vendorKey} className="flex flex-wrap items-center gap-2 text-muted">
-            <span className="text-ink">{c.vendorName}</span>→ {categoryName(c.category)}
+            <span className="text-ink">{c.vendorName}</span>
+            <span aria-hidden="true">→</span>
+            <span className="sr-only">changed to</span> {categoryName(c.category)}
             {c.job ? ` (${jobName(c.job)})` : ""}
-            <button type="button" onClick={() => void undo(c.vendorKey)} className="font-medium text-brand hover:underline" aria-label={`Undo the fix for ${c.vendorName}`}>
-              Undo
+            <button
+              type="button"
+              onClick={() => void undo(c.vendorKey, c.vendorName)}
+              disabled={busy !== null}
+              className="font-medium text-brand hover:underline disabled:opacity-60"
+              aria-label={`Undo the fix for ${c.vendorName}`}
+            >
+              {busy === c.vendorKey ? "Undoing…" : "Undo"}
             </button>
           </li>
         ))}

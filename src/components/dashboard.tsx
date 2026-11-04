@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CorrectionEditor, CorrectionsList } from "./vendor-correction";
+import { CORRECTIONS_STATUS_ID, CorrectionEditor, CorrectionsList, RECURRING_HEADING_ID } from "./vendor-correction";
 import { useMemo, useState } from "react";
 import { simulateSavings, stressRunway, type Snapshot } from "@/lib/finance/runway";
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
@@ -341,7 +341,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
             <section className="rounded-xl border border-line bg-panel">
               <div className="border-b border-line px-5 py-3">
-                <h2 className="font-semibold">Recurring charges ({data.streams.length})</h2>
+                <h2 id={RECURRING_HEADING_ID} tabIndex={-1} className="font-semibold outline-none">
+                  Recurring charges ({data.streams.length})
+                </h2>
                 <p className="text-xs text-muted">Detected from billing cadence. No setup or receipts needed. Wrong category? Fix it and every number follows.</p>
               </div>
               <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="Recurring charges">
@@ -375,6 +377,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                 </table>
               </div>
               <CorrectionsList mode={data.mode} corrections={data.corrections} />
+              <p id={CORRECTIONS_STATUS_ID} role="status" className="sr-only" />
             </section>
           </div>
 

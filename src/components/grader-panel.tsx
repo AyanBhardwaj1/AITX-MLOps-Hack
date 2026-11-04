@@ -106,7 +106,11 @@ export function GraderPanel() {
         <p className="text-xs text-muted">🔒 Your files are read in this browser tab and never uploaded. Nothing is stored.</p>
       </form>
 
-      <section aria-live="polite" aria-label="Results" className="lg:col-span-3">
+      <section aria-label="Results" className="lg:col-span-3">
+        {/* One short live announcement per result, instead of the whole region (which also holds the signup form). */}
+        <p role="status" className="sr-only">
+          {result ? `Graded: ${months(result.runwayMonths)} months of runway, ${formatDollars(result.wasteMonthlyCents)} a month of waste found.` : ""}
+        </p>
         {error && (
           <p role="alert" className="rounded-lg bg-warn-soft px-4 py-3 text-sm text-warn">
             {error}

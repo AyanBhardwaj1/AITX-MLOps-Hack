@@ -28,7 +28,8 @@ interface SnapshotInput {
   lookbackMonths?: number;
 }
 
-function countsTowardBurn(t: EnrichedTxn): boolean {
+/** Same rule everywhere a number claims to be burn: settled, not a transfer by type or by (corrected) category. */
+export function countsTowardBurn(t: EnrichedTxn): boolean {
   return t.status === "posted" && t.type !== "transfer" && t.vendor.category !== "transfer";
 }
 

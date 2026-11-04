@@ -121,9 +121,9 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
     it("keeps a vendor correction, replaces it on a second edit, and forgets it when cleared", async () => {
       const store = await makeStore();
       expect(await store.listCorrections()).toEqual([]);
-      await store.setCorrection({ vendorKey: "loom", category: "software", job: "video_meetings" });
-      await store.setCorrection({ vendorKey: "brazos_properties", category: "transfer", job: null });
-      await store.setCorrection({ vendorKey: "loom", category: "marketing", job: null });
+      await store.setCorrection({ vendorKey: "loom", category: "software", job: "video_meetings" }, 100);
+      await store.setCorrection({ vendorKey: "brazos_properties", category: "transfer", job: null }, 100);
+      await store.setCorrection({ vendorKey: "loom", category: "marketing", job: null }, 100);
       const byKey = new Map((await store.listCorrections()).map((c) => [c.vendorKey, c]));
       expect(byKey.size).toBe(2);
       expect(byKey.get("loom")).toEqual({ vendorKey: "loom", category: "marketing", job: null });
@@ -131,6 +131,17 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       await store.clearCorrection("loom");
       await store.clearCorrection("never_set");
       expect(await store.listCorrections()).toEqual([{ vendorKey: "brazos_properties", category: "transfer", job: null }]);
+    });
+
+    it("never stores more corrections than the limit, even when requests race", async () => {
+      const store = await makeStore();
+      const limit = 5;
+      for (let i = 0; i < limit - 1; i++) expect(await store.setCorrection({ vendorKey: `v${i}`, category: "other", job: null }, limit)).toBe("saved");
+      const results = await Promise.all(Array.from({ length: 40 }, (_, i) => store.setCorrection({ vendorKey: `race${i}`, category: "other", job: null }, limit)));
+      expect(results.filter((r) => r === "saved")).toHaveLength(1);
+      expect(await store.listCorrections()).toHaveLength(limit);
+      // Editing a vendor that already has a fix is always allowed.
+      expect(await store.setCorrection({ vendorKey: "v0", category: "rent", job: null }, limit)).toBe("saved");
     });
   });
 }

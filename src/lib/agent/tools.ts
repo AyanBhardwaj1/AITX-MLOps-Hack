@@ -5,7 +5,7 @@ import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
-import { goalSeek, simulateSavings, stressRunway } from "../finance/runway";
+import { goalSeek, simulateSavings, stressRunway, countsTowardBurn } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 
@@ -24,7 +24,7 @@ export function getFinancialSnapshot(a: Analysis) {
   const byCategory = new Map<string, number>();
   const window = new Set(s.months.map((m) => m.month));
   for (const t of a.txns) {
-    if (t.amountCents >= 0 || t.status !== "posted" || t.type === "transfer" || !window.has(t.postedAt.slice(0, 7))) continue;
+    if (t.amountCents >= 0 || !countsTowardBurn(t) || !window.has(t.postedAt.slice(0, 7))) continue;
     byCategory.set(t.vendor.category, (byCategory.get(t.vendor.category) ?? 0) - t.amountCents);
   }
   return {

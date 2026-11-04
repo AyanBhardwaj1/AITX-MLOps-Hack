@@ -13,11 +13,18 @@ export interface VendorCorrection {
   job: string | null;
 }
 
-export const correctionInput = z.object({
+/** Only tools have a job-to-be-done; a job on payroll or rent would invent overlapping-tool findings. */
+export const JOB_CATEGORIES: ReadonlySet<Category> = new Set(["software", "cloud", "ai_api"]);
+
+const fields = z.object({
   vendorKey: z.string().regex(/^[a-z0-9_]{1,80}$/),
   category: z.enum(CATEGORIES),
   job: z.enum(KNOWN_JOBS).nullable(),
 });
+const jobFitsCategory = (c: { category: Category; job: string | null }) => c.job === null || JOB_CATEGORIES.has(c.category);
+
+export const correctionFields = fields;
+export const correctionInput = fields.refine(jobFitsCategory, { message: "Only software, cloud and AI tools have a job", path: ["job"] });
 
 /** Returns new transactions with corrected vendors; the vendor's name and key are kept. */
 export function applyCorrections(txns: readonly EnrichedTxn[], corrections: ReadonlyMap<string, VendorCorrection>): EnrichedTxn[] {

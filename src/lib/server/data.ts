@@ -12,6 +12,7 @@ import { labelUnknownVendors } from "./vendor-llm";
 import { scopeFor } from "./scope";
 import { getStore } from "./store";
 import type { VendorCorrection } from "../vendors/corrections";
+import { DEMO_CORRECTIONS_COOKIE, decodeDemoCorrections } from "../vendors/demo-cookie";
 
 export type DataMode = "demo" | "sandbox";
 
@@ -49,10 +50,20 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
 
 export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };
 
+/** On the public demo each visitor's fixes live in their own cookie; outside a request there are none. */
+async function demoCorrections(): Promise<VendorCorrection[]> {
+  try {
+    const { cookies } = await import("next/headers");
+    return decodeDemoCorrections((await cookies()).get(DEMO_CORRECTIONS_COOKIE)?.value);
+  } catch {
+    return [];
+  }
+}
+
 /** People's category fixes for this data source. A storage outage means none, not a failed page. */
 async function loadCorrections(mode: DataMode): Promise<ReadonlyMap<string, VendorCorrection> | undefined> {
   try {
-    const list = await getStore(scopeFor(mode)).listCorrections();
+    const list = mode === "demo" ? await demoCorrections() : await getStore(scopeFor(mode)).listCorrections();
     return list.length ? new Map(list.map((c) => [c.vendorKey, c])) : undefined;
   } catch (err) {
     console.error("[data] couldn't load vendor corrections; using the automatic categories", err);
