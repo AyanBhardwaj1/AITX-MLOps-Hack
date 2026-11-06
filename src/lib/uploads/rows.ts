@@ -63,7 +63,15 @@ export function fileAccountLabel(fileName: string): string {
   return words.join(" ").slice(0, 40).trim() || DEFAULT_ACCOUNT;
 }
 
-const clean = (s: string, max: number) => s.trim().slice(0, max).trim();
+/**
+ * Trimmed and cut to `max` UTF-16 units (what the server's limit counts), never between the two
+ * halves of an emoji: half a character is invalid text, and Postgres refuses the whole row.
+ */
+function clean(s: string, max: number): string {
+  let cut = s.trim().slice(0, max);
+  if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1);
+  return cut.trim();
+}
 
 /** One file's imported transactions as upload rows, numbering identical rows so real duplicates survive. */
 export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {

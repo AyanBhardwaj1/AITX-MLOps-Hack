@@ -74,3 +74,18 @@ describe("row ids", () => {
     expect(new Set(rows.map((r) => r.id)).size).toBe(2);
   });
 });
+
+describe("long text cut to size", () => {
+  it("never cuts an emoji in half (Postgres refuses half a character)", () => {
+    const long = `${"x".repeat(199)}🚀 and more`;
+    const [row] = toUploadRows(importCsv(`Date,Description,Amount\n2026-10-01,${long},-5.00\n`, { accountId: `${"a".repeat(79)}🏦`, resolvePayoffs: false }).transactions);
+    expect(row!.description).toBe("x".repeat(199));
+    expect(row!.account).toBe("a".repeat(79));
+    const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    for (const s of [row!.description, row!.account]) expect(s).not.toMatch(lone);
+    // A whole emoji that fits is kept.
+    const [kept] = toUploadRows(importCsv(`Date,Description,Amount\n2026-10-01,${"x".repeat(198)}🚀,-5.00\n`, { accountId: "a", resolvePayoffs: false }).transactions);
+    expect(kept!.description).toBe(`${"x".repeat(198)}🚀`);
+    expect(uploadChunk.safeParse({ rows: [row, kept] }).success).toBe(true);
+  });
+});
