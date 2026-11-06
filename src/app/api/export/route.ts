@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { accessErrorResponse } from "@/lib/server/errors";
+import { accessErrorResponse, NoCompanyData } from "@/lib/server/errors";
 import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
-import { findingsCsv, recurringCsv } from "@/lib/export/csv";
+import { findingsCsv, recurringCsv, uploadsCsv } from "@/lib/export/csv";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadAnalysis } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
@@ -12,16 +12,31 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings"]) });
+const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions"]) });
 
-/** CSV download of recurring charges or findings. Behind APP_PASSWORD when set, like the rest of the app. */
+/** A company's own uploaded transactions, as a backup it can upload again. */
+async function transactionsExport(): Promise<NextResponse> {
+  const stored = await getStore(await scopeFor("company")).loadUploads();
+  if (!stored) throw new NoCompanyData();
+  return new NextResponse(uploadsCsv(stored.rows), {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="runway-transactions-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+/** CSV download of recurring charges, findings, or (a company's own) transactions. */
 export async function GET(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const params = new URL(request.url).searchParams;
   const parsed = query.safeParse({ mode: params.get("mode") ?? undefined, kind: params.get("kind") });
-  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring or kind=findings" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings or transactions" }, { status: 400 });
   const { mode, kind } = parsed.data;
+  if (kind === "transactions" && mode !== "company") return NextResponse.json({ error: "Transactions download only for your company's uploads." }, { status: 400 });
   try {
+    if (kind === "transactions") return await transactionsExport();
     const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     let body: string;
     if (kind === "recurring") body = recurringCsv(analysis);

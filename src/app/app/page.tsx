@@ -9,6 +9,7 @@ import { analyze } from "@/lib/pipeline";
 import { redirect } from "next/navigation";
 import { companyName, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
+import { dataFreshness } from "@/lib/freshness";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
@@ -79,6 +80,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     mode,
     label: dataset.label,
     companyName: await companyName(mode),
+    freshness: mode === "company" ? dataFreshness(a.asOf, new Date()) : undefined,
     gettingStarted: await companyProgress(mode, [...statuses.values()].filter((s) => s !== "open").length),
     asOf: a.asOf,
     asOfFromData: a.asOfFromData,

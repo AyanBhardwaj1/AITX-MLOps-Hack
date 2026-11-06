@@ -98,6 +98,12 @@ export function parseDate(raw: string): string | null {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Undoes the apostrophe a spreadsheet-safe export puts before text that starts like a formula
+ * (ours does, see export/csv.ts), so a downloaded backup re-imports to the same descriptions.
+ */
+const unguard = (text: string) => text.replace(/^'(?=[=+\-@\t\r])/, "").replace(/([;,]\s*)'([=+\-@\t\r])/g, "$1$2");
+
 const norm = (h: string) => h.trim().toLowerCase().replace(/\s+/g, " ").replace(/\.$/, "");
 
 /** Header names banks use for each field, most specific first. Posting date wins: it's when cash moved. */
@@ -212,10 +218,10 @@ function rowToTransaction(cells: readonly string[], m: Mapping, accountId: strin
   if (m.layout === "mercury" && NOT_COMPLETED.test(get(m.status).trim())) return "not_completed";
   const date = parseDate(get(m.date));
   const raw = rowAmount(cells, m);
-  const description = get(m.description).trim();
+  const description = unguard(get(m.description).trim());
   if (!date || raw === null || !description) return null;
   const amount = m.invert !== flipSigns ? -raw : raw;
-  const cardholder = get(m.cardholder).trim() || null;
+  const cardholder = unguard(get(m.cardholder).trim()) || null;
   const explicitType = m.layout === "rho" ? get(m.type).trim() : "";
   const inferred =
     !isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)
@@ -230,7 +236,7 @@ function rowToTransaction(cells: readonly string[], m: Mapping, accountId: strin
             ? "ach_debit"
             : "ach_credit";
   const type = explicitType || inferred;
-  const account = get(m.account).trim() || accountId;
+  const account = unguard(get(m.account).trim()) || accountId;
   const first = cardholder?.split(" ")[0];
   return {
     // The upload id keeps rows unique when one account is exported as several files.

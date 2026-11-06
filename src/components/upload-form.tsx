@@ -214,6 +214,9 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
             <Link href="/app?mode=company" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong">
               Open your dashboard
             </Link>
+            <a href="/api/export?mode=company&kind=transactions" download className="rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-canvas">
+              Download all as CSV
+            </a>
             <button type="button" onClick={() => void deleteAll()} disabled={deleting} className="rounded-lg border border-line px-4 py-2 text-sm text-warn transition-colors hover:bg-warn-soft disabled:opacity-60">
               {deleting ? "Deleting…" : "Delete my uploaded data"}
             </button>

@@ -52,6 +52,8 @@ export interface DashboardData {
   label: string;
   /** The company this dashboard is about (the demo company, or the signed-in founder's own). */
   companyName: string;
+  /** How old a company's uploaded data is (company mode only). */
+  freshness?: { daysOld: number; stale: boolean };
   /** A signed-in company's first steps (company mode only). */
   gettingStarted?: { steps: GettingStartedStep[]; remaining: number };
   asOf: string;
@@ -274,6 +276,15 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </div>
         </section>
 
+        {data.freshness?.stale && (
+          <p role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
+            Your transactions end on {formatDate(data.asOf)}, {data.freshness.daysOld} days ago, so runway may have drifted.{" "}
+            <Link href="/app/upload" className="font-medium underline">
+              Upload a fresh export
+            </Link>{" "}
+            and update today&apos;s cash.
+          </p>
+        )}
         {data.gettingStarted && <GettingStartedCard {...data.gettingStarted} />}
 
         <ThisWeekCard changes={data.changes} mode={data.mode} slack={data.capabilities.slack} />

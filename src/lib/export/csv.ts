@@ -1,4 +1,5 @@
 import type { Analysis } from "../pipeline";
+import type { RhoTransaction } from "../rho/schema";
 import type { Finding } from "../types";
 
 /**
@@ -50,5 +51,18 @@ export function findingsCsv(findings: readonly Finding[], statuses: ReadonlyMap<
   return toCsv(
     ["Finding", "Kind", "Monthly savings (USD)", "One-time (USD)", "Confidence", "Status", "Detail"],
     findings.map((f) => [f.title, KIND[f.kind], dollars(f.monthlySavingsCents), dollars(f.oneTimeCents), Math.round(f.confidence * 100) / 100, statuses.get(f.id) ?? "open", f.detail]),
+  );
+}
+
+/**
+ * Every uploaded transaction, in Runway's own column layout (Date, Description, Amount, Type, Account,
+ * Cardholder), so the download is a backup that can be uploaded again without duplicating anything.
+ */
+export function uploadsCsv(rows: readonly RhoTransaction[]): string {
+  return toCsv(
+    ["Date", "Description", "Amount", "Type", "Account", "Cardholder"],
+    rows
+      .toSorted((a, b) => (a.posted_at ?? a.initiated_at).localeCompare(b.posted_at ?? b.initiated_at))
+      .map((t) => [(t.posted_at ?? t.initiated_at).slice(0, 10), t.counterparty_name, dollars(t.amount.amount), t.transaction_type, t.account_id, t.user_full_name ?? null]),
   );
 }

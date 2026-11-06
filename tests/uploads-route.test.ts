@@ -110,4 +110,23 @@ describe("POST /api/uploads", () => {
     as(null);
     expect((await del(req({ account: "chase" }))).status).toBe(401);
   });
+
+  it("downloads the signed-in company's own transactions, and only for company data", async () => {
+    const { POST } = await import("@/app/api/uploads/route");
+    const { GET } = await import("@/app/api/export/route");
+    const get = (q: string) => GET(new Request(`http://localhost/api/export?${q}`));
+    as("user-j");
+    await POST(post({ cashCents: 1, rows: [row({ description: "JAYS VENDOR" })] }, "203.0.113.8"));
+    as("user-k");
+    await POST(post({ cashCents: 1, rows: [row({ description: "KAYS VENDOR" })] }, "203.0.113.8"));
+    const res = await get("mode=company&kind=transactions");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toMatch(/runway-transactions-\d{4}-\d{2}-\d{2}\.csv/);
+    const text = await res.text();
+    expect(text).toContain("KAYS VENDOR");
+    expect(text).not.toContain("JAYS VENDOR");
+    expect((await get("mode=demo&kind=transactions")).status).toBe(400);
+    as(null);
+    expect((await get("mode=company&kind=transactions")).status).toBe(401);
+  });
 });
