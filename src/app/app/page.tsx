@@ -11,7 +11,7 @@ import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/ser
 import { gettingStarted } from "@/lib/onboarding";
 import { cashFreshness, dataFreshness, laggingAccounts } from "@/lib/freshness";
 import { parseScenarioParams, scenarioParams } from "@/lib/finance/scenario-link";
-import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, type Budget } from "@/lib/finance/budgets";
+import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, suggestBudgets, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
@@ -109,6 +109,7 @@ async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["b
     editable: mode === "company",
     sample: mode === "demo",
     asOf: a.asOf,
+    suggestions: suggestBudgets(a.txns, a.asOf),
   };
 }
 

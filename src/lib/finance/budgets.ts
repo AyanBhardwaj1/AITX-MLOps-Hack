@@ -3,6 +3,7 @@ import { CADENCE_DAYS } from "../detect/recurring";
 import { MAX_CASH_CENTS } from "../money";
 import { CATEGORIES, type Category, type Cents, type EnrichedTxn, type IsoDate, type RecurringStream } from "../types";
 import { countsTowardBurn, inBurnPeriod, simulateSavings, type Snapshot } from "./runway";
+import { categorySpend } from "./category-spend";
 
 /** Categories that are money in or moving between accounts: nothing to budget. */
 const NOT_SPENDING: ReadonlySet<Category> = new Set(["revenue", "transfer"]);
@@ -292,4 +293,19 @@ export function runwayWithinBudgets(
   // Too small a change to show at a tenth of a month: "12.3 instead of 12.3" says nothing.
   if (Number.isFinite(runwayMonths) && runwayMonths.toFixed(1) === snapshot.runwayMonths.toFixed(1)) return null;
   return { monthlySavingsCents, runwayMonths, currentRunwayMonths: snapshot.runwayMonths };
+}
+
+const SUGGESTION_STEP_CENTS = 100_00;
+
+/**
+ * A starting point for each spending category's budget: its average spend over the last 3
+ * complete months (charges before refunds, as budgets count), rounded up to the next $100.
+ */
+export function suggestBudgets(txns: readonly EnrichedTxn[], asOf: IsoDate): Partial<Record<Category, Cents>> {
+  const out: Partial<Record<Category, Cents>> = {};
+  for (const row of categorySpend(txns, asOf, { maxRows: CATEGORIES.length })) {
+    if (row.category === "rest" || !BUDGET_CATEGORIES.includes(row.category) || row.recentCents <= 0) continue;
+    out[row.category] = Math.ceil(row.recentCents / SUGGESTION_STEP_CENTS) * SUGGESTION_STEP_CENTS;
+  }
+  return out;
 }

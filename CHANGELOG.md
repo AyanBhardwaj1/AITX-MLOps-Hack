@@ -30,7 +30,8 @@ demo, the free grader and the public site work exactly as before.
   the budgets would buy if spending came down to them. Copilot answers "Are we on
   budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
   connected, the daily job posts there the day a budget goes over (once per budget per month;
-  changing the amount re-arms it).
+  changing the amount re-arms it). Adding a budget offers a starting amount: the last 3 full
+  months' average for that category, rounded up to $100.
 - **Already scheduled: next 30 days.** Every recurring charge expected over the next 30 days
   (payroll, rent, subscriptions) from its billing day and usual amount, the total, and the cash
   left after them.

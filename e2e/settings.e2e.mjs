@@ -29,6 +29,11 @@ await suite("settings", async ({ browser, step }) => {
     // Spend by person: the sample's cardholders, each linked to their transactions.
     await p.getByRole("heading", { name: "Spend by person" }).waitFor();
     await p.getByRole("region", { name: "Spend by person table" }).getByRole("link").first().waitFor();
+    // A suggested budget fills the amount from the last 3 full months, rounded up to $100.
+    const budgets = p.getByRole("region", { name: "Budgets" });
+    await budgets.getByLabel("Category").selectOption("software");
+    await budgets.getByRole("button", { name: /^Use \$[\d,]+$/ }).click();
+    assert.match(await budgets.getByLabel("Per month ($)").inputValue(), /^\d+00$/);
     await p.goto(`${APP}/app/settings`);
     const activity = p.getByRole("region", { name: "Recent activity" });
     await activity.getByText(/Uploaded [\d,]+ transactions · founder-a@acme\.example/).waitFor();
