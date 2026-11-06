@@ -57,9 +57,9 @@ describe("the grader's lagging-export note ignores rows left out", () => {
 });
 
 describe("upload rows that Postgres would refuse", () => {
-  it("strips NUL and other control characters and mends lone surrogates; the server schema does too", async () => {
+  it("strips NUL and mends lone surrogates; the server schema does too", async () => {
     const { toUploadRows, uploadRow } = await import("@/lib/uploads/rows");
-    const [r] = toUploadRows([{ ...row("x", "2026-11-01", -100), counterparty_name: "ZO\u0000OM\uD800 PRO", account_id: "chk\u0001" }]);
+    const [r] = toUploadRows([{ ...row("x", "2026-11-01", -100), counterparty_name: "ZO\u0000OM\uD800 PRO", account_id: "chk\u0000" }]);
     expect(r!.description).toBe("ZOOM� PRO");
     expect(r!.account).toBe("chk");
     const parsed = uploadRow.parse({ ...r!, description: "A\u0000B\uDC00" });
@@ -88,5 +88,14 @@ describe("the matches export reads repeated parameters as the page does", () => 
     const params = new URLSearchParams("category=software&category=payroll&month=2026-08&month=2026-09");
     const all = Object.fromEntries([...new Set(params.keys())].map((k) => [k, params.getAll(k)]));
     expect(parseTxnQuery(all)).toMatchObject({ category: "software", month: "2026-08" });
+  });
+});
+
+describe("storable text keeps what Postgres stores", () => {
+  it("only NUL and half an emoji change, so rows stored before keep their identity; an emptied description gets a placeholder", async () => {
+    const { toUploadRows, storableText } = await import("@/lib/uploads/rows");
+    expect(storableText("ACME\u0001 CORP\u007F")).toBe("ACME\u0001 CORP\u007F");
+    const [r] = toUploadRows([{ ...row("x", "2026-11-01", -100), counterparty_name: "\u0000\u0000" }]);
+    expect(r!.description).toBe("(no description)");
   });
 });

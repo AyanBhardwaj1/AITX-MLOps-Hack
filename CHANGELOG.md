@@ -120,7 +120,7 @@ demo, the free grader and the public site work exactly as before.
 - **Safer approvals.** A dismissed finding's drafts leave the Inbox and can't be approved
   (reopening the finding brings them back); Copilot won't draft for one either. On the public
   demo, Inbox decisions show for the visitor but aren't saved for everyone.
-- **Uploads that always go through.** A stray control character in a bank export (or half an
+- **Uploads that always go through.** A stray NUL character in a bank export (or half an
   emoji) no longer makes the whole upload fail; long non-Latin descriptions are sent in smaller
   pieces; and an account can't be named like Runway's own entered-cash account.
 - **One digest a week.** A repeated or retried cron call doesn't post the Monday digest twice.

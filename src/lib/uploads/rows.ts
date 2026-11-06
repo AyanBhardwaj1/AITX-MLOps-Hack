@@ -18,12 +18,13 @@ const MAX_ABS_CENTS = 1e12;
 export const MAX_CHUNK_BYTES = 3_500_000;
 
 /**
- * Text Postgres will store: control characters (a NUL in a bank export) dropped, and half an emoji
- * (a lone surrogate) replaced, or the whole chunk is refused and every retry fails the same way.
+ * Text Postgres will store: a NUL (from a bank export) dropped and half an emoji (a lone
+ * surrogate) replaced, or the whole chunk is refused and every retry fails the same way. Nothing
+ * else changes, so rows stored before keep their identity and a re-upload still finds them.
  */
 export function storableText(s: string): string {
   return s
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\u0000/g, "")
     .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
 }
 const text = (max: number) => z.string().transform(storableText).pipe(z.string().trim().min(1).max(max));
@@ -93,7 +94,8 @@ export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {
   return txns.map((t) => {
     const date = (t.posted_at ?? t.initiated_at).slice(0, 10);
     // Number copies on exactly what's stored (and hashed), so formatting differences don't change identity.
-    const description = clean(t.counterparty_name, 200);
+    // A description that was nothing but NULs would leave the row (and its whole chunk) unsendable.
+    const description = clean(t.counterparty_name, 200) || "(no description)";
     const named = clean(t.account_id, 80) || DEFAULT_ACCOUNT;
     const account = named === CASH_ACCOUNT_ID ? `${CASH_ACCOUNT_ID} (file)` : named;
     const key = `${date}|${description}|${t.amount.amount}|${account}`;
