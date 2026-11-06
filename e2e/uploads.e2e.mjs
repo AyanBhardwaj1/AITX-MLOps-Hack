@@ -96,6 +96,8 @@ await suite("uploads", async ({ browser, step }) => {
     await card.getByRole("button", { name: /Change the software budget/ }).click();
     await card.getByRole("button", { name: "Remove" }).click();
     await card.getByRole("link", { name: "Software" }).waitFor({ state: "detached" });
+    // The row is gone; focus went to the card's heading, not the top of the page.
+    assert.equal(await p.evaluate(() => document.activeElement?.id), "budgets-title");
     await p.goto(`${APP}/app/settings`);
     await p.getByText("Changed the software budget from $1 to $2,500/mo").waitFor();
     await p.getByText("Removed the software budget").waitFor();

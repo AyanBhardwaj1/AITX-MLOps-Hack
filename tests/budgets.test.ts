@@ -70,9 +70,9 @@ describe("budgets", () => {
     // A bill still due this month counts in full, once.
     const [early] = budgetStatus(pay.slice(0, 1), "2026-11-05", [{ category: "payroll", monthlyCents: 70_000_00 }], [stream("payroll", ["p1"], "2026-11-15", 40_000_00, "semimonthly")]);
     expect(early).toMatchObject({ monthToDateCents: 40_000_00, projectedCents: 80_000_00, status: "over_pace" });
-    // Weekly bills count each time they fall before the month ends: Nov 12, 19 and 26.
-    const [weekly] = budgetStatus([], "2026-11-05", [{ category: "contractors", monthlyCents: 1 }], [stream("contractors", [], "2026-11-12", 100_00, "weekly")]);
-    expect(weekly!.projectedCents).toBe(300_00);
+    // Weekly bills count each time they fall before the month ends: Nov 5 (paid), then 12, 19 and 26.
+    const [weekly] = budgetStatus([txn("w1", "2026-11-05", -100_00, "contractors")], "2026-11-05", [{ category: "contractors", monthlyCents: 1 }], [stream("contractors", ["w1"], "2026-11-12", 100_00, "weekly", "2026-11-05")]);
+    expect(weekly!.projectedCents).toBe(400_00);
   });
 
   it("counts every weekly and biweekly charge a month holds: a fifth Friday, a third payday", () => {
@@ -100,5 +100,38 @@ describe("budgets", () => {
     const spent = [txn("r0", "2026-10-02", -1_000_00, "rent")];
     const [rent] = budgetStatus(spent, "2026-10-31", [{ category: "rent", monthlyCents: 9_000_00 }], [stream("rent", [], "2026-10-31", 10_000_00, "monthly", "2026-09-30")]);
     expect(rent).toMatchObject({ monthToDateCents: 1_000_00, projectedCents: 1_000_00, status: "under" });
+  });
+
+  it("still expects a bill that's a few days late this month", () => {
+    // Usually around the 5th; on Nov 8 it hasn't posted yet.
+    const [late] = budgetStatus([], "2026-11-08", [{ category: "software", monthlyCents: 2_000_00 }], [stream("software", [], "2026-11-05", 3_000_00, "monthly", "2026-10-06")]);
+    expect(late).toMatchObject({ projectedCents: 3_000_00, status: "over_pace" });
+  });
+
+  it("keeps February's second payday for payroll on the 15th and the last day", () => {
+    const paid = [txn("p15", "2027-02-15", -40_000_00, "payroll")];
+    const [feb] = budgetStatus(paid, "2027-02-16", [{ category: "payroll", monthlyCents: 70_000_00 }], [stream("payroll", ["p15"], "2027-03-02", 40_000_00, "semimonthly", "2027-02-15")]);
+    expect(feb).toMatchObject({ projectedCents: 80_000_00, status: "over_pace" });
+  });
+
+  it("keeps month-end rent after a short month", () => {
+    const [march] = budgetStatus([], "2027-03-29", [{ category: "rent", monthlyCents: 9_000_00 }], [stream("rent", [], "2027-03-28", 10_000_00, "monthly", "2027-02-28")]);
+    expect(march).toMatchObject({ projectedCents: 10_000_00, status: "over_pace" });
+  });
+
+  it("expects a quarterly or annual bill only in a month it falls in", () => {
+    const quarterly = stream("insurance", [], "2027-01-15", 3_000_00, "quarterly", "2026-10-15");
+    expect(budgetStatus([], "2027-01-03", [{ category: "insurance", monthlyCents: 1 }], [quarterly])[0]!.projectedCents).toBe(3_000_00);
+    expect(budgetStatus([], "2026-12-03", [{ category: "insurance", monthlyCents: 1 }], [quarterly])[0]!.projectedCents).toBe(0);
+  });
+
+  it("gives the demo's sample budgets one of each state, so visitors see what each looks like", async () => {
+    const { analyze } = await import("@/lib/pipeline");
+    const { generateDemoCompany } = await import("@/lib/seed/demo-company");
+    const { DEMO_BUDGETS } = await import("@/lib/seed/demo-budgets");
+    const demo = generateDemoCompany();
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });
+    const statuses = new Set(budgetStatus(a.txns, a.asOf, DEMO_BUDGETS, a.streams).map((r) => r.status));
+    expect([...statuses].sort()).toEqual(["over", "over_pace", "under"]);
   });
 });

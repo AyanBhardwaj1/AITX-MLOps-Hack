@@ -1,4 +1,4 @@
-import { addDays, addMonths, monthKey, shiftMonth } from "../dates";
+import { addDays, daysBetween, monthKey, shiftMonth } from "../dates";
 import { CADENCE_DAYS } from "../detect/recurring";
 import { MAX_CASH_CENTS } from "../money";
 import { CATEGORIES, type Category, type Cents, type EnrichedTxn, type IsoDate, type RecurringStream } from "../types";
@@ -42,24 +42,38 @@ const MONTHS_APART: Partial<Record<RecurringStream["cadence"], number>> = { mont
 const MIN_PACE_DAYS = 7;
 
 /**
- * A stream's charges still to come this month: due after the as-of day (one due today but not yet
- * posted usually lands next month) and by the month's end. Monthly and longer bills step in
- * calendar months from the last charge, so a bill on the 31st still lands in February; weekly and
- * biweekly step exactly, so a fifth Friday or third payday counts. Semimonthly steps are averages,
- * so they're capped at two a month, and monthly and longer at one, less those already charged.
+ * How many more charges a stream should make this month: how many it normally makes in a month like
+ * this one, less those already seen. Counting, not predicting dates, keeps a late bill expected
+ * until it posts, keeps month-end rent after a short month, and keeps February's second payday.
+ * - monthly: one; semimonthly: two; quarterly and annual: one in the months they fall in;
+ * - weekly and biweekly: their exact dates in the month, on the schedule of the last charge
+ *   (a fifth Friday or third payday counts).
+ * A closed month (as-of on its last day) expects nothing more. Weekend-shifted schedules are
+ * approximate: a payday moved into the previous month reads as one more there and one fewer here.
  */
 function stillDue(s: RecurringStream, asOf: IsoDate, month: string, seenThisMonth: number): number {
   const monthEnd = `${month}-${String(daysInMonth(month)).padStart(2, "0")}`;
-  const months = MONTHS_APART[s.cadence];
-  let count = 0;
-  for (let k = 0; k < 60; k++) {
-    const due = months ? addMonths(s.lastDate, (k + 1) * months) : addDays(s.nextExpected, Math.round(k * CADENCE_DAYS[s.cadence]));
-    if (due > monthEnd) break;
-    if (due > asOf && due >= `${month}-01`) count += 1;
+  if (asOf >= monthEnd) return 0;
+  const monthsApart = MONTHS_APART[s.cadence];
+  let expected: number;
+  if (s.cadence === "semimonthly") expected = 2;
+  else if (monthsApart) {
+    const gap = monthIndex(month) - monthIndex(monthKey(s.lastDate));
+    expected = gap >= 0 && gap % monthsApart === 0 ? 1 : 0;
+  } else {
+    const step = CADENCE_DAYS[s.cadence];
+    const monthStart = `${month}-01`;
+    expected = 0;
+    let due = addDays(s.lastDate, Math.ceil(daysBetween(s.lastDate, monthStart) / step) * step);
+    while (due <= monthEnd) {
+      expected += 1;
+      due = addDays(due, step);
+    }
   }
-  const cap = months ? 1 : s.cadence === "semimonthly" ? 2 : Number.POSITIVE_INFINITY;
-  return Math.min(count, Math.max(0, cap - seenThisMonth));
+  return Math.max(0, expected - seenThisMonth);
 }
+
+const monthIndex = (month: string) => Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1;
 
 /**
  * Each budget against this month so far, last month in full, and the month's likely total:

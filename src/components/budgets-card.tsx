@@ -25,6 +25,14 @@ const STATUS: Record<BudgetRow["status"], { text: string; tone: string }> = {
   under: { text: "On track", tone: "bg-brand-soft text-brand-strong" },
 };
 
+const STATUS_ID = "budgets-status";
+const HEADING_ID = "budgets-title";
+/** Says what changed in the card's own live region (rows can vanish, so it can't live in a row). */
+function announce(text: string) {
+  const region = document.getElementById(STATUS_ID);
+  if (region) region.textContent = text;
+}
+
 const title = (c: Category) => categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1);
 
 async function save(category: Category, monthlyCents: number | null): Promise<string | null> {
@@ -67,7 +75,15 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
     const problem = await save(row.category, monthlyCents);
     setBusy(false);
     if (problem) return setError(problem);
-    close();
+    if (monthlyCents === null) {
+      // The row goes away with the refresh: focus the card's heading rather than lose it.
+      setEditing(false);
+      announce(`${title(row.category)} budget removed.`);
+      document.getElementById(HEADING_ID)?.focus();
+    } else {
+      announce(`${title(row.category)} budget saved.`);
+      close();
+    }
     router.refresh();
   }
 
@@ -152,6 +168,7 @@ function AddBudget({ unbudgeted }: { unbudgeted: Category[] }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const amount = useRef<HTMLInputElement>(null);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -163,6 +180,9 @@ function AddBudget({ unbudgeted }: { unbudgeted: Category[] }) {
     if (problem) return setError(problem);
     setError(null);
     setDraft("");
+    announce(`${title(category)} budget added.`);
+    // The submit button is now disabled (empty amount); keep focus where the next budget is typed.
+    amount.current?.focus();
     router.refresh();
   }
 
@@ -185,6 +205,7 @@ function AddBudget({ unbudgeted }: { unbudgeted: Category[] }) {
       <label className="block">
         <span className="text-xs text-muted">Per month ($)</span>
         <input
+          ref={amount}
           inputMode="decimal"
           autoComplete="off"
           placeholder="5,000"
@@ -213,12 +234,12 @@ export function BudgetsCard({ budgets, mode }: { budgets: BudgetsData; mode: Dat
   return (
     <section aria-labelledby="budgets-title" className="mb-6 rounded-xl border border-line bg-panel">
       <div className="border-b border-line px-5 py-3">
-        <h2 id="budgets-title" className="font-semibold">
+        <h2 id={HEADING_ID} tabIndex={-1} className="font-semibold outline-none">
           Budgets
         </h2>
         <p className="text-xs text-muted">
           {formatDate(monthStart)} to {formatDate(budgets.asOf)}. &ldquo;Heading for&rdquo; adds recurring bills still due this month and the rest at its
-          pace so far.
+          pace so far, from day 7. Spend is charges before refunds, as in &ldquo;Where the money goes&rdquo;.
           {budgets.sample && " The demo company's budgets are a fixed sample."}
           {budgets.editable && " Anyone on the team can change them; the Monday digest flags any heading over."}
         </p>
@@ -233,6 +254,7 @@ export function BudgetsCard({ budgets, mode }: { budgets: BudgetsData; mode: Dat
         </ul>
       )}
       {budgets.editable && budgets.unbudgeted.length > 0 && <AddBudget unbudgeted={budgets.unbudgeted} />}
+      <p id={STATUS_ID} role="status" className="sr-only" />
     </section>
   );
 }

@@ -190,11 +190,11 @@ export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no
   return result;
 }
 
-/** Anything a founder would lose: uploads, live share links, category fixes, a connected Slack. */
+/** Anything a founder would lose: uploads, live share links, category fixes, budgets, a connected Slack. */
 async function holdsData(scope: string): Promise<boolean> {
   const store = getStore(scope);
-  const [uploads, links, fixes, slack] = await Promise.all([store.loadUploads(), store.listShareLinks(), store.listCorrections(), store.getSlackWebhook()]);
-  return uploads !== null || links.some((l) => !l.revokedAt) || fixes.length > 0 || slack !== null;
+  const [uploads, links, fixes, budgets, slack] = await Promise.all([store.loadUploads(), store.listShareLinks(), store.listCorrections(), store.listBudgets(), store.getSlackWebhook()]);
+  return uploads !== null || links.some((l) => !l.revokedAt) || fixes.length > 0 || budgets.length > 0 || slack !== null;
 }
 
 /** "…abcd": enough to recognise which webhook is connected, never enough to use it. */

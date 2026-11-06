@@ -184,6 +184,21 @@ describe("teammates", () => {
     expect((await share(post("/api/share", { mode: "company", action: "revoke", id: crypto.randomUUID() }))).status).toBe(403);
   });
 
+  it("accepting an invite refuses while the old company has budgets, which would go with it", async () => {
+    const ownerId = crypto.randomUUID();
+    const owner = await ownerWithCompany(ownerId);
+    const otherId = crypto.randomUUID();
+    const theirs = await ownerWithCompany(otherId);
+    const { getStore } = await import("@/lib/server/store");
+    await getStore(theirs.scope).setBudget("software", 5_000_00);
+    as(ownerId);
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: `${otherId}@acme.example` }));
+    as(otherId);
+    const accept = (await import("@/app/api/company/invites/accept/route")).POST;
+    expect((await accept(post("/api/company/invites/accept", { orgId: owner.orgId }))).status).toBe(409);
+  });
+
   it("accepting an invite refuses while the old company still has any data, not just transactions", async () => {
     const ownerId = crypto.randomUUID();
     const owner = await ownerWithCompany(ownerId);
