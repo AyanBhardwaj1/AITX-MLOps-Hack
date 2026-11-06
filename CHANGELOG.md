@@ -40,7 +40,8 @@ demo, the free grader and the public site work exactly as before.
   transactions.
 - **Why burn moved.** A dashboard card compares last month's net burn with the month before,
   vendor by vendor (new, stopped, up, down), plus the change in money coming in. It adds up to
-  the cent, and each vendor links to its transactions that month. The Monday digest and Copilot
+  the cent, and each vendor links to its transactions that month. The free grader shows it too
+  (in the browser, like the rest of it). The Monday digest and Copilot
   ("Why did burn change last month?") say the same.
 - **Renewals in your calendar.** The "Coming up" card downloads the next year of annual,
   quarterly and $5k+ renewals as a calendar file, each with a reminder two weeks before.

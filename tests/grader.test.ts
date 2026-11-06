@@ -137,3 +137,13 @@ describe("gradeCsvFiles", () => {
     expect(overlap.notes.some((n) => /days before the newest one/.test(n))).toBe(false);
   });
 });
+
+describe("why burn moved, in the grader", () => {
+  it("compares the last two whole months of the uploaded files", () => {
+    const demo = generateDemoCompany();
+    const settled = demo.transactions.filter((t) => t.status === "settled");
+    const g = gradeCsvFiles([{ name: "all.csv", text: mercuryCsv(settled) }], cashBalanceCents(demo.accounts));
+    expect(g.bridge).not.toBeNull();
+    expect(g.bridge!.drivers.reduce((s, d) => s + d.changeCents, 0) + g.bridge!.otherCents - g.bridge!.revenueChangeCents).toBe(g.bridge!.changeCents);
+  });
+});

@@ -6,6 +6,7 @@ import { combineBalances, looksLikeOfx, readOfxBalances } from "@/lib/csv/ofx";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader";
 import { formatDollars } from "@/lib/money";
+import { BurnBridgeCard } from "./burn-bridge-card";
 import { CashFromFiles } from "./cash-from-files";
 import { GraderSignup } from "./grader-signup";
 
@@ -185,6 +186,8 @@ export function GraderPanel() {
                 </ul>
               )}
             </div>
+
+            <BurnBridgeCard bridge={result.bridge} mode={null} />
 
             {(result.notes.length > 0 || result.errors.length > 0) && (
               <div className="rounded-xl border border-line bg-canvas p-4 text-sm">

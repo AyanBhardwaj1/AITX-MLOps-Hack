@@ -6,7 +6,8 @@ import { formatDollars } from "@/lib/money";
 const signed = (cents: number) => `${cents > 0 ? "+" : cents < 0 ? "−" : ""}${formatDollars(Math.abs(cents))}`;
 
 /** Last complete month's net burn against the month before, vendor by vendor (it adds up exactly). */
-export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mode: string }) {
+/** `mode` null (the grader: files stay in the browser) shows the vendors without links. */
+export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mode: string | null }) {
   if (!bridge) return null;
   const { month, previous, changeCents } = bridge;
   const verb = changeCents > 0 ? `up ${formatDollars(changeCents)}` : changeCents < 0 ? `down ${formatDollars(-changeCents)}` : "unchanged";
@@ -42,9 +43,13 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
             {bridge.drivers.map((d) => (
               <tr key={d.key}>
                 <th scope="row" className="py-1.5 text-left font-normal">
-                  <Link href={txHref(d.key, d.kind === "stopped")} className="hover:text-brand hover:underline">
-                    {d.name}
-                  </Link>
+                  {mode === null ? (
+                    d.name
+                  ) : (
+                    <Link href={txHref(d.key, d.kind === "stopped")} className="hover:text-brand hover:underline">
+                      {d.name}
+                    </Link>
+                  )}
                   {(d.kind === "new" || d.kind === "stopped") && (
                     <span className="ml-1.5 rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">{d.kind === "new" ? "new" : "stopped"}</span>
                   )}
