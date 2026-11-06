@@ -49,7 +49,8 @@ export function countsTowardBurn(t: EnrichedTxn): boolean {
 }
 
 function runwayFrom(cashCents: Cents, netBurnCents: Cents): number {
-  return netBurnCents > 0 ? cashCents / netBurnCents : Number.POSITIVE_INFINITY;
+  // Cash already below zero (a card balance counted in) is no runway, not a negative one.
+  return netBurnCents > 0 ? Math.max(0, cashCents / netBurnCents) : Number.POSITIVE_INFINITY;
 }
 
 /** Beyond a century of runway a calendar date is meaningless (and overflows Date). */

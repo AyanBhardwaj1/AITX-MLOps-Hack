@@ -4,7 +4,7 @@ import { isOutflow } from "../detect/recurring";
 import { monthlyHistory } from "../finance/history";
 import { coefficientOfVariation } from "../stats";
 import { upcomingRenewals } from "../finance/renewals";
-import { formatDate } from "../format";
+import { formatDate, formatMonth } from "../format";
 import { formatCents } from "../money";
 import type { Cents, EnrichedTxn, IsoDate, RecurringStream } from "../types";
 
@@ -75,7 +75,11 @@ function runwayLow(runwayMonths: number, asOf: IsoDate): Change[] {
 function burnSpike(txns: readonly EnrichedTxn[], asOf: IsoDate): Change[] {
   const months = monthlyHistory(txns, asOf, BASELINE_MONTHS + 1);
   const last = months.at(-1)!;
-  const baseline = months.slice(0, BASELINE_MONTHS).reduce((s, m) => s + m.outflowCents, 0) / BASELINE_MONTHS;
+  // Only months the data fully covers: a month before it starts (or half of one) isn't low spending.
+  const first = txns.reduce<IsoDate | null>((min, t) => (min === null || t.postedAt < min ? t.postedAt : min), null);
+  const whole = months.slice(0, BASELINE_MONTHS).filter((m) => first !== null && `${m.month}-01` >= first);
+  if (whole.length === 0 || `${last.month}-01` < first!) return [];
+  const baseline = whole.reduce((s, m) => s + m.outflowCents, 0) / whole.length;
   const jump = Math.round(last.outflowCents - baseline);
   if (baseline <= 0 || jump < BURN_SPIKE_MIN_CENTS || jump < baseline * BURN_SPIKE_RATIO) return [];
   return [
@@ -83,8 +87,8 @@ function burnSpike(txns: readonly EnrichedTxn[], asOf: IsoDate): Change[] {
       id: `burn_spike:${last.month}`,
       kind: "burn_spike",
       severity: "warn",
-      title: `Spending jumped ${Math.round((jump / baseline) * 100)}% in ${last.month}`,
-      detail: `${formatCents(last.outflowCents)} went out, ${formatCents(jump)} more than the ${BASELINE_MONTHS}-month average.`,
+      title: `Spending jumped ${Math.round((jump / baseline) * 100)}% in ${formatMonth(last.month)}`,
+      detail: `${formatCents(last.outflowCents)} went out, ${formatCents(jump)} more than the ${whole.length === 1 ? "month" : `${whole.length}-month average`} before.`,
       amountCents: jump,
       date: `${last.month}-01`,
     },

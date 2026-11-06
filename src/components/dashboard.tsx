@@ -382,7 +382,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             </div>
             <span className="text-xs text-muted">
               {chartView === "forecast"
-                ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString("en-US")} simulations of the last 6 months' burn trend and its noise. In tests it held the real outcome about 7–8 times in 10; it can't foresee one-off shocks.`
+                ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString("en-US")} simulations of the last ${Math.min(6, data.forecast.sampledMonths)} months' burn trend and its noise. In tests it held the real outcome about 7–8 times in 10; it can't foresee one-off shocks.`
                 : "Internal transfers and card repayments excluded"}
             </span>
           </div>

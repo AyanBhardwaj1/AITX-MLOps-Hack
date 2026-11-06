@@ -9,13 +9,13 @@ import type { Store } from "../store/types";
 
 const slackEscape = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
-/** Rounded down, so it never reads as over the line it's under ("3.0, under 3"). */
-const shownMonths = (months: number) => (Math.floor(months * 10) / 10).toFixed(1);
+/** Rounded as the dashboard rounds, or down where that would read as over the line ("3.0, under 3"). */
+const shownMonths = (months: number, below: number) => (Number(months.toFixed(1)) >= below ? (Math.floor(months * 10) / 10).toFixed(1) : months.toFixed(1));
 
 /** The Slack message for runway crossing a line (server-written text; the company name escaped). */
 export function runwayAlertText({ company, runwayMonths, below, netBurnCents, zeroCashDate, link }: { company: string; runwayMonths: number; below: number; netBurnCents: number; zeroCashDate: string | null; link?: string }): string {
   const when = zeroCashDate ? ` At ${formatDollars(netBurnCents)}/month net burn, cash runs out around ${formatDate(zeroCashDate)}.` : "";
-  return [`*Runway alert for ${slackEscape(company)}*`, `Runway is down to *${shownMonths(runwayMonths)} months*, under ${below}.${when}`, ...(link ? [`<${link}|Open Runway>`] : [])].join("\n");
+  return [`*Runway alert for ${slackEscape(company)}*`, `Runway is down to *${shownMonths(runwayMonths, below)} months*, under ${below}.${when}`, ...(link ? [`<${link}|Open Runway>`] : [])].join("\n");
 }
 
 export type RunwayAlertResult = { status: "sent"; below: number } | { status: "none" } | { status: "no_slack" } | { status: "disconnected" };
@@ -66,7 +66,7 @@ export async function sendRunwayAlert({
   }
   // The team sees what Slack was told, credited to Runway; a hiccup here never undoes the post.
   await store
-    .recordActivity({ actorEmail: null, kind: "alert", detail: `Told Slack: runway dropped under ${next.store} months (${shownMonths(runwayMonths)})` })
+    .recordActivity({ actorEmail: null, kind: "alert", detail: `Told Slack: runway dropped under ${next.store} months (${shownMonths(runwayMonths, next.store)})` })
     .catch((err) => console.error("[runway-alert] couldn't log the alert", err instanceof Error ? err.message : "unknown error"));
   return { status: "sent", below: next.store };
 }

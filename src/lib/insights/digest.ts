@@ -146,7 +146,7 @@ function blocks(d: DigestInput): Block[] {
   } else {
     out.push({
       kind: "p",
-      spans: [{ bold: `${formatDollars(monthly)}/month` }, ` across ${d.findings.length} findings${oneTime ? `, plus ${formatCents(oneTime)} to reclaim` : ""}.`],
+      spans: [{ bold: `${formatDollars(monthly)}/month` }, ` across ${d.findings.length} ${d.findings.length === 1 ? "finding" : "findings"}${oneTime ? `, plus ${formatCents(oneTime)} to reclaim` : ""}.`],
     });
     if (top.length) out.push({ kind: "ul", items: top.slice(0, TOP_FINDINGS).map((f) => [`${f.title} (saves ${formatDollars(f.monthlySavingsCents)}/month)`]) });
   }

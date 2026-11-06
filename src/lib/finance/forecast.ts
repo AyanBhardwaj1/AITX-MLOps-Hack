@@ -161,11 +161,13 @@ export function forecastCash({
   const steps = dampedSteps(MAX_SIMULATED_MONTHS, trendDamping);
   // The "swings" model is kept exactly as it was, for comparison.
   const spread = method === "trend" ? uncertaintyScale : 1;
-  const rng = createRng(seed);
   const cashByMonth: number[][] = Array.from({ length: horizonMonths + 1 }, () => []);
   const runways: number[] = [];
 
   for (let path = 0; path < simulations; path++) {
+    // Each path draws from its own stream, so where a path stops (the chart's horizon) never
+    // changes the others: the range is the same on the dashboard, in Copilot and on a share page.
+    const rng = createRng(seed * 100_003 + path);
     let cash = cashCents;
     let runway = Number.POSITIVE_INFINITY;
     const pathSlope = slope + spread * slopeSe * (slopeSe ? normal(rng.next) : 0);
@@ -207,7 +209,8 @@ export function forecastCash({
       p90: zeroCashDate(asOf, runwayMonths.p90),
     },
     simulations,
-    sampledMonths: raw.length,
+    // Months with data the range learned from (not the empty ones before the data starts).
+    sampledMonths: observed.length,
     method,
     trendCentsPerMonth: Math.round(slope),
     trendKind: fit?.kind === "trend" && slope === 0 ? "flat" : (fit?.kind ?? "flat"),

@@ -45,10 +45,13 @@ const signedPct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}%`;
 
 export function investorUpdateInput(a: Analysis, opts: { company: string; verifiedSavingsCents?: Cents }): InvestorUpdateInput {
   const history = monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS);
+  // Only months the data fully covers: half a month (or one before the data starts) isn't a month of results.
+  const first = a.txns.reduce<string | null>((min, t) => (min === null || t.postedAt < min ? t.postedAt : min), null);
+  const whole = history.filter((m) => first !== null && `${m.month}-01` >= first);
   return {
     company: opts.company,
     asOf: a.asOf,
-    history,
+    history: whole,
     cashCents: a.snapshot.cashCents,
     netBurnCents: a.snapshot.netBurnCents,
     grossBurnCents: a.snapshot.grossBurnCents,
@@ -63,7 +66,8 @@ export function investorUpdateInput(a: Analysis, opts: { company: string; verifi
 function revenueLine(history: readonly MonthHistory[], s: InvestorUpdateInput["scenario"]): string {
   const last = history.at(-1);
   const prev = history.at(-2);
-  if (!last || last.inflowCents <= 0) return "- **Revenue:** No revenue yet.";
+  if (!last) return "- **Revenue:** no complete month of data yet.";
+  if (last.inflowCents <= 0) return "- **Revenue:** No revenue yet.";
   const vs = prev && prev.inflowCents > 0 ? ` (${signedPct((last.inflowCents - prev.inflowCents) / prev.inflowCents)} vs ${shortMonth(prev.month)}` : " (first revenue month";
   const measured = describeGrowth(s.revenueGrowth, s.growthBasis);
   const trend = measured && s.growthBasis ? `${measured} over the last ${s.growthBasis.months} months` : measured ? `planning at ${measured}` : "too early to measure a growth rate";
@@ -86,7 +90,8 @@ function aliveLine(s: InvestorUpdateInput["scenario"]): string {
 }
 
 export function buildInvestorUpdate(input: InvestorUpdateInput): InvestorUpdate {
-  const month = input.history.at(-1)?.month ?? input.asOf.slice(0, 7);
+  const month = input.history.at(-1)?.month ?? null;
+  const period = month ? `the end of ${monthName(month)}` : formatDate(input.asOf);
   const runway = Number.isFinite(input.runwayMonths)
     ? `**${input.runwayMonths.toFixed(1)} months** of runway${input.zeroCashDate ? ` (to about ${formatDate(input.zeroCashDate)})` : ""}`
     : "cash-flow positive";
@@ -99,10 +104,10 @@ export function buildInvestorUpdate(input: InvestorUpdateInput): InvestorUpdate 
     input.verifiedSavingsCents ? `- **Spend cuts:** ${formatDollars(input.verifiedSavingsCents)}/month of tool spend cut and verified on our bank statements` : null,
   ].filter((l) => l !== null);
 
-  const subject = `${input.company}: ${monthName(month)} update`;
+  const subject = `${input.company}: ${month ? monthName(month) : formatDate(input.asOf)} update`;
   const markdown = [
     `# ${subject}`,
-    `Hi all, here's where we stand at the end of ${monthName(month)}. The numbers come straight from our bank feed.`,
+    `Hi all, here's where we stand ${month ? "at" : "on"} ${period}. The numbers come straight from our bank feed.`,
     "## The numbers",
     numbers.join("\n"),
     "## Highlights",

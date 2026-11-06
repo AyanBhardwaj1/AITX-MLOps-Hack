@@ -189,7 +189,10 @@ export function getForecast(a: Analysis) {
     runwayMonths: { p10: round1(f.runwayMonths.p10), p50: round1(f.runwayMonths.p50), p90: round1(f.runwayMonths.p90) },
     zeroCashDates: f.zeroCashDates,
     trendCentsPerMonth: f.trendCentsPerMonth,
-    method: `${f.simulations} simulations of the last ${Math.min(DEFAULT_TREND_WINDOW_MONTHS, f.sampledMonths)} months' burn trend and its month-to-month noise`,
+    method:
+      f.sampledMonths >= 2
+        ? `${f.simulations} simulations of the last ${Math.min(DEFAULT_TREND_WINDOW_MONTHS, f.sampledMonths)} months' burn trend and its month-to-month noise`
+        : `today's burn (too few whole months of data for a trend or its noise yet, so the range is narrow and not a measure of risk)`,
   };
 }
 

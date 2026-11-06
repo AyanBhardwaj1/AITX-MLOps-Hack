@@ -28,14 +28,17 @@ const RENEWAL_DAYS = 60;
 const MAX_LISTED = 6;
 /** Spend we never suggest cutting unprompted. */
 const PROTECTED = new Set(["payroll", "rent", "revenue", "transfer"]);
-const months = (n: number | null) => (n === null ? "unlimited" : `${n.toFixed(1)} months`);
-const range = (lo: number | null, hi: number | null) => (lo === null || hi === null ? `${months(lo)} to ${months(hi)}` : `${lo.toFixed(1)} to ${hi.toFixed(1)} months`);
+const months = (n: number | null) => (n === null ? "no end (cash-flow positive)" : `${n.toFixed(1)} months`);
+const range = (lo: number | null, hi: number | null) =>
+  lo === null && hi === null ? "no end in any simulation (cash-flow positive)" : lo === null || hi === null ? `${lo === null ? "no end" : `${lo.toFixed(1)} months`} to ${hi === null ? "no end" : `${hi.toFixed(1)} months`}` : `${lo.toFixed(1)} to ${hi.toFixed(1)} months`;
 
 function target14(a: Analysis, dismissed: ReadonlySet<string>): InstantAnswer {
   const plan = planToTarget(a, { targetRunwayMonths: TARGET_MONTHS }, dismissed);
   const snap = getFinancialSnapshot(a);
   const lines = [
-    `You have **${months(snap.runwayMonths)}** of runway today (cash ${formatDollars(snap.cashCents)}, net burn ${formatDollars(snap.netBurnCentsPerMonth)}/month).`,
+    snap.runwayMonths === null
+      ? `You're cash-flow positive: about ${formatDollars(-snap.netBurnCentsPerMonth)}/month more comes in than goes out, so cash (${formatDollars(snap.cashCents)}) doesn't run out at today's rate.`
+      : `You have **${months(snap.runwayMonths)}** of runway today (cash ${formatDollars(snap.cashCents)}, net burn ${formatDollars(snap.netBurnCentsPerMonth)}/month).`,
   ];
   if (plan.chosenFindings.length) {
     lines.push(
@@ -99,7 +102,7 @@ function renewals(a: Analysis): InstantAnswer {
   }
   const decide = r.renewals.filter((x) => x.decide);
   const rest = r.renewals.length - decide.length;
-  const lines = [`**${formatDollars(r.totalCents)}** across ${r.renewals.length} charges is due in the next ${RENEWAL_DAYS} days.`];
+  const lines = [`**${formatDollars(r.totalCents)}** across ${r.renewals.length} ${r.renewals.length === 1 ? "charge" : "charges"} is due in the next ${RENEWAL_DAYS} days.`];
   if (decide.length) {
     lines.push(
       "Decide on these before they renew (annual, quarterly or $5k+):",
@@ -109,7 +112,12 @@ function renewals(a: Analysis): InstantAnswer {
         .join("\n"),
     );
   }
-  if (rest > 0) lines.push(`The other ${rest} are routine bills; the full list is under Coming up.`);
+  if (rest > 0)
+    lines.push(
+      decide.length === 0
+        ? `${rest === 1 ? "It's a routine bill" : "All are routine bills"}; the full list is under Coming up.`
+        : `The other ${rest === 1 ? "one is a routine bill" : `${rest} are routine bills`}; the full list is under Coming up.`,
+    );
   return { question: INSTANT_QUESTIONS.renewals, tools: ["get_upcoming_renewals"], text: lines.join("\n\n") };
 }
 
@@ -173,7 +181,7 @@ function burnMoved(a: Analysis): InstantAnswer {
   const head =
     b.changeCents === 0
       ? `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, the same as ${month(b.previous)}.`
-      : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, ${b.changeCents > 0 ? "up" : "down"} **${formatDollars(Math.abs(b.changeCents))}** on ${month(b.previous)}.`;
+      : `${b.netBurnCents < 0 ? `In ${month(b.month)} more came in than went out: cash-flow positive by **${formatDollars(-b.netBurnCents)}**; net burn was` : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**,`} ${b.changeCents > 0 ? "up" : "down"} **${formatDollars(Math.abs(b.changeCents))}** on ${month(b.previous)}.`;
   const rows = [
     ...b.drivers.map((d) => `- ${d.name}${d.kind === "new" ? " (new)" : d.kind === "stopped" ? " (stopped)" : ""}: ${signed(d.changeCents)}`),
     ...(b.otherCents ? [`- Everything else: ${signed(b.otherCents)}`] : []),
@@ -268,7 +276,7 @@ function committedAnswer(a: Analysis): InstantAnswer {
     tools,
     text: [
       `**${formatDollars(c.totalCents)}** in recurring charges is scheduled between ${formatDate(c.from)} and ${formatDate(c.until)}, ${
-        c.cashAfterCents >= 0 ? `leaving **${formatDollars(c.cashAfterCents)}**` : `**${formatDollars(-c.cashAfterCents)} more** than`
+        c.cashAfterCents >= 0 ? `leaving **${formatDollars(c.cashAfterCents)}** of` : `**${formatDollars(-c.cashAfterCents)} more** than`
       } the cash Runway has${c.cashAsOf ? ` (as of ${formatDate(c.cashAsOf)})` : ""}. The biggest:`,
       rows.join("\n"),
       "That's a floor: one-off and usage-based spend come on top.",
