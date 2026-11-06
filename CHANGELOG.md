@@ -1,0 +1,57 @@
+# Changelog
+
+## 2026-11-06: Self-serve companies
+
+Runway now serves many companies from one deployment. A founder signs in with an email link, gets a
+private company, uploads exports from their bank and cards, and sees their own dashboard. The public
+demo, the free grader and the public site work exactly as before.
+
+### For founders
+
+- **Sign in with an email link.** No password. Invite-only during early access. Sign-in brings you
+  back to the page you asked for, and a signed-in founder opening `/login` goes straight to their company.
+- **Upload bank and card exports.** Files are read in your browser and previewed before anything is
+  sent. Most layouts work: Posting/Transaction Date, Payee/Merchant, Amount or separate
+  Debit/Credit columns, a summary block above the header, files with no header row, cards that list
+  charges as positive (detected, or flip a file by hand), trailing minus signs, day-first dates.
+  Amounts in other currencies are refused rather than guessed. Re-uploading an overlapping export
+  adds nothing twice. No data yet? "Fill in a sample export" shows how it works.
+- **Your data, your call.** See what's stored per account, delete one account's rows or everything,
+  and download it all as a CSV that uploads back cleanly.
+- **Teams.** Invite up to nine teammates by email; they see and work on the same data. The owner can
+  hand the company to a teammate; members can leave. Every accepted or dismissed finding shows who
+  decided it and when.
+- **Company settings.** Rename or delete the company (deletion removes everything in it).
+- **Monday digest in your own Slack.** Connect an incoming webhook in settings (a test message is sent
+  first; the address is never shown in full). The digest says up front when your data is two weeks
+  old or more.
+- **Daily Autopilot for every company.** Each company's Inbox gets fresh drafts every morning.
+- **Getting started** checklist on a new company's dashboard, and a nudge when the uploaded data
+  gets old.
+- **Faster.** A company with ~18,000 transactions loads its dashboard in about 0.3 s (was 1.3 s), with
+  identical numbers.
+
+### For whoever runs it
+
+- New settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (accounts), `SIGNUPS`
+  (`invite` or `open`). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
+- New migrations (run `npm run db:migrate`): accounts, teams, decision actor, rate limits, company
+  Slack, digest order.
+- `npm run verify:live` now checks the Supabase Auth settings (email sign-in on, sign-ups allowed,
+  Confirm email on) and that every migration is applied.
+- `npm run test:e2e` runs browser suites for sign-in, isolation, settings, teams and uploads against
+  a local stand-in for Supabase Auth and a throwaway Postgres.
+- With accounts on, the operator's own Slack and Jira are never used for a company's data, and the
+  env Rho feed is off (companies connect by uploading exports).
+
+### Security
+
+- Every company read and write is scoped by the company from the verified session; the proxy strips
+  any client-sent identity header. Only an email Supabase has confirmed is trusted.
+- Owner-only: rename, delete, clear all data, manage the team, connect Slack. Ownership changes are
+  race-safe (tested with concurrent requests on Postgres).
+- Sign-in and signup rate limits are shared across server instances, keyed by HMAC (no email or IP
+  stored).
+- Uploaded file contents never appear in logs (checked by the browser suites).
+- Seven independent security reviews ran during this release; every critical, high and medium
+  finding was fixed with a regression test.
