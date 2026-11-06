@@ -36,7 +36,8 @@ export function RunwayTrendCard({ points }: { points: RunwayPoint[] }) {
         <p className="text-sm font-medium">{verdict}</p>
         <div className="mt-3 h-40 w-full" aria-hidden="true">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+            {/* Hidden from assistive tech (the verdict and the table say it), so it must not take keyboard focus either. */}
+            <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} accessibilityLayer={false}>
               <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5b6779" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
               <YAxis tick={{ fontSize: 11, fill: "#5b6779" }} tickLine={false} axisLine={false} width={32} domain={["auto", "auto"]} allowDecimals={false} />
