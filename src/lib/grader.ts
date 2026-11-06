@@ -60,9 +60,10 @@ const HISTORY_MONTHS = 12;
 function graderAccountLabel(name: string): string {
   const label = fileAccountLabel(name);
   const lastFour = /^([a-z]+)(\d{4})(?=[^\d]|$)/i.exec(name);
-  // "Activity2025.csv" is a year, not an account.
-  const year = lastFour && /^(?:19|20)\d{2}$/.test(lastFour[2]!);
-  return label === DEFAULT_ACCOUNT_LABEL && lastFour && !year ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
+  // "Activity2025.csv" (a year) and "activity0401.csv" (a date) aren't accounts: the letters must
+  // name one ("Chase"), not be a word banks put in every file name.
+  const account = lastFour && !/^(?:19|20)\d{2}$/.test(lastFour[2]!) && fileAccountLabel(lastFour[1]!) !== DEFAULT_ACCOUNT_LABEL;
+  return label === DEFAULT_ACCOUNT_LABEL && account ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
 }
 
 /** Shared rows that make two files one account (or half the smaller file, for short ones). */
@@ -153,29 +154,31 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   // Overlapping exports of one account repeat rows: the nth copy of a row (same day, description
   // and amount) an earlier file of the same account already has is the same transaction. Other
   // accounts' rows are never merged (the same $8.75 seat on two people's cards is two charges).
-  // Files whose names don't say the account ("transactions.csv", "transactions (1).csv") may be
-  // one account's overlapping exports however few rows they share, so they're checked together.
+  // Overlapping exports repeat rows: the nth copy of a row (same day, description and amount) an
+  // earlier file already has is the same transaction, unless the two files are named as
+  // different accounts (and aren't one account by their rows): the same $8.75 seat on two
+  // people's cards is two charges.
   const roots = accountGroups(fileKeys);
-  const unnamed = -1;
-  const bucket = (i: number) => (fileKeys[i]!.label === DEFAULT_ACCOUNT_LABEL && fileKeys.filter((f, j) => roots[j] === roots[i] && f.label !== DEFAULT_ACCOUNT_LABEL).length === 0 ? unnamed : roots[i]!);
-  const seenRows = new Map<number, Set<string>>();
+  const apart = (i: number, j: number) => {
+    const [a, b] = [fileKeys[i]!.label, fileKeys[j]!.label];
+    return a !== DEFAULT_ACCOUNT_LABEL && b !== DEFAULT_ACCOUNT_LABEL && a !== b && roots[i] !== roots[j];
+  };
+  const fileRows: Set<string>[] = [];
   read.forEach((txns, i) => {
-    const seen = seenRows.get(bucket(i)) ?? new Set<string>();
     const copies = new Map<string, number>();
-    const fileRows: string[] = [];
+    const mine = new Set<string>();
     for (const t of txns) {
       const key = `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`;
       const n = copies.get(key) ?? 0;
       copies.set(key, n + 1);
-      if (seen.has(`${key}#${n}`)) {
+      mine.add(`${key}#${n}`);
+      if (fileRows.some((rows, j) => !apart(i, j) && rows.has(`${key}#${n}`))) {
         duplicateRows += 1;
         continue;
       }
-      fileRows.push(`${key}#${n}`);
       raw.push(t);
     }
-    for (const k of fileRows) seen.add(k);
-    seenRows.set(bucket(i), seen);
+    fileRows.push(mine);
   });
   if (raw.length === 0) throw new Error(errors[0] ?? "No readable transactions in these files");
   const { transactions, cardSpendAsPayoffs: payoffsAsSpend } = resolveCardPayoffs(raw);

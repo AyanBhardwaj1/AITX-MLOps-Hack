@@ -162,7 +162,7 @@ describe("import hunt, fourth review", () => {
   it("a payout matches one leg only, so a same-amount customer stays a customer", () => {
     const chk = file(["2026-09-28,AMEX AUTOPAY,-5000.00"], "chk");
     const card = file(["2026-09-30,AUTOPAY PAYMENT FROM CHASE,5000.00"], "card");
-    const sav = file(["2026-10-01,ONLINE PAYMENT FROM ACME CORP,5000.00"], "sav");
+    const sav = file(["2026-10-01,ONLINE PAYMENT FROM ACME CORP,5000.00"], "chk");
     const r = resolveCardPayoffs([...chk, ...card, ...sav]);
     expect(r.transactions.find((t) => t.counterparty_name.includes("ACME"))!.transaction_type).toBe("ach_credit");
     expect(r.transactions.find((t) => t.counterparty_name.includes("CHASE"))!.transaction_type).toBe("credit_repayment");
@@ -172,5 +172,26 @@ describe("import hunt, fourth review", () => {
     const rows = ["2026-07-01,GUSTO PAYROLL,-5000.00", "2026-07-03,AWS,-200.00", "2026-07-10,FIGMA,-45.00"];
     const g = gradeCsvFiles([{ name: "Activity2025.csv", text: csv(rows) }, { name: "Activity2026.csv", text: csv(rows) }], 100_000_00);
     expect(g.transactions).toBe(3);
+  });
+});
+
+describe("import hunt, fifth review", () => {
+  const file = (rows: string[], accountId: string) => importCsv(csv(rows), { accountId, resolvePayoffs: false }).transactions;
+
+  it("a card's payment leg is never a customer, even unmatched (a lagging checking export, a bank not uploaded)", () => {
+    const chk = file(["2026-09-28,AMEX AUTOPAY,-3000.00"], "chk");
+    const card = file(["2026-09-30,AUTOPAY PAYMENT FROM CHASE CHECKING,3000.00", "2026-10-30,ONLINE PAYMENT FROM WELLS FARGO,500.00", "2026-10-03,FIGMA,-15.00"], "card");
+    const r = resolveCardPayoffs([...chk, ...card]);
+    expect(r.transactions.filter((t) => t.account_id === "card" && t.amount.amount > 0).map((t) => t.transaction_type)).toEqual(["credit_repayment", "credit_repayment"]);
+  });
+
+  it("the grader dedupes a named and a default-named export of one account, and dated names aren't accounts", () => {
+    const shared = ["2026-07-31,GUSTO PAYROLL,-5000.00", "2026-07-31,AWS,-200.00", "2026-07-31,STRIPE TRANSFER,3000.00"];
+    const a = [...Array.from({ length: 8 }, (_, i) => `2026-07-${String(i + 10).padStart(2, "0")},VENDOR ${i},-${i + 1}0.00`), ...shared];
+    const b = [...shared, ...Array.from({ length: 8 }, (_, i) => `2026-08-${String(i + 10).padStart(2, "0")},SHOP ${i},-${i + 1}5.00`)];
+    for (const names of [["checking.csv", "transactions.csv"], ["activity0401.csv", "activity0801.csv"]]) {
+      const g = gradeCsvFiles([{ name: names[0]!, text: csv(a) }, { name: names[1]!, text: csv(b) }], 100_000_00);
+      expect(g.transactions, names.join(" + ")).toBe(19);
+    }
   });
 });
