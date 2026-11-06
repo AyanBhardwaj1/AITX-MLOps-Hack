@@ -68,9 +68,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </h2>
         <p className="mt-1 text-sm text-muted">
           Everything Runway holds for {company.name} in one file: the team, transactions and cash, budgets, category fixes, decisions,
-          drafts, investor links (without their secret part) and this activity log.
+          drafts, investor links (without their secret token or the snapshot they show) and this activity log.
         </p>
-        <a href="/api/export?mode=company&kind=everything" download className="mt-3 inline-block rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-canvas">
+        <a href="/api/export?mode=company&kind=everything" className="mt-3 inline-block rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-canvas">
           Download everything (JSON)
         </a>
       </section>

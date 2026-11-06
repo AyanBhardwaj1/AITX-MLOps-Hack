@@ -24,8 +24,14 @@ function cell(v: Cell): string {
   return /[",;\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }
 
+/** CSV a line at a time, for downloads streamed as they're written. */
+export function* csvLines(header: readonly string[], rows: Iterable<readonly Cell[]>): Generator<string> {
+  yield UTF8_BOM + header.map(cell).join(",") + "\r\n";
+  for (const r of rows) yield r.map(cell).join(",") + "\r\n";
+}
+
 export function toCsv(header: readonly string[], rows: readonly (readonly Cell[])[]): string {
-  return UTF8_BOM + [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+  return [...csvLines(header, rows)].join("");
 }
 
 const dollars = (cents: number) => Math.round(cents) / 100;
@@ -58,19 +64,30 @@ export function findingsCsv(findings: readonly Finding[], statuses: ReadonlyMap<
  * Every uploaded transaction, in Runway's own column layout (Date, Description, Amount, Type, Account,
  * Cardholder), so the download is a backup that can be uploaded again without duplicating anything.
  */
-export function uploadsCsv(rows: readonly RhoTransaction[]): string {
-  return toCsv(
+export function uploadsCsvLines(rows: readonly RhoTransaction[]): Generator<string> {
+  const sorted = rows.toSorted((a, b) => (a.posted_at ?? a.initiated_at).localeCompare(b.posted_at ?? b.initiated_at));
+  return csvLines(
     ["Date", "Description", "Amount", "Type", "Account", "Cardholder"],
-    rows
-      .toSorted((a, b) => (a.posted_at ?? a.initiated_at).localeCompare(b.posted_at ?? b.initiated_at))
-      .map((t) => [(t.posted_at ?? t.initiated_at).slice(0, 10), t.counterparty_name, dollars(t.amount.amount), t.transaction_type, t.account_id, t.user_full_name ?? null]),
+    (function* () {
+      for (const t of sorted) yield [(t.posted_at ?? t.initiated_at).slice(0, 10), t.counterparty_name, dollars(t.amount.amount), t.transaction_type, t.account_id, t.user_full_name ?? null];
+    })(),
   );
 }
 
+export function uploadsCsv(rows: readonly RhoTransaction[]): string {
+  return [...uploadsCsvLines(rows)].join("");
+}
+
 /** The transactions a search matched (see finance/transaction-search), for an accountant or a spreadsheet. */
-export function matchesCsv(rows: readonly EnrichedTxn[], accountNames: ReadonlyMap<string, string>): string {
-  return toCsv(
+export function matchesCsvLines(rows: readonly EnrichedTxn[], accountNames: ReadonlyMap<string, string>): Generator<string> {
+  return csvLines(
     ["Date", "Vendor", "Category", "Description", "Account", "Cardholder", "Amount (USD)"],
-    rows.map((t) => [t.postedAt, t.vendor.name, t.vendor.category, t.description, accountNames.get(t.accountId) ?? t.accountId, t.cardholder ?? null, dollars(t.amountCents)]),
+    (function* () {
+      for (const t of rows) yield [t.postedAt, t.vendor.name, t.vendor.category, t.description, accountNames.get(t.accountId) ?? t.accountId, t.cardholder ?? null, dollars(t.amountCents)];
+    })(),
   );
+}
+
+export function matchesCsv(rows: readonly EnrichedTxn[], accountNames: ReadonlyMap<string, string>): string {
+  return [...matchesCsvLines(rows, accountNames)].join("");
 }

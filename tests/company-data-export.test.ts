@@ -35,6 +35,8 @@ describe("download everything the company holds", () => {
     const store = getStore(await scopeFor("company"));
     await store.setCorrection({ vendorKey: "zoom", category: "marketing", job: null }, 10);
     await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/secretsecretsecret");
+    const link = await store.createShareLink({ tokenHash: "HASHMARK".padEnd(64, "0"), label: "Seed round", payload: { company: "SNAPMARK" } as never, expiresAt: "2099-01-01T00:00:00.000Z" }, 20, new Date());
+    expect(link).not.toBe("limit");
 
     const res = await GET(new Request("http://localhost/api/export?mode=company&kind=everything", { headers: { "x-forwarded-for": "203.0.113.41" } }));
     expect(res.status).toBe(200);
@@ -48,14 +50,41 @@ describe("download everything the company holds", () => {
     expect(data.budgets).toEqual([{ category: "software", monthlyCents: 5_000_00 }]);
     expect(data.categoryFixes).toEqual([{ vendorKey: "zoom", category: "marketing", job: null }]);
     expect(data.slack).toEqual({ connected: true });
+    expect(data.transactions[0]).toMatchObject({ accountType: "checking" });
+    expect(data.investorLinks).toEqual([expect.objectContaining({ label: "Seed round" })]);
+    // Findings carry their decision: dismissed ones can be told apart in the copy.
+    expect(Array.isArray(data.findings)).toBe(true);
+    expect(data.limits).toMatchObject({ drafts: expect.any(Number), activity: expect.any(Number) });
     expect(data.activity.length).toBeGreaterThan(0);
     // Never the webhook address, a link's token hash, or another company's rows.
     expect(text).not.toContain("secretsecret");
-    expect(text).not.toMatch(/tokenHash|token_hash/);
+    expect(text).not.toMatch(/tokenHash|token_hash|HASHMARK|SNAPMARK/);
     expect(text).not.toContain("NOT MINE");
 
     expect((await GET(new Request("http://localhost/api/export?mode=demo&kind=everything"))).status).toBe(400);
     as(null);
     expect((await GET(new Request("http://localhost/api/export?mode=company&kind=everything"))).status).toBe(401);
+  });
+
+  it("is there for a teammate too, and still after the uploads are deleted", async () => {
+    const upload = (await import("@/app/api/uploads/route")).POST;
+    const { GET } = await import("@/app/api/export/route");
+    const team = await import("@/app/api/company/team/route");
+    const clear = (await import("@/app/api/uploads/clear/route")).POST;
+    const get = () => GET(new Request("http://localhost/api/export?mode=company&kind=everything", { headers: { "x-forwarded-for": "203.0.113.42" } }));
+    as("owner-x");
+    await upload(post("/api/uploads", { cashCents: 1, rows: [row()] }));
+    await team.POST(post("/api/company/team", { email: "mate-x@acme.example" }));
+    as("mate-x");
+    const asMember = await get();
+    expect(asMember.status).toBe(200);
+    expect(JSON.parse(await asMember.text()).company.role).toBe("member");
+    as("owner-x");
+    await clear();
+    const after = await get();
+    expect(after.status).toBe(200);
+    const data = JSON.parse(await after.text());
+    expect(data.transactions).toEqual([]);
+    expect(data.team.members.length).toBe(2);
   });
 });

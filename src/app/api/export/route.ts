@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { accessErrorResponse, NoCompanyData } from "@/lib/server/errors";
 import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
-import { findingsCsv, matchesCsv, recurringCsv, uploadsCsv } from "@/lib/export/csv";
+import { findingsCsv, matchesCsvLines, recurringCsv, uploadsCsvLines } from "@/lib/export/csv";
+import { streamChunks } from "@/lib/http-stream";
 import { matchingTransactions, parseTxnQuery } from "@/lib/finance/transaction-search";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadAnalysis, loadTransactions, type DataMode } from "@/lib/server/data";
@@ -21,7 +22,7 @@ async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<N
   const { dataset, txns } = await loadTransactions(mode, { visitorFixes: true });
   const rows = matchingTransactions(txns, parseTxnQuery(Object.fromEntries(params)));
   const names = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
-  return new NextResponse(matchesCsv(rows, names), {
+  return new NextResponse(streamChunks(matchesCsvLines(rows, names)), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="runway-matches-${new Date().toISOString().slice(0, 10)}.csv"`,
@@ -34,7 +35,7 @@ async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<N
 async function transactionsExport(): Promise<NextResponse> {
   const stored = await getStore(await scopeFor("company")).loadUploads();
   if (!stored) throw new NoCompanyData();
-  return new NextResponse(uploadsCsv(stored.rows), {
+  return new NextResponse(streamChunks(uploadsCsvLines(stored.rows)), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="runway-transactions-${new Date().toISOString().slice(0, 10)}.csv"`,
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
   try {
     if (kind === "transactions") return await transactionsExport();
     if (kind === "everything") {
-      return new NextResponse(JSON.stringify(await companyDataExport(), null, 2), {
+      return new NextResponse(streamChunks(await companyDataExport()), {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
           "Content-Disposition": `attachment; filename="runway-company-data-${new Date().toISOString().slice(0, 10)}.json"`,
