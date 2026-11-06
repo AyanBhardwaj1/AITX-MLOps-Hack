@@ -48,7 +48,24 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Update cash" }).click();
     await p.getByText("Saved: $612,346. Your runway uses it now.").waitFor();
     await p.locator("dd", { hasText: "$612,346" }).waitFor();
+    // The upload form beside it takes the new figure, so the next upload keeps it.
+    assert.equal(await p.getByLabel(/Today.s total cash/).inputValue(), "612345.5");
     await p.goto(`${APP}/app/settings`);
     await p.getByText("Set today's cash to $612,346").waitFor();
+  });
+  await step("the company's own transactions are searchable; signed out, nothing shows", async () => {
+    await p.goto(`${APP}/app?mode=company`);
+    await p.getByRole("link", { name: "Transactions" }).click();
+    await p.waitForURL(/\/app\/transactions\?mode=company/);
+    await p.getByLabel("Search").fill("slack");
+    await p.getByRole("button", { name: "Filter" }).click();
+    await p.getByRole("heading", { name: /^\d+ transactions? match$/ }).waitFor();
+    const rows = p.getByRole("region", { name: "Transactions" }).locator("tbody tr");
+    assert.ok((await rows.count()) > 0);
+    for (const text of await rows.allInnerTexts()) assert.match(text, /slack/i);
+    // Signed out, the same address asks for sign-in instead of showing anything.
+    const stranger = await (await browser.newContext()).newPage();
+    await stranger.goto(`${APP}/app/transactions?mode=company&q=slack`);
+    await stranger.waitForURL(/\/login\?next=/);
   });
 });

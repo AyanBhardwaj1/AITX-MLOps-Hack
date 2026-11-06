@@ -206,6 +206,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               </a>
             ))}
           </nav>
+          <Link href={`/app/transactions?mode=${data.mode}`} className="rounded-full border border-line bg-panel px-2.5 py-1 text-muted transition-colors hover:border-brand hover:text-brand">
+            Transactions
+          </Link>
           {data.mode === "company" && (
             <Link href="/app/upload" className="rounded-full border border-line bg-panel px-2.5 py-1 text-muted transition-colors hover:border-brand hover:text-brand">
               Upload exports

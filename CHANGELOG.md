@@ -18,6 +18,9 @@ demo, the free grader and the public site work exactly as before.
   adds nothing twice. No data yet? "Fill in a sample export" shows how it works.
 - **Update today's cash without a file.** Cash moves daily and exports don't; anyone on the team can
   type the new balance on the upload page and the runway uses it at once.
+- **Transactions page.** Search every transaction by vendor, the bank's description or cardholder;
+  filter by category, month and money in or out, with totals for the whole match. Works on the
+  demo too.
 - **Your data, your call.** See what's stored per account, delete one account's rows or everything,
   and download it all as a CSV that uploads back cleanly.
 - **Teams.** Invite up to nine teammates by email; they see and work on the same data. The owner can

@@ -1,0 +1,73 @@
+import { describe, expect, it } from "vitest";
+import { PAGE_SIZE, parseTxnQuery, searchTransactions } from "@/lib/finance/transaction-search";
+import type { EnrichedTxn } from "@/lib/types";
+
+const txn = (id: string, postedAt: string, amountCents: number, name: string, category: EnrichedTxn["vendor"]["category"], extra: Partial<EnrichedTxn> = {}): EnrichedTxn => ({
+  id,
+  accountId: "chk",
+  postedAt,
+  amountCents,
+  description: `${name.toUpperCase()} *1234`,
+  type: amountCents < 0 ? "card" : "ach_credit",
+  status: "posted",
+  vendor: { key: name.toLowerCase(), name, category, job: null, source: "catalog" },
+  ...extra,
+} as EnrichedTxn);
+
+const txns = [
+  txn("t1", "2026-09-03", -14_990, "Zoom", "software"),
+  txn("t2", "2026-10-03", -14_990, "Zoom", "software"),
+  txn("t3", "2026-10-05", -900_000_00, "Gusto", "payroll"),
+  txn("t4", "2026-10-07", 25_000_00, "Stripe", "revenue"),
+  txn("t5", "2026-10-07", -8_250, "Uber", "travel", { cardholder: "Maya Chen" }),
+];
+
+describe("transaction search", () => {
+  it("lists everything newest first, with money in and out totalled in cents", () => {
+    const r = searchTransactions(txns, parseTxnQuery({}));
+    expect(r.rows.map((t) => t.id)).toEqual(["t4", "t5", "t3", "t2", "t1"]);
+    expect(r.total).toBe(5);
+    expect(r.outCents).toBe(14_990 * 2 + 900_000_00 + 8_250);
+    expect(r.inCents).toBe(25_000_00);
+    expect(r.months).toEqual(["2026-10", "2026-09"]);
+  });
+
+  it("matches words in the vendor, the bank's description or the cardholder, ignoring case", () => {
+    expect(searchTransactions(txns, parseTxnQuery({ q: "zoom" })).rows.map((t) => t.id)).toEqual(["t2", "t1"]);
+    expect(searchTransactions(txns, parseTxnQuery({ q: "*1234" })).total).toBe(5);
+    expect(searchTransactions(txns, parseTxnQuery({ q: "maya" })).rows.map((t) => t.id)).toEqual(["t5"]);
+    // Every word has to match somewhere.
+    expect(searchTransactions(txns, parseTxnQuery({ q: "zoom maya" })).total).toBe(0);
+  });
+
+  it("filters by category, month and direction together", () => {
+    expect(searchTransactions(txns, parseTxnQuery({ category: "software", month: "2026-10" })).rows.map((t) => t.id)).toEqual(["t2"]);
+    expect(searchTransactions(txns, parseTxnQuery({ direction: "in" })).rows.map((t) => t.id)).toEqual(["t4"]);
+    const out = searchTransactions(txns, parseTxnQuery({ direction: "out", month: "2026-10" }));
+    expect(out.rows.map((t) => t.id)).toEqual(["t5", "t3", "t2"]);
+    expect(out.inCents).toBe(0);
+  });
+
+  it("pages through long lists and keeps totals for the whole match", () => {
+    const many = Array.from({ length: PAGE_SIZE * 2 + 3 }, (_, i) => txn(`m${String(i).padStart(3, "0")}`, "2026-10-01", -100, "Zoom", "software"));
+    const p1 = searchTransactions(many, parseTxnQuery({}));
+    expect(p1.rows).toHaveLength(PAGE_SIZE);
+    expect(p1.pages).toBe(3);
+    expect(p1.outCents).toBe(100 * many.length);
+    const p3 = searchTransactions(many, parseTxnQuery({ page: "3" }));
+    expect(p3.rows).toHaveLength(3);
+    expect(p3.page).toBe(3);
+    // A page past the end shows the last one rather than nothing.
+    expect(searchTransactions(many, parseTxnQuery({ page: "99" })).page).toBe(3);
+    // Same-day rows keep a stable order across pages.
+    const ids = [1, 2, 3].flatMap((page) => searchTransactions(many, parseTxnQuery({ page: String(page) })).rows.map((t) => t.id));
+    expect(new Set(ids).size).toBe(many.length);
+  });
+
+  it("ignores anything it doesn't understand in the address instead of failing", () => {
+    const q = parseTxnQuery({ q: "x".repeat(500), category: "snacks", month: "2026-13", direction: "sideways", page: "-4" });
+    expect(q).toEqual({ q: "x".repeat(100), category: null, month: null, direction: "all", page: 1 });
+    expect(parseTxnQuery({ q: ["zoom", "uber"], page: "2.5" })).toMatchObject({ q: "zoom", page: 1 });
+    expect(searchTransactions([], parseTxnQuery({}))).toMatchObject({ rows: [], total: 0, pages: 1, page: 1, outCents: 0, inCents: 0, months: [] });
+  });
+});
