@@ -29,5 +29,8 @@ const CATEGORY_NAMES: Record<string, string> = {
   ai_api: "AI APIs",
   legal_accounting: "legal & accounting",
 };
+/** What a burn figure averages: "last 3 full months", or the days so far when no month is complete. */
+export const burnBasis = (months: number) => (months === 0 ? "from the days so far" : `last ${months} full month${months === 1 ? "" : "s"}`);
+
 /** "legal_accounting" → "legal & accounting" */
 export const categoryName = (category: string) => CATEGORY_NAMES[category] ?? category.replaceAll("_", " ");

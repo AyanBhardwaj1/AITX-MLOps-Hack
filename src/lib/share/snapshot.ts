@@ -20,6 +20,8 @@ export const shareSnapshot = z.object({
   cashCents: cents,
   grossBurnCents: cents,
   netBurnCents: cents,
+  /** Complete months the burn averages (0: scaled from the days so far). Older links lack it. */
+  burnMonths: z.number().int().min(0).max(12).optional(),
   /** null = cash-flow positive (no run-out date). */
   runwayMonths: finiteOrNull,
   zeroCashDate: isoDate.nullable(),
@@ -39,6 +41,7 @@ export function buildShareSnapshot({ company, analysis: a, forecast, history }: 
     cashCents: a.snapshot.cashCents,
     grossBurnCents: a.snapshot.grossBurnCents,
     netBurnCents: a.snapshot.netBurnCents,
+    burnMonths: a.snapshot.burnMonths,
     runwayMonths: finite(a.snapshot.runwayMonths),
     zeroCashDate: a.snapshot.zeroCashDate,
     range: { p10: finite(forecast.runwayMonths.p10), p90: finite(forecast.runwayMonths.p90) },

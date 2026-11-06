@@ -21,6 +21,11 @@ export function monthKey(d: IsoDate): string {
   return d.slice(0, 7);
 }
 
+/** The first month not yet complete on `asOf`: its own month, or the next one when asOf is its last day. */
+export function openMonth(asOf: IsoDate): string {
+  return addDays(asOf, 1).slice(8, 10) === "01" ? shiftMonth(monthKey(asOf), 1) : monthKey(asOf);
+}
+
 /** "2026-10" shifted by n months, e.g. ("2026-01", -1) → "2025-12". */
 export function shiftMonth(month: string, n: number): string {
   const [y, m] = month.split("-").map(Number) as [number, number];

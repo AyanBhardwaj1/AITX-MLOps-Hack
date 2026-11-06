@@ -86,8 +86,18 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  * run of revenue months within the last six, so a startup whose revenue began recently is
  * measured from its first revenue month rather than reported as 0%.
  */
+/**
+ * Where whole months of data start: after the empty months before the data and the month it
+ * starts in, which is usually partial (as forecast.ts reads it). 0 when the data fills the history.
+ */
+function firstWholeMonth(history: readonly MonthHistory[]): number {
+  const first = history.findIndex((m) => m.inflowCents !== 0 || m.outflowCents !== 0);
+  return first <= 0 ? 0 : first + 1;
+}
+
 export function estimateRevenueGrowthDetail(history: readonly MonthHistory[]): GrowthEstimate {
-  const window = history.slice(-GROWTH_WINDOW_MONTHS);
+  const start = Math.max(firstWholeMonth(history), history.length - GROWTH_WINDOW_MONTHS);
+  const window = history.slice(start);
   const lastGap = window.findLastIndex((m) => m.inflowCents <= 0);
   const run = window.slice(lastGap + 1);
   if (run.length < MIN_GROWTH_MONTHS) return { rate: 0, months: 0, clamped: false };
@@ -162,7 +172,7 @@ function growthNeeded(r: Resolved): number | null {
 
 export function projectScenario(input: ScenarioInput): ScenarioResult {
   const options = scenarioOptions.parse(input);
-  const recent = input.history.slice(-BASE_MONTHS);
+  const recent = input.history.slice(Math.max(firstWholeMonth(input.history), input.history.length - BASE_MONTHS));
   const avg = (f: (m: MonthHistory) => number) => (recent.length ? Math.round(recent.reduce((s, m) => s + f(m), 0) / recent.length) : 0);
   const basis = options.revenueGrowth === undefined ? estimateRevenueGrowthDetail(input.history) : null;
   const resolved: Resolved = {

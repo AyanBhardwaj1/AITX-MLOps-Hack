@@ -192,9 +192,9 @@ export function forecastCash({
       month: shiftMonth(start, monthsAhead),
       baseCents: cashCents - netBurnCents * monthsAhead,
       actCents: cashCents - (netBurnCents - monthlySavingsCents) * monthsAhead,
-      p10Cents: percentile(sorted, 0.1),
-      p50Cents: percentile(sorted, 0.5),
-      p90Cents: percentile(sorted, 0.9),
+      p10Cents: Math.round(percentile(sorted, 0.1)),
+      p50Cents: Math.round(percentile(sorted, 0.5)),
+      p90Cents: Math.round(percentile(sorted, 0.9)),
     };
   });
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate } from "@/lib/format";
+import { burnBasis, formatDate } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
 import { lookupShare } from "@/lib/server/share";
 import type { ShareSnapshot } from "@/lib/share/snapshot";
@@ -36,7 +36,7 @@ function Snapshot({ s }: { s: ShareSnapshot }) {
         <Tile label="Runway" value={months(s.runwayMonths)} note={s.range.p10 !== null && s.range.p90 !== null ? `Range with trend: ${s.range.p10.toFixed(1)}–${s.range.p90.toFixed(1)} months` : undefined} />
         <Tile label="Cash runs out" value={s.zeroCashDate ? formatDate(s.zeroCashDate) : "Not at this burn"} />
         <Tile label="Cash" value={formatDollars(s.cashCents)} />
-        <Tile label="Net burn" value={`${formatDollars(s.netBurnCents)}/mo`} note={`Gross ${formatDollars(s.grossBurnCents)}/mo, last 3 full months`} />
+        <Tile label="Net burn" value={`${formatDollars(s.netBurnCents)}/mo`} note={`Gross ${formatDollars(s.grossBurnCents)}/mo, ${burnBasis(s.burnMonths ?? 3)}`} />
       </section>
 
       <section aria-labelledby="trend" className="mt-6 rounded-xl border border-line bg-panel p-5">

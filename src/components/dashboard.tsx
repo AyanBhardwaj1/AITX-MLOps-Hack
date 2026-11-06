@@ -13,7 +13,7 @@ import type { MonthHistory } from "@/lib/finance/history";
 import type { Renewal } from "@/lib/finance/renewals";
 import type { Change } from "@/lib/insights/changes";
 import type { SavingsSummary } from "@/lib/insights/savings";
-import { categoryName, formatDate, formatMoney } from "@/lib/format";
+import { burnBasis, categoryName, formatDate, formatMoney } from "@/lib/format";
 import { formatCents, formatDollars } from "@/lib/money";
 import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
@@ -250,7 +250,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           <div className="rounded-xl border border-line bg-panel p-5 lg:col-span-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-medium text-muted">Runway</p>
-              {savings > 0 && (
+              {savings > 0 && Number.isFinite(data.snapshot.runwayMonths) && (
                 <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand" aria-live="polite">
                   +{months(sim.deltaMonths)} mo with {selected.size} fix{selected.size === 1 ? "" : "es"}
                 </span>
@@ -272,7 +272,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                   {months(stressed.runwayMonths)} mo
                 </Fact>
               )}
-              {monthly.length > 0 && (
+              {monthly.length > 0 && Number.isFinite(data.snapshot.runwayMonths) && (
                 <Fact label="Fix all waste" tone="brand">
                   +{months(allSim.deltaMonths)} mo
                 </Fact>
@@ -284,7 +284,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             <Stat
               label="Net burn"
               value={`${formatDollars(sim.netBurnCents)}/mo`}
-              sub={`Gross ${formatDollars(data.snapshot.grossBurnCents)}/mo · last ${data.snapshot.months.length} full months`}
+              sub={`Gross ${formatDollars(data.snapshot.grossBurnCents)}/mo · ${burnBasis(data.snapshot.burnMonths)}`}
             />
           </div>
         </section>

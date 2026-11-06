@@ -1,4 +1,4 @@
-import { monthKey, shiftMonth } from "../dates";
+import { monthKey, openMonth, shiftMonth } from "../dates";
 import type { Cents, EnrichedTxn, IsoDate } from "../types";
 
 export interface MonthHistory {
@@ -10,9 +10,10 @@ export interface MonthHistory {
 
 const SOFTWARE_LIKE = new Set(["software", "cloud", "ai_api"]);
 
-/** Cash in/out for the last `months` complete months before asOf, oldest first. Same rules as burn. */
+/** Cash in/out for the last `months` complete months up to asOf, oldest first. Same rules as burn. */
 export function monthlyHistory(txns: readonly EnrichedTxn[], asOf: IsoDate, months: number): MonthHistory[] {
-  const current = monthKey(asOf);
+  // An export ending on a month's last day has that month complete.
+  const current = openMonth(asOf);
   const rows = Array.from({ length: months }, (_, i) => ({
     month: shiftMonth(current, i - months),
     inflowCents: 0,

@@ -1,4 +1,4 @@
-import { AVG_DAYS_PER_MONTH, addDays, monthKey, shiftMonth } from "../dates";
+import { AVG_DAYS_PER_MONTH, addDays, daysBetween, monthKey, openMonth, shiftMonth } from "../dates";
 import type { Cents, EnrichedTxn, Finding, IsoDate } from "../types";
 
 export const DEFAULT_LOOKBACK_MONTHS = 3;
@@ -19,6 +19,12 @@ export interface Snapshot {
   netBurnCents: Cents;
   runwayMonths: number;
   zeroCashDate: IsoDate | null;
+  /**
+   * How many complete months the burn averages: the lookback, fewer when the data starts inside it
+   * (the partial month it starts in doesn't count), or 0 when there's no complete month yet and
+   * the days there are were scaled to a month.
+   */
+  burnMonths: number;
 }
 
 interface SnapshotInput {
@@ -44,29 +50,59 @@ export function zeroCashDate(asOf: IsoDate, runwayMonths: number): IsoDate | nul
   return runwayMonths <= MAX_DATED_RUNWAY_MONTHS ? addDays(asOf, runwayMonths * AVG_DAYS_PER_MONTH) : null;
 }
 
-/** Burn and runway from the last N complete calendar months before `asOf`. Pure and deterministic. */
+/** Burn and runway from the last N complete calendar months up to `asOf`. Pure and deterministic. */
 export function computeSnapshot({ cashCents, txns, asOf, lookbackMonths = DEFAULT_LOOKBACK_MONTHS }: SnapshotInput): Snapshot {
-  const current = monthKey(asOf);
+  // An export ending on a month's last day has that month complete.
+  const open = openMonth(asOf);
   const months: MonthFlow[] = Array.from({ length: lookbackMonths }, (_, i) => ({
-    month: shiftMonth(current, i - lookbackMonths),
+    month: shiftMonth(open, i - lookbackMonths),
     inflowCents: 0,
     outflowCents: 0,
   }));
   const byMonth = new Map(months.map((m) => [m.month, m]));
 
+  // Where the data starts: months before it are empty, not zero spend, and the month it starts in
+  // (unless on the 1st) is only partly there. Neither counts toward the average.
+  const first = txns.reduce<IsoDate | null>((min, t) => (min === null || t.postedAt < min ? t.postedAt : min), null);
+  const firstWhole = first === null ? null : first.slice(8, 10) === "01" ? monthKey(first) : shiftMonth(monthKey(first), 1);
+  const counted = firstWhole === null ? [] : months.filter((m) => m.month >= firstWhole);
+
+  let spanOut = 0;
+  let spanIn = 0;
   for (const t of txns) {
+    if (!countsTowardBurn(t)) continue;
     const bucket = byMonth.get(monthKey(t.postedAt));
-    if (!bucket || !countsTowardBurn(t)) continue;
-    if (t.amountCents >= 0) bucket.inflowCents += t.amountCents;
-    else bucket.outflowCents += -t.amountCents;
+    if (bucket) {
+      if (t.amountCents >= 0) bucket.inflowCents += t.amountCents;
+      else bucket.outflowCents += -t.amountCents;
+    }
+    if (t.postedAt <= asOf) {
+      if (t.amountCents >= 0) spanIn += t.amountCents;
+      else spanOut += -t.amountCents;
+    }
   }
 
-  const totalOut = months.reduce((s, m) => s + m.outflowCents, 0);
-  const totalIn = months.reduce((s, m) => s + m.inflowCents, 0);
-  const grossBurnCents = Math.round(totalOut / lookbackMonths);
-  const netBurnCents = Math.round((totalOut - totalIn) / lookbackMonths);
+  let grossBurnCents: number;
+  let netBurnCents: number;
+  if (counted.length > 0) {
+    const totalOut = counted.reduce((s, m) => s + m.outflowCents, 0);
+    const totalIn = counted.reduce((s, m) => s + m.inflowCents, 0);
+    grossBurnCents = Math.round(totalOut / counted.length);
+    netBurnCents = Math.round((totalOut - totalIn) / counted.length);
+  } else if (first !== null && first <= asOf) {
+    // No complete month yet: the days there are, scaled to a month.
+    const perMonth = AVG_DAYS_PER_MONTH / (daysBetween(first, asOf) + 1);
+    grossBurnCents = Math.round(spanOut * perMonth);
+    netBurnCents = Math.round((spanOut - spanIn) * perMonth);
+  } else {
+    grossBurnCents = 0;
+    netBurnCents = 0;
+  }
+  // No "-0": a burn that rounds to nothing is nothing.
+  grossBurnCents ||= 0;
+  netBurnCents ||= 0;
   const runwayMonths = runwayFrom(cashCents, netBurnCents);
-  return { asOf, cashCents, months, grossBurnCents, netBurnCents, runwayMonths, zeroCashDate: zeroCashDate(asOf, runwayMonths) };
+  return { asOf, cashCents, months, grossBurnCents, netBurnCents, runwayMonths, zeroCashDate: zeroCashDate(asOf, runwayMonths), burnMonths: counted.length };
 }
 
 export interface Simulation {
@@ -87,7 +123,8 @@ export function simulateSavings(snapshot: Snapshot, monthlySavingsCents: Cents):
     monthlySavingsCents,
     netBurnCents,
     runwayMonths,
-    deltaMonths: runwayMonths - snapshot.runwayMonths,
+    // Already cash-flow positive: savings add no months (not "∞ − ∞").
+    deltaMonths: Number.isFinite(snapshot.runwayMonths) ? runwayMonths - snapshot.runwayMonths : 0,
     zeroCashDate: zeroCashDate(snapshot.asOf, runwayMonths),
   };
 }
