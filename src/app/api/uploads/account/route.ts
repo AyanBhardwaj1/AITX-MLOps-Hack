@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { ownerCompany, sessionUser } from "@/lib/server/company";
+import { logActivity, ownerCompany, sessionUser } from "@/lib/server/company";
 import { accessErrorResponse, SignInRequired } from "@/lib/server/errors";
 import { getStore } from "@/lib/server/store";
 
@@ -18,7 +18,9 @@ export async function POST(request: Request) {
     const parsed = body.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     // Owner only: deleting account by account would otherwise let a member empty the company.
-    const deleted = await getStore((await ownerCompany()).scope).deleteUploadedAccount(parsed.data.account);
+    const { scope } = await ownerCompany();
+    const deleted = await getStore(scope).deleteUploadedAccount(parsed.data.account);
+    if (deleted > 0) await logActivity(scope, "delete_account", `Deleted ${deleted.toLocaleString("en-US")} transactions from “${parsed.data.account}”`);
     return NextResponse.json({ deleted });
   } catch (err) {
     const known = accessErrorResponse(err);

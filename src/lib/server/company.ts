@@ -5,6 +5,7 @@ import { cache } from "react";
 import { createMemoryAccounts } from "../accounts/memory";
 import { createPostgresAccounts } from "../accounts/postgres";
 import type { AccountsStore, Company, InviteResult, Team } from "../accounts/types";
+import type { ActivityKind } from "../store/types";
 import { EMAIL_HEADER, USER_HEADER, type SessionUser } from "../auth/session";
 import type { DataMode } from "../modes";
 import { accountsEnabled, env } from "./env";
@@ -41,7 +42,9 @@ export async function ensureCompanyFor(user: SessionUser): Promise<Company> {
   if (existing) return existing;
   // A company invite is honoured inside the store's transaction; here only the right to start a new one.
   const mayStartCompany = env().SIGNUPS === "open" || (user.email !== null && (await getWaitlist()?.isInvited(user.email)) === true);
-  return accounts.ensureCompanyFor(user, { allowNew: mayStartCompany });
+  const company = await accounts.ensureCompanyFor(user, { allowNew: mayStartCompany });
+  if (company.role === "member") await logActivity(company.scope, "join", "Joined the team", user.email);
+  return company;
 }
 
 /** Invited to Runway: from the waitlist, or by a company that wants them on its team. */
@@ -75,8 +78,9 @@ async function ownedCompany(): Promise<{ user: SessionUser; company: Company }> 
 
 /** Renames the signed-in owner's company. `name` is already validated. */
 export async function renameCurrentCompany(name: string): Promise<string> {
-  const { user } = await ownedCompany();
+  const { user, company } = await ownedCompany();
   await getAccounts().renameCompany(user.id, name);
+  await logActivity(company.scope, "rename", `Renamed the company to ${name}`, user.email);
   return name;
 }
 
@@ -103,18 +107,31 @@ export async function currentTeam(): Promise<Team> {
 
 /** The owner invites a teammate by email (validated by the caller). */
 export async function inviteTeammate(email: string): Promise<InviteResult> {
-  const { user } = await ownedCompany();
-  return getAccounts().invite(user.id, email);
+  const { user, company } = await ownedCompany();
+  const result = await getAccounts().invite(user.id, email);
+  if (result === "invited") await logActivity(company.scope, "invite", `Invited ${email.trim().toLowerCase()}`, user.email);
+  return result;
 }
 
 export async function revokeTeammateInvite(email: string): Promise<boolean> {
-  const { user } = await ownedCompany();
-  return getAccounts().revokeInvite(user.id, email);
+  const { user, company } = await ownedCompany();
+  const done = await getAccounts().revokeInvite(user.id, email);
+  if (done) await logActivity(company.scope, "revoke_invite", `Withdrew the invite for ${email.trim().toLowerCase()}`, user.email);
+  return done;
+}
+
+/** A teammate's email for the log, looked up before the change. */
+async function memberEmail(ownerId: string, memberUserId: string): Promise<string> {
+  const team = await getAccounts().team(ownerId);
+  return team?.members.find((m) => m.userId === memberUserId)?.email ?? "a teammate";
 }
 
 export async function removeTeammate(memberUserId: string): Promise<boolean> {
-  const { user } = await ownedCompany();
-  return getAccounts().removeMember(user.id, memberUserId);
+  const { user, company } = await ownedCompany();
+  const who = await memberEmail(user.id, memberUserId);
+  const done = await getAccounts().removeMember(user.id, memberUserId);
+  if (done) await logActivity(company.scope, "remove_member", `Removed ${who} from the team`, user.email);
+  return done;
 }
 
 /**
@@ -157,6 +174,10 @@ export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no
   const current = await getAccounts().companyFor(user.id);
   if (current?.role === "owner" && (await holdsData(current.scope))) return "has_data";
   const result = await getAccounts().acceptInvite(user, orgId);
+  if (result === "joined") {
+    const joined = await getAccounts().companyFor(user.id);
+    if (joined) await logActivity(joined.scope, "join", "Joined the team", user.email);
+  }
   // The old company is gone: drop anything an in-memory store still holds for it.
   if (result === "joined" && current?.role === "owner") {
     const old = getStore(current.scope);
@@ -201,11 +222,29 @@ export async function leaveCurrentCompany(): Promise<"left" | "owner" | "gone"> 
   const company = await accounts.companyFor(user.id);
   if (!company) return "gone";
   if (company.role === "owner") return "owner";
-  return (await accounts.leaveCompany(user.id)) ? "left" : "gone";
+  if (!(await accounts.leaveCompany(user.id))) return "gone";
+  await logActivity(company.scope, "leave", "Left the team", user.email);
+  return "left";
 }
 
 /** The signed-in owner makes a member the owner; they stay on as a member. */
 export async function transferCompany(memberUserId: string): Promise<boolean> {
-  const { user } = await ownedCompany();
-  return getAccounts().transferOwnership(user.id, memberUserId);
+  const { user, company } = await ownedCompany();
+  const who = await memberEmail(user.id, memberUserId);
+  const done = await getAccounts().transferOwnership(user.id, memberUserId);
+  if (done) await logActivity(company.scope, "transfer", `Made ${who} the owner`, user.email);
+  return done;
+}
+
+/**
+ * Best effort: adds an entry to a company's activity log as the signed-in user. Never fails the
+ * action it describes. `detail` is written by the server (counts and names, never file contents).
+ */
+export async function logActivity(scope: string, kind: ActivityKind, detail: string, actorEmail?: string | null): Promise<void> {
+  try {
+    const email = actorEmail !== undefined ? actorEmail : ((await sessionUser())?.email ?? null);
+    await getStore(scope).recordActivity({ actorEmail: email, kind, detail });
+  } catch (err) {
+    console.error("[activity] couldn't record", err instanceof Error ? err.message : "unknown error");
+  }
 }

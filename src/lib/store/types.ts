@@ -119,6 +119,10 @@ export interface Store {
   saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
   /** Everything uploaded for this scope, or null when nothing has been. */
   loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
+  /** Appends to the company's activity log (server-written text only). */
+  recordActivity(entry: { actorEmail: string | null; kind: ActivityKind; detail: string }): Promise<void>;
+  /** The latest activity, newest first. */
+  listActivity(limit: number): Promise<ActivityEntry[]>;
   /** The company's own Slack incoming webhook for its digest (a secret: never sent to a browser). */
   getSlackWebhook(): Promise<string | null>;
   setSlackWebhook(url: string | null): Promise<void>;
@@ -155,4 +159,13 @@ export interface FindingDecision {
   /** Their email at the time, or null for the public demo or an unknown person. */
   by: string | null;
   at: string;
+}
+
+export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link";
+
+export interface ActivityEntry {
+  at: string;
+  actorEmail: string | null;
+  kind: ActivityKind;
+  detail: string;
 }

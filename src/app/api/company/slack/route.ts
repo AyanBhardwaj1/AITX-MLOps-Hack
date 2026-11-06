@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { companySlackStatus, ownerCompany } from "@/lib/server/company";
+import { companySlackStatus, logActivity, ownerCompany } from "@/lib/server/company";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { getStore } from "@/lib/server/store";
 import { isSlackWebhookUrl, normalizeSlackWebhookUrl, postToSlack } from "@/lib/slack";
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       }
     }
     await getStore(company.scope).setSlackWebhook(url);
+    await logActivity(company.scope, "slack", url ? "Connected a Slack channel for the Monday digest" : "Disconnected Slack");
     return NextResponse.json({ connected: url !== null });
   } catch (err) {
     const known = accessErrorResponse(err);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { accessErrorResponse } from "@/lib/server/errors";
-import { ownerCompany } from "@/lib/server/company";
+import { logActivity, ownerCompany } from "@/lib/server/company";
 import { getStore } from "@/lib/server/store";
 
 export const runtime = "nodejs";
@@ -9,7 +9,9 @@ export const runtime = "nodejs";
 export async function POST() {
   try {
     // Owner only: it also deletes the team's findings, drafts and share links.
-    await getStore((await ownerCompany()).scope).clearUploads();
+    const { scope } = await ownerCompany();
+    await getStore(scope).clearUploads();
+    await logActivity(scope, "clear", "Deleted all uploaded data");
     return NextResponse.json({ ok: true });
   } catch (err) {
     const known = accessErrorResponse(err);

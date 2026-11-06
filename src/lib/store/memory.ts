@@ -2,7 +2,7 @@ import { CASH_ACCOUNT_ID } from "../uploads/rows";
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { RhoTransaction } from "../rho/schema";
-import { StoreError, type AcceptedFinding, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
+import { StoreError, type AcceptedFinding, type ActivityEntry, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
  * In-process store: used when DATABASE_URL isn't set. State lives as long as the server
@@ -21,6 +21,7 @@ export function createMemoryStore(): Store {
   let uploadCash: number | null = null;
   let slackWebhook: string | null = null;
   let lastDigestAt: string | null = null;
+  const activity: ActivityEntry[] = [];
   const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
@@ -134,6 +135,13 @@ export function createMemoryStore(): Store {
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
       return { cashCents: uploadCash, rows: [...uploads.values()].map((r) => structuredClone(r)) };
+    },
+    async recordActivity({ actorEmail, kind, detail }) {
+      activity.unshift({ at: new Date().toISOString(), actorEmail, kind, detail: detail.slice(0, 300) });
+      activity.length = Math.min(activity.length, 500);
+    },
+    async listActivity(limit) {
+      return activity.slice(0, limit).map((e) => ({ ...e }));
     },
     async getSlackWebhook() {
       return slackWebhook;

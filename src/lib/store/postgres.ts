@@ -6,7 +6,7 @@ import type { RhoTransaction } from "../rho/schema";
 import { txnType } from "../rho/map";
 import { CASH_ACCOUNT_ID } from "../uploads/rows";
 import { resolveVendor } from "../vendors/normalize";
-import { StoreError, type AcceptedFinding, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
+import { StoreError, type AcceptedFinding, type ActivityEntry, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
  * Postgres store on the schema in supabase/migrations. The server connects with a privileged
@@ -485,6 +485,20 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       );
       if (!cash.rows[0] || rows.length === 0) return null;
       return { cashCents: Number(cash.rows[0].balance_minor), rows: rows.map((r) => r.raw) };
+    },
+
+    async recordActivity({ actorEmail, kind, detail }) {
+      const org = await orgId();
+      await pool.query(`insert into public.company_activity (org_id, actor_email, kind, detail) values ($1, $2, $3, $4)`, [org, actorEmail, kind, detail.slice(0, 300)]);
+    },
+
+    async listActivity(limit) {
+      const org = await orgId();
+      const { rows } = await pool.query<{ at: Date; actor_email: string | null; kind: ActivityEntry["kind"]; detail: string }>(
+        `select at, actor_email, kind, detail from public.company_activity where org_id = $1 order by at desc, id desc limit $2`,
+        [org, limit],
+      );
+      return rows.map((r) => ({ at: r.at.toISOString(), actorEmail: r.actor_email, kind: r.kind, detail: r.detail }));
     },
 
     async getSlackWebhook() {

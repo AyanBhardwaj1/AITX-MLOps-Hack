@@ -21,6 +21,10 @@ await suite("settings", async ({ browser, step }) => {
     await uploadSample(p);
     await p.goto(`${APP}/app?mode=company`);
     await p.getByText("Acme Robotics · your uploaded exports").waitFor();
+    await p.goto(`${APP}/app/settings`);
+    const activity = p.getByRole("region", { name: "Recent activity" });
+    await activity.getByText(/Uploaded [\d,]+ transactions · founder-a@acme\.example/).waitFor();
+    await activity.getByText("Renamed the company to Acme Robotics · founder-a@acme.example").waitFor();
   });
   await step("deleting the company needs its name, then starts fresh", async () => {
     await p.goto(`${APP}/app/settings`);

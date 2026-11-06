@@ -213,6 +213,22 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.getSlackWebhook()).toBeNull();
     });
 
+    it("keeps an activity log, newest first, that survives clearing the data", async () => {
+      const store = await makeStore();
+      expect(await store.listActivity(10)).toEqual([]);
+      await store.recordActivity({ actorEmail: "maya@acme.example", kind: "upload", detail: "Uploaded 966 transactions" });
+      await new Promise((r) => setTimeout(r, 5));
+      await store.recordActivity({ actorEmail: null, kind: "clear", detail: "Deleted all uploaded data" });
+      await store.clearUploads();
+      const log = await store.listActivity(10);
+      expect(log.map((e) => [e.kind, e.actorEmail, e.detail])).toEqual([
+        ["clear", null, "Deleted all uploaded data"],
+        ["upload", "maya@acme.example", "Uploaded 966 transactions"],
+      ]);
+      expect(Date.parse(log[0]!.at)).not.toBeNaN();
+      expect(await store.listActivity(1)).toHaveLength(1);
+    });
+
     it("deletes one uploaded account's rows and keeps the rest", async () => {
       const store = await makeStore();
       const row = (id: string, account: string) => ({

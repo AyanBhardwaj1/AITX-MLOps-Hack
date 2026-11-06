@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { CompanySettings } from "@/components/company-settings";
 import { TeamPanel } from "@/components/team-panel";
 import { InvitesPanel } from "@/components/invites-panel";
+import { ActivityList } from "@/components/activity-list";
 import { SlackPanel } from "@/components/slack-panel";
+import { getStore } from "@/lib/server/store";
 import { companyForPage, companySlackStatus, currentTeam, pendingInvitesForMe } from "@/lib/server/company";
 import { accountsEnabled } from "@/lib/server/env";
 import { siteUrl } from "@/lib/site-url";
@@ -36,6 +38,9 @@ export default async function SettingsPage() {
       {invites.length > 0 && <InvitesPanel invites={invites} currentName={company.name} />}
       <div className="mt-6">
         <TeamPanel initial={await currentTeam()} owner={company.role === "owner"} selfId={user.id} signInUrl={`${process.env.VERCEL ? siteUrl().origin : ""}/login`} />
+      </div>
+      <div className="mt-6">
+        <ActivityList entries={await getStore(company.scope).listActivity(20).catch(() => [])} />
       </div>
       <div className="mt-6">
         <SlackPanel owner={company.role === "owner"} initial={await companySlackStatus()} />

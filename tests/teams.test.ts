@@ -198,4 +198,30 @@ describe("teammates", () => {
     const accept = (await import("@/app/api/company/invites/accept/route")).POST;
     expect((await accept(post("/api/company/invites/accept", { orgId: owner.orgId }))).status).toBe(409);
   });
+
+  it("records who did what in the company's activity log", async () => {
+    const ownerId = crypto.randomUUID();
+    const owner = await ownerWithCompany(ownerId);
+    const rename = (await import("@/app/api/company/route")).POST;
+    await rename(post("/api/company", { name: "Acme Robotics" }));
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: "logged@acme.example" }));
+    const mateId = crypto.randomUUID();
+    as(mateId, "logged@acme.example");
+    const upload = (await import("@/app/api/uploads/route")).POST;
+    const row = { date: "2026-08-01", description: "ZOOM", amountCents: -14990, type: "ach_debit", account: "chase", accountType: "checking", cardholder: null, n: 0 };
+    await upload(new Request("http://localhost/api/uploads", { method: "POST", headers: { "x-forwarded-for": "203.0.113.50" }, body: JSON.stringify({ cashCents: 100, rows: [row] }) }));
+    as(ownerId);
+    const remove = (await import("@/app/api/company/team/remove/route")).POST;
+    await remove(post("/api/company/team/remove", { userId: mateId }));
+    const { getStore } = await import("@/lib/server/store");
+    const log = (await getStore(owner.scope).listActivity(10)).map((e) => [e.kind, e.actorEmail, e.detail]);
+    expect(log).toEqual([
+      ["remove_member", `${ownerId}@acme.example`, "Removed logged@acme.example from the team"],
+      ["upload", "logged@acme.example", "Uploaded 1 transaction"],
+      ["join", "logged@acme.example", "Joined the team"],
+      ["invite", `${ownerId}@acme.example`, "Invited logged@acme.example"],
+      ["rename", `${ownerId}@acme.example`, "Renamed the company to Acme Robotics"],
+    ]);
+  });
 });

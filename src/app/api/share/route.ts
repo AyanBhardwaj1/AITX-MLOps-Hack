@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
-import { ownerCompany } from "@/lib/server/company";
+import { logActivity, ownerCompany } from "@/lib/server/company";
 import { scopeFor } from "@/lib/server/scope";
 import { snapshotFor } from "@/lib/server/share";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
@@ -52,6 +52,9 @@ export async function POST(request: Request) {
       newToken: newShareToken,
       storageReady: persistentStorageReady,
     });
+    if (result.status === 200 && body?.mode === "company" && (body.action === "create" || body.action === "revoke")) {
+      await logActivity((await ownerCompany()).scope, "share_link", body.action === "create" ? "Created an investor link" : "Revoked an investor link");
+    }
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   } catch (err) {
     const known = accessErrorResponse(err);

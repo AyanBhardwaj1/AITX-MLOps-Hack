@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readBodyCapped } from "@/lib/http-body";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { logActivity } from "@/lib/server/company";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
     const store = getStore(scope);
     const result = await store.saveUploads(parsed.data.cashCents, storedRowsFrom(parsed.data.rows), MAX_ROWS_PER_COMPANY);
     if (result === "limit") return NextResponse.json({ error: `A company can store up to ${MAX_ROWS_PER_COMPANY.toLocaleString("en-US")} transactions.` }, { status: 409 });
+    if (result.inserted > 0) await logActivity(scope, "upload", `Uploaded ${result.inserted.toLocaleString("en-US")} transaction${result.inserted === 1 ? "" : "s"}`);
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);

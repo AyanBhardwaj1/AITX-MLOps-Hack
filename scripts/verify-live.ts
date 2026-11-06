@@ -96,6 +96,7 @@ await check("Database: migrations applied and read/write works", async () => {
       ["rate_limits", "key_hash"],
       ["company_integrations", "slack_webhook_url"],
       ["company_integrations", "last_digest_at"],
+      ["company_activity", "detail"],
     ];
     const { rows } = await pool.query<{ table_name: string; column_name: string }>(
       `select table_name, column_name from information_schema.columns where table_schema = 'public' and (table_name, column_name) in (select * from unnest($1::text[], $2::text[]))`,
