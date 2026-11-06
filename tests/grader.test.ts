@@ -85,4 +85,17 @@ describe("gradeCsvFiles", () => {
     expect(g.wasteMonthlyCents).toBe(api.findings.reduce((s, f) => s + f.monthlySavingsCents, 0));
     expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
   });
+
+  it("says when one export stops weeks before the others, since its spending since is missing", () => {
+    const card = demo.transactions.filter((t) => t.account_type === "credit");
+    const checking = demo.transactions.filter((t) => t.account_type !== "credit");
+    const latest = checking.map(dateOf).sort().at(-1)!;
+    const cutoff = new Date(Date.parse(`${latest}T00:00:00Z`) - 30 * 86_400_000).toISOString().slice(0, 10);
+    const early = card.filter((t) => dateOf(t) <= cutoff);
+    const g = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }, { name: "amex.csv", text: mercuryCsv(early) }], cash);
+    expect(g.notes.some((n) => /^amex\.csv ends .*days before the newest export/.test(n))).toBe(true);
+    // Both up to date: nothing to say.
+    const full = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }, { name: "amex.csv", text: mercuryCsv(card) }], cash);
+    expect(full.notes.some((n) => /days before the newest export/.test(n))).toBe(false);
+  });
 });

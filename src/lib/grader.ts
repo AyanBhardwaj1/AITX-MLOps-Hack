@@ -1,6 +1,7 @@
 import { importCsv, resolveCardPayoffs } from "./csv/import";
 import { forecastCash } from "./finance/forecast";
 import { monthlyHistory } from "./finance/history";
+import { laggingAccounts } from "./freshness";
 import { analyze } from "./pipeline";
 import type { RhoTransaction } from "./rho/schema";
 import type { Cents, Finding, IsoDate } from "./types";
@@ -50,6 +51,8 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   let skipped = 0;
   let duplicateFiles = 0;
   let duplicateRows = 0;
+  /** Each file's latest date and row count, to spot one that stops well before the others. */
+  const byFile = new Map<string, { lastDate: string; rows: number }>();
   files.forEach((f, i) => {
     if (seenTexts.has(f.text)) {
       duplicateFiles += 1;
@@ -71,6 +74,8 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
         raw.push(t);
       }
       for (const k of fileRows) seenRows.add(k);
+      const dates = r.transactions.map((t) => (t.posted_at ?? t.initiated_at).slice(0, 10)).sort();
+      if (dates.length) byFile.set(f.name, { lastDate: dates.at(-1)!, rows: dates.length });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {
@@ -103,6 +108,10 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   if (duplicateFiles) notes.push(`${duplicateFiles} duplicate file${duplicateFiles === 1 ? " was" : "s were"} ignored.`);
   if (duplicateRows && inverted.length === 0) notes.push(`${duplicateRows} row${duplicateRows === 1 ? "" : "s"} repeated across overlapping exports ${duplicateRows === 1 ? "was" : "were"} counted once.`);
   if (skipped) notes.push(`${skipped} row${skipped === 1 ? "" : "s"} couldn't be read and ${skipped === 1 ? "was" : "were"} skipped.`);
+  if (inverted.length === 0) {
+    for (const l of laggingAccounts(byFile))
+      notes.push(`${l.account} ends ${l.lastDate}, ${l.daysBehind} days before the newest export, so its spending since then is missing and runway reads longer than it is. Export it again up to today.`);
+  }
   if (months < 4) notes.push(`Only ${months} month${months === 1 ? "" : "s"} of history: burn and recurring charges are more reliable with 6–12 months.`);
 
   return {
