@@ -101,12 +101,10 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   const days = events.map((e) => Number(e.postedAt.slice(8, 10)));
   // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
   const usual = mostCommon(days, (a, b) => b - a);
-  // Quarterly and annual bills fall in some months only: the months most charges were in, by phase.
+  // Quarterly and annual bills fall in some months only: the months most charges were in, by
+  // phase (on a tie, any of them: two charges can't say which posted late).
   const monthIndex = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1;
-  const phase = mostCommon(
-    events.map((e) => monthIndex(e.postedAt) % months),
-    () => 0,
-  );
+  const phases = mostCommonAll(events.map((e) => monthIndex(e.postedAt) % months));
   const on = (month: string, day: number) => {
     const [y, m] = month.split("-").map(Number) as [number, number];
     return `${month}-${String(Math.min(day, new Date(Date.UTC(y, m, 0)).getUTCDate())).padStart(2, "0")}`;
@@ -118,11 +116,19 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   const lastMonth = last.slice(0, 7);
   const [forDate] = [-1, 0, 1]
     .map((k) => shiftMonth(lastMonth, k))
-    .filter((m) => monthIndex(m) % months === phase)
+    .filter((m) => phases.has(monthIndex(m) % months))
     .map((m) => on(m, usual))
     .sort((a, b) => Math.abs(daysBetween(last, a)) - Math.abs(daysBetween(last, b)));
   if (forDate !== undefined && Math.abs(daysBetween(last, forDate)) <= MAX_BILLING_SHIFT_DAYS) return on(shiftMonth(forDate.slice(0, 7), months), usual);
   return on(shiftMonth(lastMonth, months), days.at(-1)!);
+}
+
+/** Every value seen most often. */
+function mostCommonAll(values: readonly number[]): Set<number> {
+  const counts = new Map<number, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  const top = Math.max(...counts.values());
+  return new Set([...counts].filter(([, n]) => n === top).map(([v]) => v));
 }
 
 /** The most frequent value; ties go to the first by `tieOrder`, then to the latest seen. */

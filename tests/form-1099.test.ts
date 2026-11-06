@@ -69,7 +69,6 @@ describe("1099 prep list", () => {
     ]);
     expect([prep.rows[2]!.firstPaid, prep.rows[2]!.lastPaid]).toEqual(["2026-02-10", "2026-05-10"]);
     expect(prep.toFile).toBe(3);
-    expect(prep.cardPaidCents).toBe(5_000_00);
     expect(prep.partialFrom).toBeNull();
   });
 
@@ -115,5 +114,19 @@ describe("1099 CSV", () => {
     expect(lines[0]).toBe("Payee,Form,Tax year,Paid (USD),Over threshold,Payments,First paid,Last paid");
     expect(lines[1]).toBe("'=HYPERLINK(evil),1099-NEC,2026,2500.5,yes,1,2026-02-10,2026-02-10");
     expect(form1099Csv(null).replace(/^﻿/, "").trim().split("\r\n")).toHaveLength(1);
+  });
+});
+
+describe("review of the 1099 list", () => {
+  it("leaves out payees it can't place (payroll, taxes, loans, shops land in 'other'), and says how much went by card only in words", () => {
+    const t = [
+      txn("s", "2026-01-01", -1_00, "Start", { category: "software" }),
+      txn("a", "2026-02-01", -15_000_00, "Justworks Payroll", { category: "other" }),
+      txn("b", "2026-02-01", -8_000_00, "Irs Usataxpymt", { category: "other" }),
+      txn("c", "2026-02-01", -3_000_00, "Sba Eidl", { category: "other" }),
+      txn("d", "2026-02-01", -2_600_00, "Home Depot", { category: "other", type: "card" }),
+    ];
+    expect(prep1099(t, 2026)).toBeNull();
+    expect(prep1099([...t, txn("e", "2026-03-01", -2_500_00, "Jane Doe Design")], 2026)!.rows.map((r) => r.name)).toEqual(["Jane Doe Design"]);
   });
 });

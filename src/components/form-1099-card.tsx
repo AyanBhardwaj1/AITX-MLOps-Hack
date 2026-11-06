@@ -61,8 +61,7 @@ export function Form1099Card({ prep, mode, asOf }: { prep: Prep1099 | null; mode
       </table>
       <p className="mt-2 text-xs text-muted">
         Contractors, lawyers and landlords paid by ACH, wire or check, after refunds. Corporations usually don&apos;t need one (law firms do), so ask each payee for a
-        W-9. Rent goes on a 1099-MISC.
-        {prep.cardPaidCents > 0 ? ` ${formatDollars(prep.cardPaidCents)} paid to them by card is left out: the card network reports it.` : ""}
+        W-9. Rent goes on a 1099-MISC. Card payments are left out: the card network reports them. Someone missing? Set their category to Contractors.
         {prep.partialFrom ? ` Your data starts ${formatDate(prep.partialFrom)}, so earlier payments aren't counted.` : ""} A list to check with your accountant, not
         tax advice.
       </p>

@@ -28,18 +28,19 @@ export interface Prep1099 {
   /** Over the threshold first, biggest first; then those within half of it. */
   rows: Payee1099[];
   toFile: number;
-  /** Paid to the same kinds of payees by card in the year (reported by the card network). */
-  cardPaidCents: Cents;
   /** The first date the data covers when that's after Jan 1: payments before it aren't counted. */
   partialFrom: IsoDate | null;
 }
 
-/** Nonemployee pay goes on 1099-NEC, rent on 1099-MISC. */
+/**
+ * Nonemployee pay goes on 1099-NEC, rent on 1099-MISC. "other" isn't listed: it's where every
+ * payee Runway can't place lands (payroll services, tax payments, loans, shops), so a freelancer
+ * there joins the list once someone sets their category to Contractors.
+ */
 const FORMS: Partial<Record<Category, Form1099>> = {
   contractors: "1099-NEC",
   legal_accounting: "1099-NEC",
   marketing: "1099-NEC",
-  other: "1099-NEC",
   rent: "1099-MISC",
 };
 
@@ -74,17 +75,12 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
   const prefix = `${year}-`;
   const threshold = form1099Threshold(year);
   const payees = new Map<string, Omit<Payee1099, "overThreshold">>();
-  let cardPaid = 0;
   let first: IsoDate | null = null;
   for (const t of txns) {
     if (first === null || t.postedAt < first) first = t.postedAt;
     if (t.status !== "posted" || !t.postedAt.startsWith(prefix)) continue;
     const form = formFor(t);
     if (!form) continue;
-    if (t.type === "card") {
-      cardPaid -= t.amountCents;
-      continue;
-    }
     if (!BANK_PAID.has(t.type)) continue;
     const p = payees.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, form, paidCents: 0, payments: 0, firstPaid: null, lastPaid: null };
     p.paidCents -= t.amountCents;
@@ -105,7 +101,6 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
     thresholdCents: threshold,
     rows,
     toFile: rows.filter((r) => r.overThreshold).length,
-    cardPaidCents: Math.max(0, cardPaid),
     partialFrom: first !== null && first > `${year}-01-01` ? first : null,
   };
 }

@@ -139,7 +139,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
       }),
       get_1099_prep: tool({
         description:
-          "Who may need a Form 1099 from the company: contractors, lawyers and landlords paid by ACH, wire or check in a tax year (this year, or last year through March). rows: name, form (1099-NEC or 1099-MISC for rent), paidCents after refunds, payments, overThreshold; thresholdCents ($600 through 2025, $2,000 from 2026); cardPaidCents left out (card networks report it); partialFrom when the data starts after Jan 1. null when no one is near the line. Integer cents.",
+          "Who may need a Form 1099 from the company: contractors, lawyers and landlords paid by ACH, wire or check in a tax year (this year, or last year through March). rows: name, form (1099-NEC or 1099-MISC for rent), paidCents after refunds, payments, overThreshold; thresholdCents ($600 through 2025, $2,000 from 2026); card payments are left out (card networks report them); payees categorised 'other' aren't listed until set to contractors; partialFrom when the data starts after Jan 1. null when no one is near the line. Integer cents.",
         inputSchema: form1099Input,
         execute: async () => get1099Prep(a),
       }),

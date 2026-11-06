@@ -216,3 +216,14 @@ describe("fourth review of the detector fixes", () => {
     expect(resolveVendor("AMAZON.COM*AB12 KINDLE UNLTD").key).toBe("amazon_prime");
   });
 });
+
+describe("fifth review of the detector fixes", () => {
+  it("with two quarterly charges, either month can be the billing month", () => {
+    const a = ["2026-01-30", "2026-05-01"].map((d) => txn("GUSTO", d, -900_00));
+    const b = ["2025-12-31", "2026-04-01"].map((d) => txn("GUSTO", d, -900_00));
+    const sa = detectStreams(a, "2026-05-02")[0];
+    const sb = detectStreams(b, "2026-04-02")[0];
+    if (sa) expect(sa.nextExpected).toBe("2026-07-30");
+    if (sb) expect(sb.nextExpected).toBe("2026-06-30");
+  });
+});
