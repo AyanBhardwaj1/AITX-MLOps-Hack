@@ -40,6 +40,19 @@ await suite("accounts", async ({ browser, step }) => {
     const manifest = await (await fetch(new URL(href, APP))).json();
     assert.equal(manifest.start_url, "/app");
   });
+  await step("on the demo, an Inbox decision shows for the visitor but isn't saved for the next one", async () => {
+    await a.goto(`${APP}/app?mode=demo`);
+    await a.getByRole("tab", { name: "Autopilot" }).click();
+    await a.getByRole("button", { name: "Run now" }).click();
+    await a.getByRole("button", { name: "Open Inbox →" }).click({ timeout: 60_000 });
+    const inbox = a.getByRole("tabpanel", { name: "Inbox" });
+    await inbox.getByText("On the demo, your decisions show here but aren't saved for the next visitor.").waitFor();
+    await inbox.getByRole("button", { name: "Reject" }).first().click();
+    await inbox.getByText("rejected", { exact: true }).first().waitFor();
+    const { actions } = await (await a.request.get(`${APP}/api/actions?mode=demo`)).json();
+    assert.ok(actions.length > 0);
+    assert.ok(actions.every((x) => x.status === "draft"));
+  });
   await step("the grader's monthly P&L downloads from the browser, with nothing uploaded", async () => {
     await a.goto(`${APP}/grader`);
     const rows = ["2026-08", "2026-09", "2026-10"].flatMap((m) => [`${m}-01,GUSTO PAYROLL,-5000.00`, `${m}-05,STRIPE TRANSFER,3000.00`, `${m}-09,FIGMA,-45.00`]);
