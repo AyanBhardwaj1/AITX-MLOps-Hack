@@ -94,12 +94,17 @@ export async function renameCurrentCompany(name: string): Promise<string> {
  * Deletes the signed-in owner's company and everything in it. The confirmation must match the
  * company's current name, so a stray request can't wipe it.
  */
-export async function deleteCurrentCompany(confirmName: string): Promise<"deleted" | "mismatch"> {
+export async function deleteCurrentCompany(confirmName: string): Promise<"deleted" | "mismatch" | "not_owner"> {
   const { user, company } = await ownedCompany();
   if (confirmName.trim() !== company.name) return "mismatch";
-  // Clears the data store first (in memory there is no cascade), then the organization itself.
-  await getStore(company.scope).clearUploads();
-  await getAccounts().deleteCompany(user.id);
+  // The organization first, re-checked as the owner's: if ownership moved meanwhile nothing is
+  // wiped. Then the data store (in memory there's no cascade).
+  if (!(await getAccounts().deleteCompany(user.id))) return "not_owner";
+  // Postgres has already cascaded it all away (and a fresh store for the deleted company refuses
+  // to resolve it); this is for the in-memory store.
+  await getStore(company.scope)
+    .clearUploads()
+    .catch(() => undefined);
   return "deleted";
 }
 
@@ -181,6 +186,8 @@ export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no
   if (current?.role === "owner" && (await holdsData(current.scope))) return "has_data";
   const result = await getAccounts().acceptInvite(user, orgId);
   if (result === "joined") {
+    // Leaving a team to join another: that team's log says so, as when someone leaves.
+    if (current?.role === "member" && current.orgId !== orgId) await logActivity(current.scope, "leave", "Left the team to join another company", user.email);
     const joined = await getAccounts().companyFor(user.id);
     // Only into the company accepted: a second accept racing this one mustn't put it in the wrong log.
     if (joined?.orgId === orgId) await logActivity(joined.scope, "join", "Joined the team", user.email);

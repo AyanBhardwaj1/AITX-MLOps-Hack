@@ -203,6 +203,7 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
         await store.ensureCompanyFor(mate);
         const stranger = user();
         await store.ensureCompanyFor(stranger);
+        expect(await store.transferOwnership(owner.id, owner.id)).toBe(false);
         expect(await store.transferOwnership(owner.id, stranger.id)).toBe(false);
         expect(await store.transferOwnership(mate.id, owner.id)).toBe(false);
         expect(await store.transferOwnership(owner.id, mate.id)).toBe(true);

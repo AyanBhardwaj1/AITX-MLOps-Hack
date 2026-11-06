@@ -145,6 +145,8 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
     },
 
     async transferOwnership(ownerId, memberUserId) {
+      // To yourself isn't a hand-over (the demote would make the owner the "member" promoted back).
+      if (memberUserId === ownerId) return false;
       const org = await ownedOrg(pool, ownerId);
       if (!org) return false;
       // Re-checked inside the transaction, row by row: the caller must still be the owner and the

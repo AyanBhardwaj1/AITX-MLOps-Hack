@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const parsed = body.safeParse(await readJsonCapped(request));
     const result = parsed.success ? await deleteCurrentCompany(parsed.data.confirm) : "mismatch";
     if (result === "mismatch") return NextResponse.json({ error: "Type the company’s name exactly to confirm." }, { status: 400 });
+    if (result === "not_owner") return NextResponse.json({ error: "Only the owner can delete the company, and you no longer are." }, { status: 409 });
     return NextResponse.json({ deleted: true });
   } catch (err) {
     const known = accessErrorResponse(err);
