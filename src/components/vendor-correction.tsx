@@ -4,7 +4,7 @@ import type { DataMode } from "@/lib/modes";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { categoryName } from "@/lib/format";
+import { categoryName, TRANSFER_NOTE } from "@/lib/format";
 import { CATEGORIES } from "@/lib/types";
 
 type Mode = DataMode;
@@ -171,6 +171,11 @@ export function CorrectionEditor({
             ))}
           </select>
         </label>
+      )}
+      {nextCategory === "transfer" && category !== "transfer" && (
+        <p role="status" className="basis-full text-warn">
+          {TRANSFER_NOTE}
+        </p>
       )}
       <button type="submit" disabled={busy} className="rounded-md bg-brand px-2.5 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-60">
         {busy ? "Saving…" : "Save"}

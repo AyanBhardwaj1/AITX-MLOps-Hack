@@ -43,3 +43,6 @@ export function describeRunwayCost(cost: RunwayCost | null): string {
   if (cost.kind === "over") return `over ${Math.round(RUNWAY_COST_CAP_DAYS / 365.25)} years`;
   return `${cost.days} ${cost.days === 1 ? "day" : "days"}`;
 }
+
+/** Shown when someone picks Transfer for a vendor: it takes that vendor's spending out of burn. */
+export const TRANSFER_NOTE = "Transfers between your own accounts don't count as spending: this vendor's charges will leave burn and runway.";

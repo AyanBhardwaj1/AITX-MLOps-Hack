@@ -34,6 +34,12 @@ await suite("accounts", async ({ browser, step }) => {
     await a.emulateMedia({ reducedMotion: "no-preference" });
     await a.goto(`${APP}/app?mode=demo`);
     await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
+    // Picking Transfer for a vendor says what it does to burn before anything is saved.
+    await a.getByRole("button", { name: "Fix the category for Gusto Payroll" }).click();
+    const fix = a.getByRole("form", { name: "Category for Gusto Payroll" });
+    await fix.locator("select").first().selectOption("transfer");
+    await fix.getByText(/charges will leave burn and runway/).waitFor();
+    await fix.getByRole("button", { name: "Cancel" }).click();
     // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.
     const nav = a.getByRole("navigation", { name: "Dashboard sections" });
     for (const href of await nav.getByRole("link").evaluateAll((ls) => ls.map((l) => l.getAttribute("href")))) assert.equal(await a.locator(href).count(), 1, `${href} found`);

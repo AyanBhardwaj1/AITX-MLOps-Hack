@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
-import { categoryName } from "@/lib/format";
+import { categoryName, TRANSFER_NOTE } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
 import { CATEGORIES, type Category } from "@/lib/types";
 import { categoryChange } from "@/lib/vendors/corrections";
@@ -100,6 +100,11 @@ export function CategoryFix({
               </option>
             ))}
           </select>
+          {draft === "transfer" && category !== "transfer" && (
+            <span role="status" className="basis-full text-xs text-warn">
+              {TRANSFER_NOTE}
+            </span>
+          )}
           <button type="submit" disabled={busy || draft === category} className="rounded-lg bg-brand px-3 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-50">
             Save
           </button>
