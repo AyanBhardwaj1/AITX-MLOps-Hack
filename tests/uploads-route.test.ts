@@ -39,9 +39,9 @@ describe("POST /api/uploads", () => {
     as("user-a");
     const first = await POST(post({ cashCents: 500_000_00, rows: [row(), row({ n: 1 }), row({ date: "2026-09-01" })] }, "203.0.113.2"));
     expect(first.status).toBe(200);
-    expect(await first.json()).toEqual({ inserted: 3, duplicates: 0 });
+    expect(await first.json()).toEqual({ inserted: 3, updated: 0, duplicates: 0 });
     const again = await POST(post({ cashCents: 400_000_00, rows: [row(), row({ date: "2026-10-01" })] }, "203.0.113.2"));
-    expect(await again.json()).toEqual({ inserted: 1, duplicates: 1 });
+    expect(await again.json()).toEqual({ inserted: 1, updated: 0, duplicates: 1 });
     const stored = await getStore(await scopeFor("company")).loadUploads();
     expect(stored?.rows).toHaveLength(4);
     expect(stored?.cashCents).toBe(400_000_00);

@@ -67,7 +67,8 @@ export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {
     // Number copies on exactly what's stored (and hashed), so formatting differences don't change identity.
     const description = clean(t.counterparty_name, 200);
     const account = clean(t.account_id, 80) || DEFAULT_ACCOUNT;
-    const key = `${date}|${description}|${t.amount.amount}|${account}`;
+    // Sign-free, like the stored id: a re-upload with corrected signs numbers its rows the same way.
+    const key = `${date}|${description}|${Math.abs(t.amount.amount)}|${account}`;
     const n = seen.get(key) ?? 0;
     seen.set(key, n + 1);
     const cardholder = clean(t.user_full_name ?? "", 80);

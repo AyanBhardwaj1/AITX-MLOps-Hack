@@ -85,3 +85,50 @@ describe("bank export formats", () => {
     expect(() => read(["foo,bar", "1,2"].join("\n"))).toThrow(/Date, Description and Amount/);
   });
 });
+
+describe("importer review fixes", () => {
+  const rows = (n: number, f: (i: number) => string) => Array.from({ length: n }, (_, i) => f(i));
+
+  it("refuses an unrecognised header instead of guessing columns (e.g. taking a running balance as the amount)", () => {
+    const csv = ["Date,Narrative,Debit,Credit,Balance", ...rows(20, (i) => (i % 3 === 2 ? `10/${String(i + 1).padStart(2, "0")}/2026,PAYMENT IN,,500.00,${10000 + i}.00` : `10/${String(i + 1).padStart(2, "0")}/2026,SPEND,100.00,,${10000 + i}.00`))].join("\n");
+    expect(() => read(csv)).toThrow(/Unrecognised columns/);
+    const paypal = ["Date,Time,TimeZone,Name,Type,Status,Currency,Gross,Fee,Net", "10/02/2026,10:00:00,PST,Acme,Payment,Completed,USD,100.00,-3.20,96.80"].join("\n");
+    expect(() => read(paypal)).toThrow(/Unrecognised columns/);
+  });
+
+  it("never takes a running balance as the amount in a file with no header row", () => {
+    const csv = rows(20, (i) => (i % 3 === 2 ? `10/${String(i + 1).padStart(2, "0")}/2026,PAYMENT IN,,500.00,${10000 + i}.00` : `10/${String(i + 1).padStart(2, "0")}/2026,SPEND,100.00,,${10000 + i}.00`)).join("\n");
+    expect(() => read(csv)).toThrow(/Unrecognised columns/);
+  });
+
+  it("reads trailing minus signs and parentheses with a dollar sign as negative", () => {
+    const csv = ["Date,Description,Amount", '10/02/2026,A,"1,234.56-"', '10/03/2026,B,"$ (12.00)"', "10/04/2026,C,$-12.00", "10/05/2026,D,+5.00", "10/06/2026,E,1-2.00"].join("\n");
+    const r = read(csv);
+    expect(r.transactions.map((t) => t.amount.amount)).toEqual([-123456, -1200, -1200, 500]);
+    expect(r.skipped).toEqual([6]);
+  });
+
+  it("reads day-first dates when the file shows it, and refuses amounts that aren't US dollars", () => {
+    const csv = ["Date,Description,Amount", "05/10/2026,A,-1.00", "25/10/2026,B,-2.00"].join("\n");
+    expect(amounts(csv).map((r) => r[0])).toEqual(["2026-10-05", "2026-10-25"]);
+    const us = ["Date,Description,Amount", "10/05/2026,A,-1.00", "10/25/2026,B,-2.00"].join("\n");
+    expect(amounts(us).map((r) => r[0])).toEqual(["2026-10-05", "2026-10-25"]);
+    const gbp = ["Date,Description,Amount,Currency", "10/05/2026,A,-1.00,GBP"].join("\n");
+    expect(() => read(gbp)).toThrow(/US dollars/);
+  });
+
+  it("reads a Cardholder column as a card account, even without a Type column", () => {
+    const csv = ["Date,Description,Amount,Cardholder", "10/02/2026,FIGMA,-45.00,MAYA PATEL"].join("\n");
+    expect(read(csv).transactions[0]).toMatchObject({ account_type: "credit", user_full_name: "MAYA PATEL", transaction_type: "card_debit" });
+  });
+
+  it("takes the last of two columns with the same name, as before", () => {
+    const csv = ["Date,Description,Amount,Amount", "10/02/2026,X,-45.00,-1.00"].join("\n");
+    expect(amounts(csv)[0]![2]).toBe(-100);
+  });
+
+  it("only undoes our export's formula guard on Runway's own layout", () => {
+    const bank = ["Date,Description,Amount", "10/02/2026,'=X,-1.00"].join("\n");
+    expect(read(bank).transactions[0]!.counterparty_name).toBe("'=X");
+  });
+});

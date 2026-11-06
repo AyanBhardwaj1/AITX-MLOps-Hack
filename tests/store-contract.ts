@@ -191,8 +191,8 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
         amount: { amount, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: `VENDOR ${id}`,
         initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null,
       });
-      expect(await store.saveUploads(100_000_00, [row("u_a", -100), row("u_b", -200)], 10)).toEqual({ inserted: 2, duplicates: 0 });
-      expect(await store.saveUploads(90_000_00, [row("u_b", -200), row("u_c", -300)], 10)).toEqual({ inserted: 1, duplicates: 1 });
+      expect(await store.saveUploads(100_000_00, [row("u_a", -100), row("u_b", -200)], 10)).toEqual({ inserted: 2, updated: 0, duplicates: 0 });
+      expect(await store.saveUploads(90_000_00, [row("u_b", -200), row("u_c", -300)], 10)).toEqual({ inserted: 1, updated: 0, duplicates: 1 });
       const loaded = await store.loadUploads();
       expect(loaded!.cashCents).toBe(90_000_00);
       expect(loaded!.rows.map((r) => r.id).sort()).toEqual(["u_a", "u_b", "u_c"]);
@@ -202,6 +202,21 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect((await store.loadUploads())!.rows).toHaveLength(3);
       await store.clearUploads();
       expect(await store.loadUploads()).toBeNull();
+    });
+
+    it("replaces a stored row when the same row comes back with its sign corrected", async () => {
+      const store = await makeStore();
+      const row = (amount: number) => ({
+        id: "u_flip", money_movement_id: null, account_id: "card", account_name: "card", account_type: "checking" as const,
+        amount: { amount, currency: "USD" }, status: "settled" as const, transaction_type: amount < 0 ? "ach_debit" : "ach_credit", counterparty_name: "LINEAR",
+        initiated_at: "2026-10-02T12:00:00Z", posted_at: "2026-10-02T12:00:00Z", card_id: null, card_name: null, user_full_name: null,
+      });
+      await store.saveUploads(1, [row(9600)], 10);
+      expect(await store.saveUploads(1, [row(-9600)], 10)).toEqual({ inserted: 0, updated: 1, duplicates: 0 });
+      const loaded = await store.loadUploads();
+      expect(loaded!.rows).toHaveLength(1);
+      expect(loaded!.rows[0]).toMatchObject({ amount: { amount: -9600 }, transaction_type: "ach_debit" });
+      expect(await store.saveUploads(1, [row(-9600)], 10)).toEqual({ inserted: 0, updated: 0, duplicates: 1 });
     });
 
     it("deletes one uploaded account's rows and keeps the rest", async () => {
@@ -219,7 +234,7 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.deleteUploadedAccount("cash_entered")).toBe(0);
       expect(await store.deleteUploadedAccount("nope")).toBe(0);
       // Re-uploading the deleted account brings its rows back.
-      expect(await store.saveUploads(5_000_00, [row("u_1", "amex gold")], 100)).toEqual({ inserted: 1, duplicates: 0 });
+      expect(await store.saveUploads(5_000_00, [row("u_1", "amex gold")], 100)).toEqual({ inserted: 1, updated: 0, duplicates: 0 });
       expect(await store.deleteUploadedAccount("chase checking")).toBe(1);
       expect(await store.deleteUploadedAccount("amex gold")).toBe(1);
       expect(await store.loadUploads()).toBeNull();

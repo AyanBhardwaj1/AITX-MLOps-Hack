@@ -57,3 +57,13 @@ describe("upload rows", () => {
     expect(both.transactions.every((t) => t.transaction_type === "credit_repayment")).toBe(true);
   });
 });
+
+describe("a re-upload with corrected signs", () => {
+  it("gets the same row ids whatever the sign, so it can replace the stored rows instead of adding to them", () => {
+    const csv = (amount: string) => ["Date,Description,Amount", `2026-10-02,LINEAR,${amount}`].join("\n");
+    const pos = storedRowsFrom(toUploadRows(parse(csv("96.00"))));
+    const neg = storedRowsFrom(toUploadRows(parse(csv("-96.00"))));
+    expect(neg[0]!.id).toBe(pos[0]!.id);
+    expect(neg[0]!.amount.amount).toBe(-9600);
+  });
+});

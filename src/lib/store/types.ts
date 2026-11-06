@@ -116,7 +116,7 @@ export interface Store {
    * Adds uploaded bank transactions (ids are content-derived, so repeats are skipped) and sets
    * today's cash. Refused whole ("limit") if the stored total would pass `maxTotal`; atomic.
    */
-  saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
+  saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; updated: number; duplicates: number } | "limit">;
   /** Everything uploaded for this scope, or null when nothing has been. */
   loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
   /** Deletes the uploaded rows of one account (never the entered cash); returns how many went. */

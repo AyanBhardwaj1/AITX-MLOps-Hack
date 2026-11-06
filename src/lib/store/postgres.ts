@@ -436,7 +436,11 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
            select $1, $2, u.acct, u.txn, u.posted::date, u.amount, u.descr, u.ttype, 'posted', u.holder, u.vkey, u.raw::jsonb, u.txn
              from unnest($3::text[], $4::text[], $5::text[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::text[], $11::text[])
                as u(acct, txn, posted, amount, descr, ttype, holder, vkey, raw)
-           on conflict (connection_id, provider_account_id, provider_txn_id) do nothing`,
+           on conflict (connection_id, provider_account_id, provider_txn_id) do update
+             -- Ids ignore the sign, so the same row re-uploaded with its sign corrected replaces the old one.
+             set amount_minor = excluded.amount_minor, txn_type = excluded.txn_type, raw = excluded.raw, updated_at = now()
+             where public.transactions.amount_minor <> excluded.amount_minor
+           returning (xmax = 0) as inserted`,
           [
             org,
             connectionId,
@@ -457,8 +461,9 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
            on conflict (connection_id, provider_account_id) do update set balance_minor = excluded.balance_minor, synced_at = now()`,
           [org, connectionId, CASH_ACCOUNT_ID, cashCents],
         );
-        const added = inserted.rowCount ?? 0;
-        return { inserted: added, duplicates: rows.length - added };
+        const added = inserted.rows.filter((r: { inserted: boolean }) => r.inserted).length;
+        const updated = (inserted.rowCount ?? 0) - added;
+        return { inserted: added, updated, duplicates: rows.length - added - updated };
       });
     },
 

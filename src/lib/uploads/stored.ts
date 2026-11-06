@@ -8,7 +8,8 @@ import type { UploadRow } from "./rows";
  */
 export function storedRowsFrom(rows: readonly UploadRow[]): RhoTransaction[] {
   return rows.map((r) => {
-    const id = `u_${createHash("sha256").update(JSON.stringify([r.date, r.description, r.amountCents, r.account, r.n])).digest("hex").slice(0, 32)}`;
+    // The sign isn't part of a row's identity: re-uploading a file with corrected signs replaces rows instead of adding to them.
+    const id = `u_${createHash("sha256").update(JSON.stringify([r.date, r.description, Math.abs(r.amountCents), r.account, r.n])).digest("hex").slice(0, 32)}`;
     const first = r.cardholder?.split(" ")[0];
     return {
       id,

@@ -42,7 +42,7 @@ async function previewFile(file: File): Promise<Picked["preview"]> {
 type State =
   | { kind: "idle" }
   | { kind: "working"; sent: number; total: number }
-  | { kind: "done"; inserted: number; duplicates: number; notes: string[] }
+  | { kind: "done"; inserted: number; updated: number; duplicates: number; notes: string[] }
   | { kind: "error"; message: string; notes: string[] };
 
 interface Parsed {
@@ -70,11 +70,11 @@ async function parseFiles(files: readonly Picked[]): Promise<Parsed> {
   return { rows, notes };
 }
 
-async function send(cashCents: number, rows: readonly UploadRow[]): Promise<{ inserted: number; duplicates: number } | { error: string }> {
+async function send(cashCents: number, rows: readonly UploadRow[]): Promise<{ inserted: number; updated: number; duplicates: number } | { error: string }> {
   const res = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cashCents, rows }) }).catch(() => null);
-  const body = (await res?.json().catch(() => null)) as { inserted?: number; duplicates?: number; error?: string } | null;
+  const body = (await res?.json().catch(() => null)) as { inserted?: number; updated?: number; duplicates?: number; error?: string } | null;
   if (!res?.ok || typeof body?.inserted !== "number") return { error: body?.error ?? "That upload didn’t go through. Try again." };
-  return { inserted: body.inserted, duplicates: body.duplicates ?? 0 };
+  return { inserted: body.inserted, updated: body.updated ?? 0, duplicates: body.duplicates ?? 0 };
 }
 
 function dollarsToCents(text: string): number | null {
@@ -103,16 +103,18 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
     if (rows.length === 0) return setState({ kind: "error", message: "No transactions could be read from these files.", notes });
     let inserted = 0;
     let duplicates = 0;
+    let updated = 0;
     for (let i = 0; i < rows.length; i += MAX_CHUNK_ROWS) {
       setState({ kind: "working", sent: i, total: rows.length });
       const r = await send(cashCents, rows.slice(i, i + MAX_CHUNK_ROWS));
       if ("error" in r) return setState({ kind: "error", message: inserted > 0 ? `${r.error} (${inserted.toLocaleString("en-US")} rows were saved before this.)` : r.error, notes });
       inserted += r.inserted;
       duplicates += r.duplicates;
+      updated += r.updated;
     }
     setFiles([]);
     setInputKey((k) => k + 1);
-    setState({ kind: "done", inserted, duplicates, notes });
+    setState({ kind: "done", inserted, updated, duplicates, notes });
     router.refresh();
   }
 
@@ -327,6 +329,7 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
           <div className="rounded-xl bg-brand-soft p-4 text-sm">
             <p className="font-medium">
               Saved {state.inserted.toLocaleString("en-US")} new transaction{state.inserted === 1 ? "" : "s"}
+              {state.updated > 0 ? `; corrected the sign on ${state.updated.toLocaleString("en-US")}` : ""}
               {state.duplicates > 0 ? `; ${state.duplicates.toLocaleString("en-US")} were already stored` : ""}.
             </p>
             <Link href="/app?mode=company" className="mt-2 inline-block font-medium text-brand hover:underline">
