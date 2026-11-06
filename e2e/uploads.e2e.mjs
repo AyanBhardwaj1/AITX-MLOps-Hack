@@ -74,6 +74,15 @@ await suite("uploads", async ({ browser, step }) => {
     await p.goto(`${APP}/app/settings`);
     await p.getByText("Set today's cash to $612,346").waitFor();
   });
+  await step("transactions narrow to one account", async () => {
+    await p.goto(`${APP}/app/transactions?mode=company`);
+    await p.locator('select[name="account"]').selectOption({ label: "chase ink …9876 card" });
+    await p.getByRole("button", { name: "Filter" }).click();
+    await p.waitForURL(/account=chase/);
+    await p.getByRole("heading", { name: "3 transactions match" }).waitFor();
+    const text = (await p.getByRole("region", { name: "Transactions" }).locator("tbody").innerText()).toUpperCase();
+    for (const v of ["AMAZON WEB SERVICES", "FIGMA", "PAYMENT THANK YOU"]) assert.ok(text.includes(v), v);
+  });
   await step("the company's own transactions are searchable; signed out, nothing shows", async () => {
     await p.goto(`${APP}/app?mode=company`);
     await p.getByRole("link", { name: "Transactions" }).click();

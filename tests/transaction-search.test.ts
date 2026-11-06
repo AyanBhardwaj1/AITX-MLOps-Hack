@@ -66,7 +66,7 @@ describe("transaction search", () => {
 
   it("ignores anything it doesn't understand in the address instead of failing", () => {
     const q = parseTxnQuery({ q: "x".repeat(500), category: "snacks", month: "2026-13", direction: "sideways", page: "-4" });
-    expect(q).toEqual({ q: "x".repeat(100), category: null, month: null, direction: "all", vendor: null, page: 1 });
+    expect(q).toEqual({ q: "x".repeat(100), category: null, month: null, direction: "all", vendor: null, account: null, page: 1 });
     expect(parseTxnQuery({ vendor: "Zoom; drop" }).vendor).toBeNull();
     expect(parseTxnQuery({ q: ["zoom", "uber"], page: "2.5" })).toMatchObject({ q: "zoom", page: 1 });
     expect(searchTransactions([], parseTxnQuery({}))).toMatchObject({ rows: [], total: 0, pages: 1, page: 1, outCents: 0, inCents: 0, uncounted: 0, months: [] });
@@ -118,5 +118,26 @@ describe("transaction search", () => {
     ]);
     // Narrowed to one vendor already, there's nothing to rank.
     expect(searchTransactions(txns, parseTxnQuery({ vendor: "zoom" })).topVendors).toEqual([]);
+  });
+});
+
+describe("transactions by account", () => {
+  const mixed = [...txns.slice(0, 4), txn("c1", "2026-10-08", -12_00, "OpenAI", "ai_api", { accountId: "amex …1009 card" }), txn("c2", "2026-10-09", -3_00, "Figma", "software", { accountId: "amex …1009 card" })];
+
+  it("narrows to one account, and lists the accounts there are to pick from", () => {
+    const r = searchTransactions(mixed, parseTxnQuery({ account: "amex …1009 card" }));
+    expect(r.rows.map((t) => t.id)).toEqual(["c2", "c1"]);
+    expect(r.outCents).toBe(15_00);
+    expect(r.accounts).toEqual(["amex …1009 card", "chk"]);
+    // Every other filter still applies on top.
+    expect(searchTransactions(mixed, parseTxnQuery({ account: "amex …1009 card", category: "software" })).rows.map((t) => t.id)).toEqual(["c2"]);
+  });
+
+  it("reads the account from the address safely", () => {
+    expect(parseTxnQuery({ account: "  chk  " }).account).toBe("chk");
+    expect(parseTxnQuery({ account: "" }).account).toBeNull();
+    expect(parseTxnQuery({ account: "x".repeat(200) }).account).toHaveLength(80);
+    // An account that isn't there matches nothing, rather than everything.
+    expect(searchTransactions(mixed, parseTxnQuery({ account: "gone" })).total).toBe(0);
   });
 });

@@ -31,6 +31,8 @@ demo, the free grader and the public site work exactly as before.
   budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
   connected, the daily job posts there the day a budget goes over (once per budget per month;
   changing the amount re-arms it).
+- **Transactions by account.** The transactions page filters to one account (a card, savings,
+  checking), with the same totals and download.
 - **Runway alerts in Slack.** With the company's Slack connected, the daily job posts the day
   runway first drops under 12, 6 or 3 months, with the burn and the zero-cash date. It re-arms
   once runway is a full month back above the line, so a runway hovering at 6 doesn't flap.

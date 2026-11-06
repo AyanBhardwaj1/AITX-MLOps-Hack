@@ -4,6 +4,8 @@ import { countsTowardBurn } from "./runway";
 /** Rows per page: enough to scan a month at a glance, small enough to render instantly. */
 export const PAGE_SIZE = 50;
 const MAX_QUERY_CHARS = 100;
+/** Uploaded account names are at most this long (see uploads/rows). */
+const MAX_ACCOUNT_CHARS = 80;
 const TOP_VENDORS = 5;
 
 export interface TxnQuery {
@@ -14,6 +16,8 @@ export interface TxnQuery {
   direction: "all" | "in" | "out";
   /** One vendor's key, from a dashboard link (exact, unlike a word search). */
   vendor: string | null;
+  /** One account, exactly as stored (an uploaded file's account name, or a feed's account id). */
+  account: string | null;
   page: number;
 }
 
@@ -37,6 +41,8 @@ export interface TxnSearchResult {
   months: string[];
   /** The filtered vendor's display name, when there is one and it has transactions. */
   vendorName: string | null;
+  /** Every account with transactions, sorted, for the account picker. */
+  accounts: string[];
 }
 
 type Params = Record<string, string | string[] | undefined>;
@@ -55,12 +61,14 @@ export function parseTxnQuery(params: Params): TxnQuery {
     month: /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : null,
     direction: direction === "in" || direction === "out" ? direction : "all",
     vendor: /^[a-z0-9_]{1,80}$/.test(vendor) ? vendor : null,
+    account: first(params.account).trim().slice(0, MAX_ACCOUNT_CHARS) || null,
     page: /^[1-9]\d{0,5}$/.test(page) ? Number(page) : 1,
   };
 }
 
 function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boolean {
   if (query.vendor && t.vendor.key !== query.vendor) return false;
+  if (query.account && t.accountId !== query.account) return false;
   if (query.category && t.vendor.category !== query.category) return false;
   if (query.month && !t.postedAt.startsWith(query.month)) return false;
   if (query.direction === "in" && t.amountCents <= 0) return false;
@@ -103,5 +111,6 @@ export function searchTransactions(txns: readonly EnrichedTxn[], query: TxnQuery
     ? []
     : [...byVendor.values()].sort((a, b) => b.outCents - a.outCents || a.name.localeCompare(b.name)).slice(0, TOP_VENDORS);
   const vendorName = query.vendor ? (txns.find((t) => t.vendor.key === query.vendor)?.vendor.name ?? null) : null;
-  return { rows: found.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total: found.length, page, pages, outCents, inCents, uncounted, topVendors, months, vendorName };
+  const accounts = [...new Set(txns.map((t) => t.accountId))].sort((a, b) => a.localeCompare(b));
+  return { rows: found.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total: found.length, page, pages, outCents, inCents, uncounted, topVendors, months, vendorName, accounts };
 }

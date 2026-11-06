@@ -30,6 +30,7 @@ function hrefFor(mode: DataMode, query: TxnQuery, page: number): string {
   if (query.month) p.set("month", query.month);
   if (query.direction !== "all") p.set("direction", query.direction);
   if (query.vendor) p.set("vendor", query.vendor);
+  if (query.account) p.set("account", query.account);
   if (page > 1) p.set("page", String(page));
   return `/app/transactions?${p}`;
 }
@@ -63,7 +64,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const months = query.month && !result.months.includes(query.month) ? [query.month, ...result.months] : result.months;
   const accountNames = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
   const name = await companyName(mode);
-  const filtered = query.q !== "" || query.category !== null || query.month !== null || query.direction !== "all" || query.vendor !== null;
+  const filtered = query.q !== "" || query.category !== null || query.month !== null || query.direction !== "all" || query.vendor !== null || query.account !== null;
+  // An account from an old link that has no transactions still shows as chosen.
+  const accounts = query.account && !result.accounts.includes(query.account) ? [query.account, ...result.accounts] : result.accounts;
   const field = "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:border-brand";
 
   return (
@@ -105,6 +108,19 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             ))}
           </select>
         </label>
+        {accounts.length > 1 && (
+          <label className="block text-sm">
+            <span className="text-muted">Account</span>
+            <select name="account" defaultValue={query.account ?? ""} className={field}>
+              <option value="">All</option>
+              {accounts.map((a) => (
+                <option key={a} value={a}>
+                  {accountNames.get(a) ?? a}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block text-sm">
           <span className="text-muted">Money</span>
           <select name="direction" defaultValue={query.direction} className={field}>
@@ -118,7 +134,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             Filter
           </button>
           {filtered && (
-            <Link href={hrefFor(mode, { ...query, q: "", category: null, month: null, direction: "all", vendor: null }, 1)} className="rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:bg-canvas">
+            <Link href={hrefFor(mode, { ...query, q: "", category: null, month: null, direction: "all", vendor: null, account: null }, 1)} className="rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:bg-canvas">
               Clear
             </Link>
           )}
