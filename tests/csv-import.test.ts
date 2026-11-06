@@ -105,3 +105,22 @@ describe("card payoffs by their wording", () => {
     expect(importCsv(csv, { accountId: "card", resolvePayoffs: false }).transactions.map((t) => t.transaction_type)).toEqual(["credit_repayment", "credit_repayment", "ach_debit"]);
   });
 });
+
+describe("quotes inside a field", () => {
+  it("reads an inch mark in an unquoted field as text, not the start of a quoted field", () => {
+    const rows = parseCsv('Date,Description,Amount\n2026-01-05,DELL 27" MONITOR,-300.00\n2026-01-06,AWS,-50.00\n');
+    expect(rows).toEqual([
+      ["Date", "Description", "Amount"],
+      ["2026-01-05", 'DELL 27" MONITOR', "-300.00"],
+      ["2026-01-06", "AWS", "-50.00"],
+    ]);
+  });
+
+  it("refuses a quote that never closes instead of swallowing the rest of the file", () => {
+    expect(() => parseCsv('Date,Description,Amount\n2026-01-05,"DELL MONITOR,-300.00\n2026-01-06,AWS,-50.00\n')).toThrow(/line 2 never closes/);
+  });
+
+  it("still reads quoted fields with commas, doubled quotes and newlines", () => {
+    expect(parseCsv('a,b\n"x, ""y""","line\nbreak"\n')).toEqual([["a", "b"], ['x, "y"', "line\nbreak"]]);
+  });
+});

@@ -55,23 +55,32 @@ export const MOSTLY_POSITIVE_SHARE = 0.7;
 /** Payouts from revenue processors often say "TRANSFER" too; they are revenue, not internal moves. */
 const isRevenuePayout = (description: string) => resolveVendor(description).category === "revenue";
 
-/** RFC 4180-style parsing: quoted fields, embedded commas and newlines, doubled quotes. */
+/**
+ * RFC 4180-style parsing: quoted fields, embedded commas and newlines, doubled quotes. A quote only
+ * opens a quoted field at its start: one mid-field (DELL 27" MONITOR) is text. A quote that never
+ * closes is refused, rather than reading the rest of the file as one field.
+ */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
   let quoted = false;
+  let line = 1;
+  let openedOn = 0;
   const src = text.replace(/^﻿/, "");
   for (let i = 0; i < src.length; i++) {
     const ch = src[i]!;
+    if (ch === "\n") line++;
     if (quoted) {
       if (ch === '"' && src[i + 1] === '"') {
         field += '"';
         i++;
       } else if (ch === '"') quoted = false;
       else field += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ",") {
+    } else if (ch === '"' && field === "") {
+      quoted = true;
+      openedOn = line;
+    } else if (ch === ",") {
       row.push(field);
       field = "";
     } else if (ch === "\n" || ch === "\r") {
@@ -82,6 +91,7 @@ export function parseCsv(text: string): string[][] {
       field = "";
     } else field += ch;
   }
+  if (quoted) throw new Error(`The quote (") that opens a field on line ${openedOn} never closes, so the rest of the file can't be read. Fix that row and try again.`);
   row.push(field);
   if (row.some((f) => f.trim() !== "")) rows.push(row);
   return rows;

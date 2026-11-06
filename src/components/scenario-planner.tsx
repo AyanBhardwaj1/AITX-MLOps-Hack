@@ -6,7 +6,7 @@ import type { MonthHistory } from "@/lib/finance/history";
 import { estimateRevenueGrowthDetail, projectScenario } from "@/lib/finance/scenario";
 import { formatCompactDollars, formatDate, formatMonth } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
-import { DEFAULT_SCENARIO, MAX_HIRES, MAX_START_MONTH, normalizeScenario, SCENARIO_KEYS, scenarioParams, type ScenarioPlan } from "@/lib/finance/scenario-link";
+import { DEFAULT_SCENARIO, MAX_HIRES, MAX_START_MONTH, growthRateFor, normalizeScenario, SCENARIO_KEYS, scenarioParams, type ScenarioPlan } from "@/lib/finance/scenario-link";
 
 const CHART_MONTHS = 36;
 /** Wait for typing to settle before touching the address (browsers limit how often it can change). */
@@ -87,7 +87,7 @@ export function ScenarioPlanner({
     cashCents,
     history,
     burn,
-    revenueGrowth: n.growthPct === null ? estimate.rate : n.growthPct / 100,
+    revenueGrowth: growthRateFor(n, estimate.rate),
     hires: [{ count: n.hires, monthlyCostCents: n.hireCostDollars * 100, startMonth: n.hireStart }],
     raise: { amountCents: n.raiseDollars * 100, month: n.raiseMonth },
     monthlyCutsCents: n.cutWaste ? wasteSavingsCents : 0,

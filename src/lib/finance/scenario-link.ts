@@ -84,16 +84,27 @@ export function parseScenarioParams(params: Params): ScenarioPlan {
   return plan;
 }
 
+/** The measured rate as the planner shows it (a percent, to a tenth). */
+const shownPct = (measuredRate: number) => Number((measuredRate * 100).toFixed(1));
+
+/**
+ * The monthly growth rate a plan projects with. A typed rate equal to the measured one as shown
+ * ("7.5" for 7.5449%) follows the measured rate exactly; any other figure ("7.46") is used as typed.
+ * The link writes the same thing (scenarioParams), so it shows what its sender saw.
+ */
+export function growthRateFor(n: { growthPct: number | null }, measuredRate: number): number {
+  return n.growthPct === null || n.growthPct === shownPct(measuredRate) ? measuredRate : n.growthPct / 100;
+}
+
 /**
  * The address parameters for what the projection uses. Defaults are left out, and so is a growth
- * rate equal to the measured one (as shown, to a tenth), so a bookmark follows the measured rate.
+ * rate equal to the measured one as shown, so a bookmark follows the measured rate.
  */
 export function scenarioParams(plan: ScenarioPlan, measuredRate?: number): URLSearchParams {
   const n = normalizeScenario(plan);
   const d = normalizeScenario(DEFAULT_SCENARIO);
   const out = new URLSearchParams();
-  const measured = measuredRate === undefined ? null : (measuredRate * 100).toFixed(1);
-  if (n.growthPct !== null && n.growthPct.toFixed(1) !== measured) out.set(KEYS.growthPct, String(n.growthPct));
+  if (n.growthPct !== null && (measuredRate === undefined || n.growthPct !== shownPct(measuredRate))) out.set(KEYS.growthPct, String(n.growthPct));
   if (n.hires !== d.hires) out.set(KEYS.hires, String(n.hires));
   if (n.hireCostDollars !== d.hireCostDollars) out.set(KEYS.hireCost, String(n.hireCostDollars));
   if (n.hireStart !== d.hireStart) out.set(KEYS.hireStart, String(n.hireStart));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SCENARIO, normalizeScenario, parseScenarioParams, scenarioParams } from "@/lib/finance/scenario-link";
+import { DEFAULT_SCENARIO, growthRateFor, normalizeScenario, parseScenarioParams, scenarioParams } from "@/lib/finance/scenario-link";
 
 describe("scenario links", () => {
   it("round-trips a plan through the address, leaving defaults out", () => {
@@ -34,5 +34,15 @@ describe("scenario links", () => {
   it("leaves the measured growth rate out of the link, so a bookmark follows it as it changes", () => {
     expect(scenarioParams({ ...DEFAULT_SCENARIO, growthPct: "7.3" }, 0.0731).toString()).toBe("");
     expect(scenarioParams({ ...DEFAULT_SCENARIO, growthPct: "8" }, 0.0731).toString()).toBe("sc_growth=8");
+  });
+
+  it("keeps a typed rate that only rounds to the measured one, so the link shows what its sender saw", () => {
+    // Measured 7.5449% shows as "7.5"; 7.46 is a different plan, even if it rounds the same.
+    expect(scenarioParams({ ...DEFAULT_SCENARIO, growthPct: "7.46" }, 0.075449).toString()).toBe("sc_growth=7.46");
+    expect(scenarioParams({ ...DEFAULT_SCENARIO, growthPct: "7.5" }, 0.075449).toString()).toBe("");
+    // And the planner projects with the same rule: the shown figure follows the measured rate exactly.
+    expect(growthRateFor(normalizeScenario({ ...DEFAULT_SCENARIO, growthPct: "7.5" }), 0.075449)).toBe(0.075449);
+    expect(growthRateFor(normalizeScenario({ ...DEFAULT_SCENARIO, growthPct: "7.46" }), 0.075449)).toBeCloseTo(0.0746, 10);
+    expect(growthRateFor(normalizeScenario(DEFAULT_SCENARIO), 0.075449)).toBe(0.075449);
   });
 });
