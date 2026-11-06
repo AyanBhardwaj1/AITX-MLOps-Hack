@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sessionUser } from "@/lib/server/company";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
-    await getStore(await scopeFor(parseMode(parsed.data.mode))).setFindingStatus(parsed.data.fingerprint, parsed.data.status);
+    const mode = parseMode(parsed.data.mode);
+    // Who decided, from the verified session: only on a company's own data (the demo is anonymous).
+    const actor = mode === "company" ? ((await sessionUser()) ?? undefined) : undefined;
+    await getStore(await scopeFor(mode)).setFindingStatus(parsed.data.fingerprint, parsed.data.status, undefined, actor);
     return NextResponse.json({ ok: true });
   } catch (err) {
     const known = accessErrorResponse(err);

@@ -6,7 +6,7 @@ import type { RhoTransaction } from "../rho/schema";
 import { txnType } from "../rho/map";
 import { CASH_ACCOUNT_ID } from "../uploads/rows";
 import { resolveVendor } from "../vendors/normalize";
-import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
+import { StoreError, type AcceptedFinding, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
  * Postgres store on the schema in supabase/migrations. The server connects with a privileged
@@ -141,7 +141,7 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
     key: string,
     allowed: (from: string) => boolean,
     to: string,
-    extra: { externalRef?: string; note?: string } = {},
+    extra: { externalRef?: string; note?: string; actor?: Actor } = {},
   ) {
     const org = await orgId();
     return inTransaction(pool, async (c) => {
@@ -158,8 +158,8 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
         await c.query(`update public.${table} set status = $1 where id = $2`, [to, row.id]);
       }
       await c.query(
-        `insert into public.entity_events (org_id, entity_type, entity_id, from_status, to_status, note) values ($1, $2, $3, $4, $5, $6)`,
-        [org, entity, row.id, row.status, to, extra.note ?? null],
+        `insert into public.entity_events (org_id, entity_type, entity_id, from_status, to_status, note, actor, actor_email) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [org, entity, row.id, row.status, to, extra.note ?? null, extra.actor?.id ?? null, extra.actor?.email ?? null],
       );
       return row.id;
     });
@@ -199,8 +199,20 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       return statuses;
     },
 
-    async setFindingStatus(fingerprint, status, note) {
-      await transition("finding", "findings", "fingerprint", fingerprint, () => true, status, { note });
+    async setFindingStatus(fingerprint, status, note, actor) {
+      await transition("finding", "findings", "fingerprint", fingerprint, () => true, status, { note, actor });
+    },
+
+    async findingDecisions() {
+      const org = await orgId();
+      const { rows } = await pool.query<{ fingerprint: string; actor: string | null; actor_email: string | null; at: Date }>(
+        `select distinct on (f.fingerprint) f.fingerprint, e.actor, e.actor_email, e.at
+           from public.entity_events e join public.findings f on f.id = e.entity_id
+          where e.org_id = $1 and e.entity_type = 'finding'
+          order by f.fingerprint, e.at desc, e.id desc`,
+        [org],
+      );
+      return new Map(rows.map((r) => [r.fingerprint, { actorId: r.actor, by: r.actor_email, at: r.at.toISOString() }]));
     },
 
     async listAcceptedFindings() {

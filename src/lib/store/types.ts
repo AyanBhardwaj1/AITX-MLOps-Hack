@@ -85,7 +85,9 @@ export interface Store {
   readonly kind: "memory" | "postgres";
   /** Upserts findings by fingerprint and returns each one's status (dismissals are kept). */
   syncFindings(findings: readonly Finding[]): Promise<Map<string, FindingStatus>>;
-  setFindingStatus(fingerprint: string, status: FindingStatus, note?: string): Promise<void>;
+  setFindingStatus(fingerprint: string, status: FindingStatus, note?: string, actor?: Actor): Promise<void>;
+  /** The latest decision on each finding: who (when someone signed in made it) and when. */
+  findingDecisions(): Promise<Map<string, FindingDecision>>;
   listAcceptedFindings(): Promise<AcceptedFinding[]>;
   saveDrafts(drafts: readonly DraftInput[]): Promise<StoredAction[]>;
   listActions(limit: number): Promise<StoredAction[]>;
@@ -134,4 +136,17 @@ export interface StoredShareLink extends Omit<ShareLinkInput, "tokenHash"> {
   id: string;
   createdAt: string;
   revokedAt: string | null;
+}
+
+/** A signed-in person acting on the company's data. */
+export interface Actor {
+  id: string;
+  email: string | null;
+}
+
+export interface FindingDecision {
+  actorId: string | null;
+  /** Their email at the time, or null for the public demo or an unknown person. */
+  by: string | null;
+  at: string;
 }

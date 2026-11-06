@@ -60,6 +60,22 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       await expect(store.setFindingStatus("nope", "accepted")).rejects.toBeInstanceOf(StoreError);
     });
 
+    it("remembers who decided each finding and when", async () => {
+      const store = await makeStore();
+      await store.syncFindings([finding("price_creep:datadog"), finding("zombie:loom")]);
+      const maya = { id: crypto.randomUUID(), email: "maya@acme.example" };
+      await store.setFindingStatus("price_creep:datadog", "dismissed", undefined, maya);
+      await store.setFindingStatus("zombie:loom", "accepted");
+      const decisions = await store.findingDecisions();
+      expect(decisions.get("price_creep:datadog")).toMatchObject({ by: "maya@acme.example", actorId: maya.id });
+      expect(Date.parse(decisions.get("price_creep:datadog")!.at)).not.toBeNaN();
+      expect(decisions.get("zombie:loom")!.by).toBeNull();
+      // The latest decision wins.
+      const sam = { id: crypto.randomUUID(), email: "sam@acme.example" };
+      await store.setFindingStatus("price_creep:datadog", "accepted", undefined, sam);
+      expect((await store.findingDecisions()).get("price_creep:datadog")!.actorId).toBe(sam.id);
+    });
+
     it("saves drafts idempotently by fingerprint", async () => {
       const store = await makeStore();
       await store.syncFindings([finding("duplicate_tools:video_meetings")]);

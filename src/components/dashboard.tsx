@@ -63,7 +63,7 @@ export interface DashboardData {
   snapshot: Snapshot;
   history: MonthHistory[];
   /** `preview`: only exists because of this demo visitor's own category fixes, so it can't be acted on. */
-  findings: (Finding & { evidence: EvidenceRow[]; status: FindingStatus; preview?: boolean })[];
+  findings: (Finding & { evidence: EvidenceRow[]; status: FindingStatus; preview?: boolean; decidedBy?: string | null; decidedAt?: string | null })[];
   streams: {
     vendorKey: string;
     vendorName: string;
@@ -385,7 +385,10 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                     <ul className="mt-2 space-y-1">
                       {dismissed.map((f) => (
                         <li key={f.id} className="flex items-center justify-between gap-2">
-                          <span className="truncate">{f.title}</span>
+                          <span className="min-w-0 truncate">
+                            {f.title}
+                            {f.status === "dismissed" && <DecidedBy by={f.decidedBy} at={f.decidedAt} />}
+                          </span>
                           <button type="button" onClick={() => void setStatus(f.id, "open")} className="shrink-0 text-brand hover:underline">
                             Restore
                           </button>
@@ -593,6 +596,7 @@ function FindingRow({
             <span className="rounded bg-canvas px-1.5 py-0.5 text-[11px] font-medium text-muted">{KIND_LABEL[f.kind]}</span>
             <span className="font-medium">{f.title}</span>
             {status === "accepted" && <span className="rounded bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand">✓ Acting on it</span>}
+            {status === "accepted" && f.status === "accepted" && <DecidedBy by={f.decidedBy} at={f.decidedAt} />}
           </div>
           <p className="mt-1 text-sm text-muted">{f.detail}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium">
@@ -650,5 +654,16 @@ function FindingRow({
         </div>
       </div>
     </li>
+  );
+}
+
+/** "by maya@acme.com · Oct 3" for a teammate's decision; nothing when nobody is on record. */
+function DecidedBy({ by, at }: { by?: string | null; at?: string | null }) {
+  if (!by) return null;
+  return (
+    <span className="ml-1 text-[11px] font-normal text-muted">
+      by {by}
+      {at ? ` · ${formatDate(at.slice(0, 10))}` : ""}
+    </span>
   );
 }

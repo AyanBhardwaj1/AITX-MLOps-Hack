@@ -2,7 +2,7 @@ import { CASH_ACCOUNT_ID } from "../uploads/rows";
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { RhoTransaction } from "../rho/schema";
-import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
+import { StoreError, type AcceptedFinding, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
  * In-process store: used when DATABASE_URL isn't set. State lives as long as the server
@@ -12,6 +12,7 @@ export function createMemoryStore(): Store {
   const findingStatus = new Map<string, FindingStatus>();
   const latestFinding = new Map<string, Finding>();
   const acceptedAt = new Map<string, string>();
+  const decisions = new Map<string, FindingDecision>();
   const actions: StoredAction[] = [];
   const runs: StoredRun[] = [];
   const corrections = new Map<string, VendorCorrection>();
@@ -39,11 +40,15 @@ export function createMemoryStore(): Store {
       }
       return new Map(findings.map((f) => [f.id, findingStatus.get(f.id)!]));
     },
-    async setFindingStatus(fingerprint, status) {
+    async setFindingStatus(fingerprint, status, _note, actor) {
       if (!findingStatus.has(fingerprint)) throw new StoreError("Finding not found", "not_found");
       findingStatus.set(fingerprint, status);
+      decisions.set(fingerprint, { actorId: actor?.id ?? null, by: actor?.email ?? null, at: new Date().toISOString() });
       if (status === "accepted") acceptedAt.set(fingerprint, new Date().toISOString());
       else acceptedAt.delete(fingerprint);
+    },
+    async findingDecisions() {
+      return new Map([...decisions].map(([k, v]) => [k, { ...v }]));
     },
     async listAcceptedFindings() {
       return [...acceptedAt].map(([fingerprint, at]): AcceptedFinding => {
@@ -144,6 +149,7 @@ export function createMemoryStore(): Store {
       // Everything worked out from the uploads goes too, share links included.
       findingStatus.clear();
       latestFinding.clear();
+      decisions.clear();
       acceptedAt.clear();
       actions.length = 0;
       runs.length = 0;

@@ -20,7 +20,7 @@ import { vendorHistory } from "@/lib/finance/vendor-history";
 import { cashAccountIds } from "@/lib/rho/map";
 import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
-import type { FindingStatus } from "@/lib/store/types";
+import type { FindingDecision, FindingStatus } from "@/lib/store/types";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +74,13 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
   const shared = visitorOnly ? new Set(analyze({ ...dataset, corrections: undefined }).findings.map((f) => f.id)) : null;
   const { statuses, storeOk } = await findingStatuses(mode, shared ? a.findings.filter((f) => shared.has(f.id)) : a.findings);
   const savings = await savingsFor(mode, dataset, a);
+  // Who decided each finding: shown to a company's team, never on the anonymous demo.
+  const decisions =
+    mode === "company" && storeOk
+      ? await getStore(await scopeFor(mode))
+          .findingDecisions()
+          .catch(() => new Map<string, FindingDecision>())
+      : new Map<string, FindingDecision>();
   const byId = new Map(a.txns.map((t) => [t.id, t]));
   const history = monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS);
   return {
@@ -92,6 +99,8 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
       ...f,
       status: statuses.get(f.id) ?? "open",
       preview: shared ? !shared.has(f.id) : false,
+      decidedBy: decisions.get(f.id)?.by ?? null,
+      decidedAt: decisions.get(f.id)?.at ?? null,
       evidence: f.evidenceTxnIds
         .slice(-MAX_EVIDENCE_ROWS)
         .map((id) => byId.get(id))
