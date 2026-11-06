@@ -19,6 +19,7 @@ export function createMemoryStore(): Store {
   const shareLinks: (StoredShareLink & { tokenHash: string })[] = [];
   const uploads = new Map<string, RhoTransaction>();
   let uploadCash: number | null = null;
+  let slackWebhook: string | null = null;
   const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
@@ -132,6 +133,12 @@ export function createMemoryStore(): Store {
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
       return { cashCents: uploadCash, rows: [...uploads.values()].map((r) => structuredClone(r)) };
+    },
+    async getSlackWebhook() {
+      return slackWebhook;
+    },
+    async setSlackWebhook(url) {
+      slackWebhook = url;
     },
     async deleteUploadedAccount(account) {
       if (account === CASH_ACCOUNT_ID) return 0;

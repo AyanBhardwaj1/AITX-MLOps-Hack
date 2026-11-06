@@ -71,6 +71,18 @@ export async function findShareLinkByTokenHash(pool: Pool, tokenHash: string): P
   return rows[0] ? { scope: rows[0].scope, link: toShareLink(rows[0]) } : null;
 }
 
+/** Companies that connected their own Slack and have uploaded data: the Monday digest's list. */
+export async function listDigestScopes(pool: Pool, limit: number): Promise<string[]> {
+  const { rows } = await pool.query<{ slug: string }>(
+    `select o.slug from public.organizations o join public.company_integrations i on i.org_id = o.id
+      where o.slug like 'org\\_%' and i.slack_webhook_url is not null
+        and exists (select 1 from public.connections c where c.org_id = o.id and c.provider = 'csv')
+      order by o.created_at limit $1`,
+    [limit],
+  );
+  return rows.map((r) => r.slug);
+}
+
 /**
  * Companies (scopes "org_...") that have uploaded data, the ones whose Autopilot ran longest ago
  * (or never) first, so a time-limited cron gets round to everyone over successive days.
@@ -473,6 +485,21 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       );
       if (!cash.rows[0] || rows.length === 0) return null;
       return { cashCents: Number(cash.rows[0].balance_minor), rows: rows.map((r) => r.raw) };
+    },
+
+    async getSlackWebhook() {
+      const org = await orgId();
+      const { rows } = await pool.query<{ url: string | null }>(`select slack_webhook_url as url from public.company_integrations where org_id = $1`, [org]);
+      return rows[0]?.url ?? null;
+    },
+
+    async setSlackWebhook(url) {
+      const org = await orgId();
+      await pool.query(
+        `insert into public.company_integrations (org_id, slack_webhook_url) values ($1, $2)
+         on conflict (org_id) do update set slack_webhook_url = excluded.slack_webhook_url, updated_at = now()`,
+        [org, url],
+      );
     },
 
     async deleteUploadedAccount(account) {

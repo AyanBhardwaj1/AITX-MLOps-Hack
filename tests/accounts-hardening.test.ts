@@ -30,10 +30,14 @@ describe("the operator's own integrations once accounts are on", () => {
     expect(canSendSlackFromApp()).toBe(false);
     const { POST } = await import("@/app/api/digest/route");
     as("user-a", "a@acme.example");
-    for (const mode of ["demo", "company"]) {
-      const res = await POST(new Request("http://localhost/api/digest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) }));
-      expect(res.status, mode).toBe(403);
-    }
+    const posted: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => (posted.push(String(url)), new Response("ok")));
+    const send = (mode: string) => POST(new Request("http://localhost/api/digest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) }));
+    expect((await send("demo")).status).toBe(403);
+    // A company without its own Slack is told to connect one; the operator's is never used.
+    expect((await send("company")).status).toBe(409);
+    expect(posted).toEqual([]);
+    vi.unstubAllGlobals();
   });
 
   it("never files tickets in the operator's Jira from an approval", async () => {

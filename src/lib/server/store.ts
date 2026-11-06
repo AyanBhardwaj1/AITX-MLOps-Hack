@@ -1,7 +1,7 @@
 import "server-only";
 import { Pool } from "pg";
 import { createMemoryStore } from "../store/memory";
-import { createPostgresStore, findShareLinkByTokenHash, listUploadScopes } from "../store/postgres";
+import { createPostgresStore, findShareLinkByTokenHash, listDigestScopes, listUploadScopes } from "../store/postgres";
 import type { Store } from "../store/types";
 import { accountsEnabled, env } from "./env";
 
@@ -98,4 +98,14 @@ export async function listCompanyScopesWithUploads(limit: number): Promise<strin
     found.push({ scope, lastRun: (await store.listRuns(1))[0]?.startedAt ?? "" });
   }
   return found.sort((a, b) => a.lastRun.localeCompare(b.lastRun)).slice(0, limit).map((f) => f.scope);
+}
+
+/** Companies with their own Slack webhook and uploaded data. */
+export async function listCompanyScopesWithSlack(limit: number): Promise<string[]> {
+  if (hasDatabase()) return listDigestScopes(getPool(), limit);
+  const found: string[] = [];
+  for (const [scope, store] of stores) {
+    if (scope.startsWith("org_") && (await store.getSlackWebhook()) && (await store.loadUploads())) found.push(scope);
+  }
+  return found.slice(0, limit);
 }

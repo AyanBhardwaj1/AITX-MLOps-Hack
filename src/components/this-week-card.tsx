@@ -98,7 +98,16 @@ export function ThisWeekCard({ changes, mode, slack }: { changes: Change[]; mode
         {preview.status === "ready" && (
           <div className="border-t border-line bg-canvas px-5 py-4 text-sm">
             <Markdown text={preview.markdown} />
-            {!slack && (
+            {!slack && mode === "company" && (
+              <p className="mt-3 text-xs text-muted">
+                To get this in your Slack every Monday,{" "}
+                <a href="/app/settings" className="font-medium text-brand hover:underline">
+                  connect a channel in settings
+                </a>
+                .
+              </p>
+            )}
+            {!slack && mode !== "company" && (
               <p className="mt-3 text-xs text-muted">
                 To get this in Slack every Monday, add a <code>SLACK_WEBHOOK_URL</code> (an incoming webhook) and <code>CRON_SECRET</code> on the
                 server. Sending on demand from here also needs <code>APP_PASSWORD</code>.

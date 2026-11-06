@@ -143,7 +143,8 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     capabilities: {
       copilot: hasOpenAI(),
       jira: canFileJiraFromApp(),
-      slack: canSendSlackFromApp(),
+      // A company sends to its own Slack, if it connected one; otherwise the operator's rules apply.
+      slack: mode === "company" ? await getStore(await scopeFor(mode)).getSlackWebhook().then((u) => u !== null, () => false) : canSendSlackFromApp(),
       persistence: hasDatabase() ? "postgres" : "memory",
       storeOk,
       accounts: accountsEnabled(),

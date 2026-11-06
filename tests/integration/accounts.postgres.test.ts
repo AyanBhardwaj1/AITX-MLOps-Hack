@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { createPostgresAccounts } from "@/lib/accounts/postgres";
-import { createPostgresStore, listUploadScopes } from "@/lib/store/postgres";
+import { createPostgresStore, listDigestScopes, listUploadScopes } from "@/lib/store/postgres";
 import { runAccountsContract } from "../accounts-contract";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -78,5 +78,22 @@ describe("invite-only inside the transaction", () => {
     const user = { id: crypto.randomUUID(), email: "nobody@nowhere.example" };
     await expect(accounts.ensureCompanyFor(user, { allowNew: false })).rejects.toMatchObject({ name: "NotInvited" });
     expect(await accounts.companyFor(user.id)).toBeNull();
+  });
+});
+
+describe("companies the Monday digest goes to", () => {
+  it("are the ones with their own Slack and uploaded data", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const make = async () => accounts.ensureCompanyFor({ id: crypto.randomUUID(), email: null });
+    const [both, slackOnly, dataOnly] = [await make(), await make(), await make()];
+    const row = { id: "u_s", money_movement_id: null, account_id: "uploaded", account_name: "uploaded", account_type: "checking" as const, amount: { amount: -500, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "ZOOM", initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null };
+    for (const c of [both, dataOnly]) await createPostgresStore(pool, c.scope).saveUploads(1, [row], 10);
+    for (const c of [both, slackOnly]) await createPostgresStore(pool, c.scope).setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");
+    const scopes = await listDigestScopes(pool, 10_000);
+    expect(scopes).toContain(both.scope);
+    expect(scopes).not.toContain(slackOnly.scope);
+    expect(scopes).not.toContain(dataOnly.scope);
+    await createPostgresStore(pool, both.scope).setSlackWebhook(null);
+    expect(await listDigestScopes(pool, 10_000)).not.toContain(both.scope);
   });
 });

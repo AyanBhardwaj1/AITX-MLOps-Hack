@@ -158,3 +158,20 @@ export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no
   if (current?.role === "owner" && (await getStore(current.scope).loadUploads())) return "has_data";
   return getAccounts().acceptInvite(user, orgId);
 }
+
+/** "…abcd": enough to recognise which webhook is connected, never enough to use it. */
+const webhookHint = (url: string) => `…${url.slice(-4)}`;
+
+/** Whether the signed-in user's company has its own Slack connected (any member may see this). */
+export async function companySlackStatus(): Promise<{ connected: boolean; hint: string | null }> {
+  const user = await sessionUser();
+  if (!user) throw new SignInRequired();
+  const company = await ensureCompanyFor(user);
+  const url = await getStore(company.scope).getSlackWebhook();
+  return { connected: url !== null, hint: url ? webhookHint(url) : null };
+}
+
+/** The signed-in owner's company (OwnerOnly / SignInRequired otherwise). */
+export async function ownerCompany(): Promise<Company> {
+  return (await ownedCompany()).company;
+}

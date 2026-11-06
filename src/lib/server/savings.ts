@@ -1,16 +1,21 @@
 import "server-only";
 import { verifySavings, type SavingsSummary } from "../insights/savings";
 import type { Analysis } from "../pipeline";
-import type { AcceptedFinding } from "../store/types";
+import type { AcceptedFinding, Store } from "../store/types";
 import type { DataMode, Dataset } from "./data";
 import { scopeFor } from "./scope";
 import { getStore } from "./store";
 
 /** Verified savings for everything people acted on: stored decisions plus any history shipped with the data. */
 export async function savingsFor(mode: DataMode, dataset: Dataset, analysis: Analysis): Promise<SavingsSummary> {
+  return savingsFromStore(getStore(await scopeFor(mode)), dataset, analysis);
+}
+
+/** The same, for a store already resolved (the cron works by company scope, outside any request). */
+export async function savingsFromStore(store: Store, dataset: Dataset, analysis: Analysis): Promise<SavingsSummary> {
   let stored: AcceptedFinding[] = [];
   try {
-    stored = await getStore(await scopeFor(mode)).listAcceptedFindings();
+    stored = await store.listAcceptedFindings();
   } catch (err) {
     console.error("[savings] couldn't read accepted findings", err);
   }

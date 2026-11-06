@@ -204,6 +204,15 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.loadUploads()).toBeNull();
     });
 
+    it("keeps the company's own Slack webhook, and forgets it on request", async () => {
+      const store = await makeStore();
+      expect(await store.getSlackWebhook()).toBeNull();
+      await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/abcdefabcdef");
+      expect(await store.getSlackWebhook()).toBe("https://hooks.slack.com/services/T000/B000/abcdefabcdef");
+      await store.setSlackWebhook(null);
+      expect(await store.getSlackWebhook()).toBeNull();
+    });
+
     it("deletes one uploaded account's rows and keeps the rest", async () => {
       const store = await makeStore();
       const row = (id: string, account: string) => ({
