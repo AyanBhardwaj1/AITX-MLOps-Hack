@@ -60,7 +60,9 @@ const HISTORY_MONTHS = 12;
 function graderAccountLabel(name: string): string {
   const label = fileAccountLabel(name);
   const lastFour = /^([a-z]+)(\d{4})(?=[^\d]|$)/i.exec(name);
-  return label === DEFAULT_ACCOUNT_LABEL && lastFour ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
+  // "Activity2025.csv" is a year, not an account.
+  const year = lastFour && /^(?:19|20)\d{2}$/.test(lastFour[2]!);
+  return label === DEFAULT_ACCOUNT_LABEL && lastFour && !year ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
 }
 
 /** Shared rows that make two files one account (or half the smaller file, for short ones). */

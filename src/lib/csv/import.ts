@@ -293,7 +293,7 @@ function rowAmount(cells: readonly string[], m: Mapping): number | null {
 /** A bank row's type from its text and sign: own-account moves, card payoffs, then card or bank spend. */
 export function inferTransactionType(description: string, amountCents: number, onCard: boolean): string {
   if (!isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)) return "internal_transfer";
-  if (CARD_PAYOFF_PATTERN.test(description) && !(amountCents > 0 && PAYMENT_FROM.test(description) && !FROM_OWN_ACCOUNT.test(description))) return "credit_repayment";
+  if (CARD_PAYOFF_PATTERN.test(description)) return "credit_repayment";
   if (onCard) return amountCents < 0 ? "card_debit" : "card_credit";
   return amountCents < 0 ? "ach_debit" : "ach_credit";
 }
@@ -338,22 +338,34 @@ function rowToTransaction(cells: readonly string[], m: Mapping, accountId: strin
  * Decide this over everything uploaded together, never file by file, or card spend gets counted twice.
  */
 export function resolveCardPayoffs(input: readonly RhoTransaction[]): { transactions: RhoTransaction[]; cardSpendAsPayoffs: boolean } {
-  // "PAYMENT FROM <a name>" coming in reads as a customer; it's a card's leg of a payoff when
-  // another account shows the same amount going out to a card within a few days.
   const out = input.filter((t) => t.transaction_type === "credit_repayment" && t.amount.amount < 0);
-  const day = (t: RhoTransaction) => Date.parse(t.initiated_at.slice(0, 10));
-  const isLeg = (t: RhoTransaction) =>
-    (t.transaction_type === "ach_credit" || t.transaction_type === "card_credit") &&
-    PAYMENT_FROM.test(t.counterparty_name) &&
-    CARD_PAYOFF_PATTERN.test(t.counterparty_name) &&
-    out.some((o) => o.account_id !== t.account_id && o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
-  const transactions = input.map((t) => (isLeg(t) ? { ...t, transaction_type: "credit_repayment" } : t));
+  // With no payoff going out of an uploaded account, payment rows are the card's own legs (a card
+  // file on its own): transfers, whatever bank they name.
+  let transactions = [...input];
+  if (out.length > 0) {
+    // A positive "PAYMENT FROM <a name>" that matches no payment going out is a customer paying
+    // ("ONLINE PAYMENT FROM ACME CORP"), not a card's leg. Each payment out matches one leg.
+    const day = (t: RhoTransaction) => Date.parse(t.initiated_at.slice(0, 10));
+    const unmatched = [...out];
+    const matches = (t: RhoTransaction) => {
+      const i = unmatched.findIndex((o) => o.account_id !== t.account_id && o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
+      if (i < 0) return false;
+      unmatched.splice(i, 1);
+      return true;
+    };
+    const legs = input.filter((t) => t.transaction_type === "credit_repayment" && t.amount.amount > 0);
+    // Own-account and thank-you legs first, so a customer can't take their match.
+    const customerLike = (t: RhoTransaction) => PAYMENT_FROM.test(t.counterparty_name) && !FROM_OWN_ACCOUNT.test(t.counterparty_name);
+    for (const t of legs.filter((l) => !customerLike(l))) matches(t);
+    const customers = new Set(legs.filter((l) => customerLike(l) && !matches(l)));
+    transactions = input.map((t) => (customers.has(t) ? { ...t, transaction_type: "ach_credit" } : t));
+  }
   const payoffs = transactions.filter((t) => t.transaction_type === "credit_repayment");
   // Only the incoming leg proves the card account was uploaded: a named row may be a debit-card purchase.
   const cardRowsPresent = payoffs.some((t) => t.amount.amount > 0);
   const cardSpendAsPayoffs = payoffs.length > 0 && !cardRowsPresent;
   return {
-    transactions: cardSpendAsPayoffs ? transactions.map((t) => (t.transaction_type === "credit_repayment" ? { ...t, transaction_type: UNITEMIZED_CARD_SPEND } : t)) : [...transactions],
+    transactions: cardSpendAsPayoffs ? transactions.map((t) => (t.transaction_type === "credit_repayment" ? { ...t, transaction_type: UNITEMIZED_CARD_SPEND } : t)) : transactions,
     cardSpendAsPayoffs,
   };
 }

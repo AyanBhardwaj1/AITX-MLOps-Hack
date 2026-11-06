@@ -31,7 +31,8 @@ export interface MoneyIn {
 
 const MAX_PAYERS = 6;
 /** Money in that isn't a customer paying: interest, transfers, deposits returned, loans. */
-const NOT_A_CUSTOMER = /\b(?:interest|dividends?|transfer|deposit|refund|loan|tax refund|irs|treasury)\b/i;
+const NOT_A_CUSTOMER =
+  /^(?:interest|dividends?)$|\b(?:interest (?:paid|payment|earned|credit|income)|dividends? (?:paid|payment|income)|transfer from|deposit (?:return|refund)|loan (?:proceeds|disbursement|advance)|irs|us treasury|treas 310|tax refund)\b/i;
 
 /** The catalog's revenue entries are payment processors' payouts. */
 const isProcessor = (t: EnrichedTxn) => t.vendor.category === "revenue" && t.vendor.source === "catalog";

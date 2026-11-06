@@ -108,3 +108,12 @@ describe("who pays you, review fixes", () => {
     expect(m.payers.reduce((s, p) => s + p.monthlyCents, 0) + m.othersMonthlyCents).toBe(m.monthlyCents);
   });
 });
+
+describe("who pays you: real names that look like bank words", () => {
+  it("customers named Deposit Solutions, Transfer Wise, Interest Media, Loan Depot or Treasury Wine are customers", () => {
+    for (const name of ["Deposit Solutions", "Transfer Wise", "Interest Media", "Loan Depot", "Treasury Wine"]) {
+      const t = [...months.flatMap((m) => [txn(`p${m}`, `${m}-01`, -40_000_00, "Gusto", { category: "payroll", source: "catalog" }), txn(`a${m}`, `${m}-10`, 40_000_00, name), txn(`b${m}`, `${m}-12`, 5_000_00, "Initech")])];
+      expect(moneyIn(t, computeSnapshot({ cashCents: 600_000_00, txns: t, asOf: "2026-11-12" }))!.topCustomer!.name, name).toBe(name);
+    }
+  });
+});

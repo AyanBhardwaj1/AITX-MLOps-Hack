@@ -88,7 +88,8 @@ describe("import hunt, second review", () => {
 
   it("customer names that start like account words are money in; a card leg from 'business checking' or a named bank is a payoff", () => {
     for (const d of ["ONLINE PAYMENT FROM SAVANNAH COFFEE CO", "ONLINE PAYMENT FROM 3M COMPANY", "ONLINE PAYMENT FROM CHECKMATE INC", "ONLINE PAYMENT FROM ACCOUNTABLE HQ", "ONLINE PAYMENT FROM BANKSY LTD"]) {
-      expect(importCsv(csv([`2026-10-02,${d},8000.00`]), { accountId: "chk", resolvePayoffs: false }).transactions[0]!.transaction_type, d).toBe("ach_credit");
+      const r = resolveCardPayoffs(importCsv(csv([`2026-10-02,${d},8000.00`, "2026-10-03,AMEX AUTOPAY,-9120.00"]), { accountId: "chk", resolvePayoffs: false }).transactions);
+      expect(r.transactions.find((t) => t.counterparty_name === d)!.transaction_type, d).toBe("ach_credit");
     }
     // Naming the bank alone ("FROM MERCURY") needs the matching payment out: see the next review's test.
     for (const d of ["E-PAYMENT FROM BUSINESS CHECKING", "ONLINE PAYMENT FROM OPERATING ACCOUNT"]) {
@@ -144,5 +145,32 @@ describe("import hunt, third review", () => {
       100_000_00,
     );
     expect(g.transactions).toBe(9);
+  });
+});
+
+describe("import hunt, fourth review", () => {
+  const file = (rows: string[], accountId: string) => importCsv(csv(rows), { accountId, resolvePayoffs: false }).transactions;
+  const months = ["2026-07", "2026-08", "2026-09"];
+
+  it("a card file alone keeps its payment rows as payoffs, whatever bank they name", () => {
+    const card = file(months.flatMap((m) => [`${m}-05,FIGMA,-3000.00`, `${m}-20,AUTOPAY PAYMENT FROM CHASE,3000.00`]), "card");
+    const r = resolveCardPayoffs(card);
+    expect(r.transactions.filter((t) => t.amount.amount > 0).every((t) => t.transaction_type === "credit_repayment")).toBe(true);
+    expect(r.cardSpendAsPayoffs).toBe(false);
+  });
+
+  it("a payout matches one leg only, so a same-amount customer stays a customer", () => {
+    const chk = file(["2026-09-28,AMEX AUTOPAY,-5000.00"], "chk");
+    const card = file(["2026-09-30,AUTOPAY PAYMENT FROM CHASE,5000.00"], "card");
+    const sav = file(["2026-10-01,ONLINE PAYMENT FROM ACME CORP,5000.00"], "sav");
+    const r = resolveCardPayoffs([...chk, ...card, ...sav]);
+    expect(r.transactions.find((t) => t.counterparty_name.includes("ACME"))!.transaction_type).toBe("ach_credit");
+    expect(r.transactions.find((t) => t.counterparty_name.includes("CHASE"))!.transaction_type).toBe("credit_repayment");
+  });
+
+  it("file names with a year aren't account numbers", () => {
+    const rows = ["2026-07-01,GUSTO PAYROLL,-5000.00", "2026-07-03,AWS,-200.00", "2026-07-10,FIGMA,-45.00"];
+    const g = gradeCsvFiles([{ name: "Activity2025.csv", text: csv(rows) }, { name: "Activity2026.csv", text: csv(rows) }], 100_000_00);
+    expect(g.transactions).toBe(3);
   });
 });
