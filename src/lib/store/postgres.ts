@@ -282,8 +282,8 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       return drafts.map((d) => byFingerprint.get(d.fingerprint)!);
     },
 
-    async listActions(limit) {
-      return actionsWhere("", [], limit);
+    async listActions(limit, opts) {
+      return actionsWhere(opts?.inbox ? `and not (a.status = 'draft' and f.status is not distinct from 'dismissed')` : "", [], limit);
     },
 
     async getAction(id) {

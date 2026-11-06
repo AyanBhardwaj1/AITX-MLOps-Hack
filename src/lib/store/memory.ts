@@ -87,8 +87,9 @@ export function createMemoryStore(): Store {
         return action;
       });
     },
-    async listActions(limit) {
-      return [...actions].reverse().slice(0, limit);
+    async listActions(limit, opts) {
+      const hidden = (a: StoredAction) => opts?.inbox === true && a.status === "draft" && a.findingFingerprint !== null && findingStatus.get(a.findingFingerprint) === "dismissed";
+      return [...actions].reverse().filter((a) => !hidden(a)).slice(0, limit);
     },
     async getAction(id) {
       try {

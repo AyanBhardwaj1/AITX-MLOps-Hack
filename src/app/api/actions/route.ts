@@ -19,12 +19,8 @@ const allow = createRateLimiter({ limit: 30, windowMs: 60_000 });
 export async function GET(request: Request) {
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
-    const store = getStore(await scopeFor(mode));
-    const actions = await store.listActions(LIST_LIMIT);
     // Drafts for findings the team dismissed are hidden (and can't be approved); reopening the finding brings them back.
-    const fingerprints = [...new Set(actions.filter((a) => a.status === "draft" && a.findingFingerprint).map((a) => a.findingFingerprint!))];
-    const dismissed = new Set((await Promise.all(fingerprints.map(async (fp) => ((await store.findingStatus(fp)) === "dismissed" ? fp : null)))).filter((fp) => fp !== null));
-    return NextResponse.json({ actions: actions.filter((a) => !(a.status === "draft" && a.findingFingerprint && dismissed.has(a.findingFingerprint))) });
+    return NextResponse.json({ actions: await getStore(await scopeFor(mode)).listActions(LIST_LIMIT, { inbox: true }) });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;

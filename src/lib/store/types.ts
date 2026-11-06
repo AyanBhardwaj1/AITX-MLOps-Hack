@@ -93,7 +93,8 @@ export interface Store {
   findingDecisions(): Promise<Map<string, FindingDecision>>;
   listAcceptedFindings(): Promise<AcceptedFinding[]>;
   saveDrafts(drafts: readonly DraftInput[]): Promise<StoredAction[]>;
-  listActions(limit: number): Promise<StoredAction[]>;
+  /** Newest first. `inbox`: leaves out drafts whose finding was dismissed (before the limit). */
+  listActions(limit: number, opts?: { inbox?: boolean }): Promise<StoredAction[]>;
   /** One action by id (null when this scope has none with it). */
   getAction(id: string): Promise<StoredAction | null>;
   decideAction(id: string, decision: "approved" | "rejected"): Promise<StoredAction>;

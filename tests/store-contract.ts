@@ -329,6 +329,18 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       ]);
     });
 
+    it("the Inbox listing leaves out a dismissed finding's drafts before the limit", async () => {
+      const store = await makeStore();
+      const f = (id: string) => ({ id, kind: "zombie", title: id, detail: "", vendorKeys: [], monthlySavingsCents: 1, oneTimeCents: 0, confidence: 0.9, evidenceTxnIds: [], action: "cancel" }) as unknown as Finding;
+      await store.syncFindings([f("zombie:live"), ...Array.from({ length: 3 }, (_, i) => f(`zombie:gone${i}`))]);
+      const d = (fp: string) => ({ fingerprint: `cancel:${fp}`, findingFingerprint: fp, kind: "jira_ticket" as const, title: fp, body: "b", createdBy: "autopilot" as const });
+      await store.saveDrafts([d("zombie:live")]);
+      await store.saveDrafts(Array.from({ length: 3 }, (_, i) => d(`zombie:gone${i}`)));
+      for (let i = 0; i < 3; i++) await store.setFindingStatus(`zombie:gone${i}`, "dismissed");
+      expect((await store.listActions(3, { inbox: true })).map((a) => a.findingFingerprint)).toEqual(["zombie:live"]);
+      expect(await store.listActions(3)).toHaveLength(3);
+    });
+
     it("claims the week's digest once, and gives it back when the post fails", async () => {
       const store = await makeStore();
       await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/cccccccccccc");
