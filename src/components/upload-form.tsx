@@ -13,6 +13,8 @@ export interface UploadSummary {
   from: string | null;
   to: string | null;
   cashCents: number;
+  /** What's stored per account, so a wrong upload can be taken out on its own. */
+  accounts: { account: string; rows: number; from: string; to: string; card: boolean }[];
 }
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -110,6 +112,16 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
     setState({ kind: "idle" });
   }
 
+  async function deleteAccount(account: string) {
+    if (!window.confirm(`Delete every transaction uploaded for “${account}”? Uploading that export again brings them back.`)) return;
+    setDeleting(true);
+    const res = await fetch("/api/uploads/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account }) }).catch(() => null);
+    setDeleting(false);
+    if (!res?.ok) return setState({ kind: "error", message: "Couldn’t delete that just now. Try again.", notes: [] });
+    setState({ kind: "idle" });
+    router.refresh();
+  }
+
   async function deleteAll() {
     if (!window.confirm("Delete every transaction you've uploaded, the cash you entered, and everything worked out from them (findings, drafts, fixes and share links)? This can't be undone.")) return;
     setDeleting(true);
@@ -143,6 +155,46 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
               <dd className="tabular font-medium">{formatDollars(summary.cashCents)}</dd>
             </div>
           </dl>
+          {summary.accounts.length > 0 && (
+            <table className="mt-4 w-full text-left text-sm">
+              <caption className="sr-only">Uploaded accounts</caption>
+              <thead className="text-xs text-muted">
+                <tr>
+                  <th scope="col" className="py-1 font-normal">
+                    Account
+                  </th>
+                  <th scope="col" className="py-1 text-right font-normal">
+                    Transactions
+                  </th>
+                  <th scope="col" className="hidden py-1 font-normal sm:table-cell">
+                    Dates
+                  </th>
+                  <th scope="col" className="py-1">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {summary.accounts.map((a) => (
+                  <tr key={a.account}>
+                    <td className="max-w-[12rem] truncate py-1.5" title={a.account}>
+                      {a.account}
+                      {a.card ? <span className="ml-1 text-xs text-muted">(card)</span> : null}
+                    </td>
+                    <td className="tabular py-1.5 text-right">{a.rows.toLocaleString("en-US")}</td>
+                    <td className="tabular hidden py-1.5 text-muted sm:table-cell">
+                      {formatDate(a.from)} – {formatDate(a.to)}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      <button type="button" onClick={() => void deleteAccount(a.account)} disabled={deleting} className="text-xs text-warn hover:underline disabled:opacity-50" aria-label={`Delete ${a.account}`}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/app?mode=company" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong">
               Open your dashboard

@@ -188,6 +188,27 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.loadUploads()).toBeNull();
     });
 
+    it("deletes one uploaded account's rows and keeps the rest", async () => {
+      const store = await makeStore();
+      const row = (id: string, account: string) => ({
+        id, money_movement_id: null, account_id: account, account_name: account, account_type: "checking" as const,
+        amount: { amount: -100, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: `VENDOR ${id}`,
+        initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null,
+      });
+      await store.saveUploads(5_000_00, [row("u_1", "amex gold"), row("u_2", "amex gold"), row("u_3", "chase checking")], 100);
+      expect(await store.deleteUploadedAccount("amex gold")).toBe(2);
+      const left = await store.loadUploads();
+      expect(left!.rows.map((r) => r.id)).toEqual(["u_3"]);
+      expect(left!.cashCents).toBe(5_000_00);
+      expect(await store.deleteUploadedAccount("cash_entered")).toBe(0);
+      expect(await store.deleteUploadedAccount("nope")).toBe(0);
+      // Re-uploading the deleted account brings its rows back.
+      expect(await store.saveUploads(5_000_00, [row("u_1", "amex gold")], 100)).toEqual({ inserted: 1, duplicates: 0 });
+      expect(await store.deleteUploadedAccount("chase checking")).toBe(1);
+      expect(await store.deleteUploadedAccount("amex gold")).toBe(1);
+      expect(await store.loadUploads()).toBeNull();
+    });
+
     it("deleting the uploads also deletes what was worked out from them, including public share links", async () => {
       const store = await makeStore();
       const now = new Date();

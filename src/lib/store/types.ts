@@ -117,6 +117,8 @@ export interface Store {
   saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
   /** Everything uploaded for this scope, or null when nothing has been. */
   loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
+  /** Deletes the uploaded rows of one account (never the entered cash); returns how many went. */
+  deleteUploadedAccount(account: string): Promise<number>;
   /** Deletes every uploaded transaction and the entered cash, and everything derived from them (findings, drafts, runs, fixes, share links). */
   clearUploads(): Promise<void>;
 }

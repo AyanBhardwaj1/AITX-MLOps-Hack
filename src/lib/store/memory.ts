@@ -1,3 +1,4 @@
+import { CASH_ACCOUNT_ID } from "../uploads/rows";
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { RhoTransaction } from "../rho/schema";
@@ -126,6 +127,16 @@ export function createMemoryStore(): Store {
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
       return { cashCents: uploadCash, rows: [...uploads.values()].map((r) => structuredClone(r)) };
+    },
+    async deleteUploadedAccount(account) {
+      if (account === CASH_ACCOUNT_ID) return 0;
+      let removed = 0;
+      for (const [id, r] of uploads) {
+        if (r.account_id !== account) continue;
+        uploads.delete(id);
+        removed += 1;
+      }
+      return removed;
     },
     async clearUploads() {
       uploads.clear();

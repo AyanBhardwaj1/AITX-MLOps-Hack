@@ -12,8 +12,22 @@ export const metadata: Metadata = { title: "Upload bank exports", robots: { inde
 async function summaryFor(scope: string): Promise<UploadSummary | null> {
   const stored = await getStore(scope).loadUploads();
   if (!stored) return null;
-  const dates = stored.rows.map((r) => (r.posted_at ?? r.initiated_at).slice(0, 10)).sort();
-  return { transactions: stored.rows.length, from: dates[0] ?? null, to: dates.at(-1) ?? null, cashCents: stored.cashCents };
+  const day = (r: (typeof stored.rows)[number]) => (r.posted_at ?? r.initiated_at).slice(0, 10);
+  const dates = stored.rows.map(day).sort();
+  const byAccount = new Map<string, { rows: number; from: string; to: string; card: boolean }>();
+  for (const r of stored.rows) {
+    const d = day(r);
+    const a = byAccount.get(r.account_id);
+    if (!a) byAccount.set(r.account_id, { rows: 1, from: d, to: d, card: r.account_type === "credit" });
+    else byAccount.set(r.account_id, { rows: a.rows + 1, from: d < a.from ? d : a.from, to: d > a.to ? d : a.to, card: a.card && r.account_type === "credit" });
+  }
+  return {
+    transactions: stored.rows.length,
+    from: dates[0] ?? null,
+    to: dates.at(-1) ?? null,
+    cashCents: stored.cashCents,
+    accounts: [...byAccount].map(([account, a]) => ({ account, ...a })).sort((x, y) => y.rows - x.rows),
+  };
 }
 
 export default async function UploadPage() {

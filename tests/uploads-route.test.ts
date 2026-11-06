@@ -90,4 +90,24 @@ describe("POST /api/uploads", () => {
     as("user-f");
     expect((await getStore(await scopeFor("company")).loadUploads())?.rows).toHaveLength(1);
   });
+
+  it("deletes one account's rows from the signed-in company only", async () => {
+    const { POST } = await import("@/app/api/uploads/route");
+    const del = (await import("@/app/api/uploads/account/route")).POST;
+    const { scopeFor } = await import("@/lib/server/scope");
+    const { getStore } = await import("@/lib/server/store");
+    as("user-h");
+    await POST(post({ cashCents: 1, rows: [row({ account: "amex gold" }), row({ account: "chase" })] }, "203.0.113.7"));
+    as("user-i");
+    await POST(post({ cashCents: 1, rows: [row({ account: "amex gold" })] }, "203.0.113.7"));
+    const req = (body: unknown) => new Request("http://localhost/api/uploads/account", { method: "POST", body: JSON.stringify(body) });
+    expect((await del(req({ account: "" }))).status).toBe(400);
+    const res = await del(req({ account: "amex gold" }));
+    expect(await res.json()).toEqual({ deleted: 1 });
+    expect(await getStore(await scopeFor("company")).loadUploads()).toBeNull();
+    as("user-h");
+    expect((await getStore(await scopeFor("company")).loadUploads())!.rows.map((r) => r.account_id).sort()).toEqual(["amex gold", "chase"]);
+    as(null);
+    expect((await del(req({ account: "chase" }))).status).toBe(401);
+  });
 });

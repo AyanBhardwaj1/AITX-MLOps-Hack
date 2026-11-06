@@ -458,6 +458,16 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       return { cashCents: Number(cash.rows[0].balance_minor), rows: rows.map((r) => r.raw) };
     },
 
+    async deleteUploadedAccount(account) {
+      if (account === CASH_ACCOUNT_ID) return 0;
+      const org = await orgId();
+      const connectionId = await csvConnection(pool, org, false);
+      if (!connectionId) return 0;
+      const { rowCount } = await pool.query(`delete from public.transactions where connection_id = $1 and provider_account_id = $2`, [connectionId, account]);
+      await pool.query(`delete from public.accounts where connection_id = $1 and provider_account_id = $2`, [connectionId, account]);
+      return rowCount ?? 0;
+    },
+
     async clearUploads() {
       const org = await orgId();
       const client = await pool.connect();
