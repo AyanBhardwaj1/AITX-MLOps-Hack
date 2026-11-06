@@ -4,7 +4,7 @@ import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { getBudgets, getChanges, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { getBudgets, getBurnBridge, getChanges, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -164,6 +164,24 @@ function budgetsAnswer(a: Analysis, _dismissed: ReadonlySet<string>, budgets: In
   return { question: INSTANT_QUESTIONS.budgets, tools, text: lines.join("\n\n") };
 }
 
+function burnMoved(a: Analysis): InstantAnswer {
+  const tools = ["get_burn_bridge"];
+  const b = getBurnBridge(a);
+  if ("note" in b) return { question: INSTANT_QUESTIONS.burn_moved, tools, text: b.note };
+  const month = (m: string) => formatDate(`${m}-01`).replace(/ 1, /, " ");
+  const signed = (c: number) => `${c > 0 ? "+" : "−"}${formatDollars(Math.abs(c))}`;
+  const head =
+    b.changeCents === 0
+      ? `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, the same as ${month(b.previous)}.`
+      : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, ${b.changeCents > 0 ? "up" : "down"} **${formatDollars(Math.abs(b.changeCents))}** on ${month(b.previous)}.`;
+  const rows = [
+    ...b.drivers.map((d) => `- ${d.name}${d.kind === "new" ? " (new)" : d.kind === "stopped" ? " (stopped)" : ""}: ${signed(d.changeCents)}`),
+    ...(b.otherCents ? [`- Everything else: ${signed(b.otherCents)}`] : []),
+    ...(b.revenueChangeCents ? [`- ${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`] : []),
+  ];
+  return { question: INSTANT_QUESTIONS.burn_moved, tools, text: [head, ...(rows.length ? ["What moved it (these add up to the change):", rows.join("\n")] : [])].join("\n\n") };
+}
+
 const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>, budgets: InstantBudgets) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
@@ -172,6 +190,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   default_alive: defaultAlive,
   what_changed: whatChanged,
   budgets: budgetsAnswer,
+  burn_moved: burnMoved,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */

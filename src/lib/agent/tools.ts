@@ -9,6 +9,7 @@ import { goalSeek, simulateSavings, stressRunway, countsTowardBurn } from "../fi
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budgets";
+import { burnBridge } from "../finance/burn-bridge";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -218,6 +219,12 @@ export const changesInput = z.object({});
 /** Recent alerts: burn spikes, large one-offs, price changes, new vendors, renewals due, low runway. */
 export function getChanges(a: Analysis) {
   return detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths });
+}
+
+export const burnBridgeInput = z.object({});
+/** Last complete month's net burn against the month before: the vendors that moved it, the rest, and money in (cents; it adds up). */
+export function getBurnBridge(a: Analysis) {
+  return burnBridge(a.txns, a.asOf) ?? { note: "There aren't two whole months of data to compare yet." };
 }
 
 export const budgetsInput = z.object({});

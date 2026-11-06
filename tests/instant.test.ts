@@ -68,3 +68,21 @@ describe("instant answers (no LLM)", () => {
     expect(instantAnswer(a, "budgets", new Set(), "unavailable").text).toMatch(/Couldn't load your budgets/);
   });
 });
+
+describe("why did burn change", () => {
+  it("answers from the burn bridge, and the lines add up to the change", async () => {
+    const { generateDemoCompany: gen } = await import("@/lib/seed/demo-company");
+    const demo = gen();
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions });
+    const { burnBridge } = await import("@/lib/finance/burn-bridge");
+    const b = burnBridge(a.txns, a.asOf)!;
+    const ans = instantAnswer(a, "burn_moved");
+    expect(ans.tools).toEqual(["get_burn_bridge"]);
+    expect(ans.text).toContain(formatDollars(b.netBurnCents));
+    expect(ans.text).toContain(formatDollars(Math.abs(b.changeCents)));
+    for (const d of b.drivers) expect(ans.text).toContain(d.name);
+    // Too little data: says so instead of guessing.
+    const short = analyze({ accounts: demo.accounts, transactions: demo.transactions.filter((t) => (t.posted_at ?? t.initiated_at) >= "2026-10-05") });
+    expect(instantAnswer(short, "burn_moved").text).toMatch(/two whole months/);
+  });
+});

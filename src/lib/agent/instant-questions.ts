@@ -7,5 +7,6 @@ export const INSTANT_QUESTIONS = {
   default_alive: "Are we default alive?",
   what_changed: "What changed this week?",
   budgets: "Are we on budget this month?",
+  burn_moved: "Why did burn change last month?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;
