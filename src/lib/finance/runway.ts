@@ -127,6 +127,17 @@ export interface Simulation {
   zeroCashDate: IsoDate | null;
 }
 
+/**
+ * The runway a recurring charge costs: days gained if it stopped, rounded. Null when runway has no
+ * end (nothing to gain). Same arithmetic as ticking a finding.
+ */
+export function runwayDaysFreedBy(snapshot: Snapshot, monthlyCents: Cents): number | null {
+  if (!Number.isFinite(snapshot.runwayMonths)) return null;
+  const after = simulateSavings(snapshot, Math.max(0, monthlyCents)).runwayMonths;
+  if (!Number.isFinite(after)) return null;
+  return Math.round((after - snapshot.runwayMonths) * AVG_DAYS_PER_MONTH);
+}
+
 export function simulateSavings(snapshot: Snapshot, monthlySavingsCents: Cents): Simulation {
   if (!Number.isFinite(monthlySavingsCents) || monthlySavingsCents < 0) {
     throw new Error("monthly savings must be a non-negative number of cents");

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CORRECTIONS_STATUS_ID, CorrectionEditor, CorrectionsList, RECURRING_HEADING_ID } from "./vendor-correction";
 import { Fragment, useMemo, useState } from "react";
-import { simulateSavings, stressRunway, type Snapshot } from "@/lib/finance/runway";
+import { simulateSavings, stressRunway, type Snapshot, runwayDaysFreedBy } from "@/lib/finance/runway";
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
 import type { Forecast } from "@/lib/finance/forecast";
 import type { MonthHistory } from "@/lib/finance/history";
@@ -177,6 +177,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const savings = monthly.filter((f) => selected.has(f.id)).reduce((s, f) => s + f.monthlySavingsCents, 0);
   const sim = simulateSavings(data.snapshot, savings);
   const allSim = simulateSavings(data.snapshot, monthly.reduce((s, f) => s + f.monthlySavingsCents, 0));
+  // Days of runway each recurring charge costs (gained if it stopped); none when runway has no end.
+  const runwayCost = (monthlyCents: number) => {
+    const days = runwayDaysFreedBy(data.snapshot, monthlyCents);
+    return days === null ? "—" : `${days} ${days === 1 ? "day" : "days"}`;
+  };
   // The gain as the two shown figures differ (12.4 − 12.2 = +0.2), not each rounded on its own.
   const shownDelta = (after: number) => (Number.isFinite(after) ? (Number(after.toFixed(1)) - Number(data.snapshot.runwayMonths.toFixed(1))).toFixed(1) : "∞");
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
@@ -522,6 +527,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                       <th className="px-5 py-2 font-medium">Vendor</th>
                       <th className="px-2 py-2 font-medium">Cadence</th>
                       <th className="px-2 py-2 text-right font-medium">Per month</th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        <abbr title="Days of runway gained if this charge stopped" className="no-underline">
+                          Runway it costs
+                        </abbr>
+                      </th>
                       <th className="px-2 py-2 font-medium">Next charge</th>
                       <th className="px-5 py-2 font-medium">Card</th>
                     </tr>
@@ -552,6 +562,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                         </td>
                         <td className="px-2 py-2 text-muted">{s.cadence}</td>
                         <td className="tabular whitespace-nowrap px-2 py-2 text-right">{formatMoney(s.monthlyCostCents)}</td>
+                        <td className="tabular whitespace-nowrap px-2 py-2 text-right text-muted">{runwayCost(s.monthlyCostCents)}</td>
                         <td className="tabular whitespace-nowrap px-2 py-2 text-muted">
                           <time dateTime={s.nextExpected}>{formatDate(s.nextExpected)}</time>
                         </td>
@@ -559,7 +570,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                       </tr>
                       {expanded && (
                         <tr>
-                          <td colSpan={5} className="p-0">
+                          <td colSpan={6} className="p-0">
                             <VendorHistoryPanel id={historyId} vendorName={s.vendorName} history={s.history} transactionsHref={`/app/transactions?mode=${data.mode}&vendor=${encodeURIComponent(s.vendorKey)}`} />
                           </td>
                         </tr>

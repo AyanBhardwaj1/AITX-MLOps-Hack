@@ -35,6 +35,9 @@ demo, the free grader and the public site work exactly as before.
 - **Already scheduled: 30 days ahead.** Every recurring charge expected over the 30 days from the date your data runs to
   (payroll, rent, subscriptions) from its billing day and usual amount, the total, and the cash
   left after them.
+- **Runway each subscription costs.** The recurring charges table (and its CSV) shows how many
+  days of runway each charge costs: what you'd gain if it stopped, by the same arithmetic as
+  ticking a finding.
 - **Needs a category.** Spending Runway couldn't categorise (it still counts in burn, but not in
   where the money goes, budgets or the 1099 list) is shown per month with its share, biggest
   vendors first, each a click from setting its category. Hidden under 1% of spending.

@@ -19,6 +19,10 @@ await suite("accounts", async ({ browser, step }) => {
     const wide = await a.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
     assert.equal(wide[0], wide[1], `page ${wide[0]}px wide at ${wide[1]}px`);
     await a.setViewportSize({ width: 1280, height: 720 });
+    // Each recurring charge says how many days of runway it costs.
+    const recurring = a.getByRole("region", { name: "Recurring charges" });
+    await recurring.getByRole("columnheader", { name: "Runway it costs" }).waitFor();
+    await recurring.getByText(/^\d+ days?$/).first().waitFor();
     // Who pays you: the demo's money comes through Stripe, which is many customers, not one.
     const payers = a.getByRole("region", { name: "Who pays you" });
     await payers.getByText("many customers", { exact: true }).waitFor();

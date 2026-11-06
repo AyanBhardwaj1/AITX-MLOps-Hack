@@ -160,3 +160,16 @@ describe("second review of the burn fix", () => {
     expect(Object.values(cats).reduce((x, y) => x + y, 0)).toBe(s.grossBurnCents);
   });
 });
+
+describe("days of runway a recurring charge costs", () => {
+  it("is the runway gained if it stopped, in whole days; none when runway has no end", async () => {
+    const { computeSnapshot, runwayDaysFreedBy } = await import("@/lib/finance/runway");
+    const t = ["2026-08", "2026-09", "2026-10"].map((m, i) => ({ id: `p${i}`, accountId: "a", postedAt: `${m}-01`, amountCents: -100_000_00, description: "Gusto", type: "ach", status: "posted", vendor: { key: "gusto", name: "Gusto", category: "payroll", job: null, source: "catalog" } }) as never);
+    const s = computeSnapshot({ cashCents: 1_200_000_00, txns: t, asOf: "2026-11-12" });
+    // 12 months of runway at $100k/mo; dropping $1k/mo gives 1,200,000/99,000 = 12.1212 months: +0.1212 mo ≈ 3.7 days.
+    expect(runwayDaysFreedBy(s, 1_000_00)).toBe(4);
+    expect(runwayDaysFreedBy(s, 0)).toBe(0);
+    const positive = computeSnapshot({ cashCents: 1, txns: [], asOf: "2026-11-12" });
+    expect(runwayDaysFreedBy(positive, 1_000_00)).toBeNull();
+  });
+});

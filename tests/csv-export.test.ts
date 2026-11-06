@@ -34,11 +34,11 @@ describe("exports from the demo company", () => {
 
   it("lists every active recurring charge with dollars, not cents", () => {
     const lines = recurringCsv(a).replace(/^\uFEFF/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("Vendor,Category,What it does,Cadence,Per month (USD),Last charge,Next charge,Cardholders");
+    expect(lines[0]).toBe("Vendor,Category,What it does,Cadence,Per month (USD),Runway it costs (days),Last charge,Next charge,Cardholders");
     expect(lines.length - 1).toBe(a.streams.filter((s) => s.active).length);
     const datadog = lines.find((l) => l.startsWith("Datadog,"))!;
     // $3,600 a month after the 50% increase: dollars, not 360000 cents.
-    expect(datadog).toMatch(/^Datadog,software,observability,monthly,3600,2026-\d{2}-\d{2},2026-\d{2}-\d{2},/);
+    expect(datadog).toMatch(/^Datadog,software,observability,monthly,3600,\d+,2026-\d{2}-\d{2},2026-\d{2}-\d{2},/);
   });
 
   it("lists findings with their savings and the status people gave them", () => {
