@@ -19,7 +19,7 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
         Why burn moved
       </h2>
       <p className="mt-1 text-sm text-muted">
-        {bridge.netBurnCents <= 0 ? (
+        {bridge.netBurnCents < 0 ? (
           <>
             In {formatMonth(month)} more came in than went out: <span className="font-medium text-ink">cash-flow positive</span> by{" "}
             <span className="tabular font-medium text-ink">{formatDollars(-bridge.netBurnCents)}</span>; net burn {verb} on {formatMonth(previous)}.

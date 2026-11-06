@@ -141,3 +141,14 @@ describe("transactions by account", () => {
     expect(searchTransactions(mixed, parseTxnQuery({ account: "gone" })).total).toBe(0);
   });
 });
+
+describe("searching names however they're typed", () => {
+  it("finds a cardholder across case, spacing and invisible characters", () => {
+    const rows = [
+      txn("x1", "2026-10-01", -1_00, "Figma", "software", { cardholder: "Maya Chen" }),
+      txn("x2", "2026-10-02", -1_00, "Loom", "software", { cardholder: "Ma​ya  Chen" }),
+      txn("x3", "2026-10-03", -1_00, "Zoom", "software", { cardholder: "Sam Lee" }),
+    ];
+    expect(searchTransactions(rows, parseTxnQuery({ q: "maya chen" })).rows.map((t) => t.id).sort()).toEqual(["x1", "x2"]);
+  });
+});

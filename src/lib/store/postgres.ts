@@ -587,7 +587,8 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
         `insert into public.company_integrations (org_id, slack_webhook_url) values ($1, $2)
          on conflict (org_id) do update set slack_webhook_url = excluded.slack_webhook_url, updated_at = now(),
            -- A different channel hasn't heard any runway alert yet.
-           runway_alert_months = case when company_integrations.slack_webhook_url is not distinct from excluded.slack_webhook_url then company_integrations.runway_alert_months end`,
+           runway_alert_months = case when company_integrations.slack_webhook_url is not distinct from excluded.slack_webhook_url then company_integrations.runway_alert_months end,
+           stale_nudged_for = case when company_integrations.slack_webhook_url is not distinct from excluded.slack_webhook_url then company_integrations.stale_nudged_for end`,
         [org, url],
       );
     },
@@ -596,7 +597,7 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const org = await orgId();
       // One statement: of two overlapping runs, only one sees it unclaimed.
       const { rowCount } = await pool.query(
-        `update public.company_integrations set stale_nudged_for = $2::date where org_id = $1 and stale_nudged_for is distinct from $2::date`,
+        `update public.company_integrations set stale_nudged_for = $2::date where org_id = $1 and slack_webhook_url is not null and stale_nudged_for is distinct from $2::date`,
         [org, asOf],
       );
       return rowCount === 1;

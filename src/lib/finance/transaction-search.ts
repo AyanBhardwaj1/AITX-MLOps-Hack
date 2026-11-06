@@ -66,6 +66,9 @@ export function parseTxnQuery(params: Params): TxnQuery {
   };
 }
 
+/** Text as people mean it: one form for accents, no invisible characters, single spaces, lower case. */
+export const searchable = (s: string) => s.normalize("NFKC").replace(/[\p{Cf}\p{Cc}]/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+
 function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boolean {
   if (query.vendor && t.vendor.key !== query.vendor) return false;
   if (query.account && t.accountId !== query.account) return false;
@@ -74,7 +77,7 @@ function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boo
   if (query.direction === "in" && t.amountCents <= 0) return false;
   if (query.direction === "out" && t.amountCents >= 0) return false;
   if (words.length === 0) return true;
-  const text = `${t.vendor.name} ${t.description} ${t.cardholder ?? ""}`.toLowerCase();
+  const text = searchable(`${t.vendor.name} ${t.description} ${t.cardholder ?? ""}`);
   return words.every((w) => text.includes(w));
 }
 
@@ -83,7 +86,7 @@ const newestFirst = (a: EnrichedTxn, b: EnrichedTxn) => (a.postedAt === b.posted
 
 /** Every transaction the filters match (all pages), newest first: what a download holds. */
 export function matchingTransactions(txns: readonly EnrichedTxn[], query: TxnQuery): EnrichedTxn[] {
-  const words = query.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = searchable(query.q).split(" ").filter(Boolean);
   return txns.filter((t) => matches(t, words, query)).sort(newestFirst);
 }
 

@@ -113,7 +113,7 @@ function blocks(d: DigestInput): Block[] {
     const signed = (c: number) => `${c > 0 ? "+" : "−"}${formatDollars(Math.abs(c))}`;
     out.push(
       { kind: "h", text: "Why burn moved" },
-      b.netBurnCents <= 0
+      b.netBurnCents < 0
         ? { kind: "p", spans: [`In ${name(b.month)} more came in than went out: cash-flow positive by `, { bold: formatDollars(-b.netBurnCents) }, `; net burn ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] }
         : { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: formatDollars(b.netBurnCents) }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
     );

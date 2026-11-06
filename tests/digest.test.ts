@@ -129,3 +129,12 @@ describe("why burn moved, cash-flow positive", () => {
     expect(md).not.toContain("-$25,000");
   });
 });
+
+describe("why burn moved, break-even", () => {
+  it("doesn't call a break-even month cash-flow positive by $0", () => {
+    const bridge = { month: "2026-10", previous: "2026-09", netBurnCents: 0, previousNetBurnCents: 5_000_00, changeCents: -5_000_00, drivers: [], otherCents: 0, revenueChangeCents: 5_000_00 };
+    const md = buildDigest({ ...input, bridge }).markdown;
+    expect(md).toContain("Net burn in October was **$0**, down $5,000 on September.");
+    expect(md).not.toContain("cash-flow positive");
+  });
+});

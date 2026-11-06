@@ -200,7 +200,10 @@ export function createMemoryStore(): Store {
     },
     async setSlackWebhook(url) {
       // A different channel hasn't heard any runway alert yet.
-      if (url !== slackWebhook) runwayAlertMonths = null;
+      if (url !== slackWebhook) {
+        runwayAlertMonths = null;
+        staleNudgedFor = null;
+      }
       slackWebhook = url;
     },
     async markDigestSent() {

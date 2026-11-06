@@ -272,6 +272,11 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.claimStaleNudge("2026-10-24")).toBe(true);
       // A newer export that goes stale too gets its own reminder.
       expect(await store.claimStaleNudge("2026-11-20")).toBe(true);
+      // A different channel hasn't heard it; a disconnected one can't.
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/other");
+      expect(await store.claimStaleNudge("2026-11-20")).toBe(true);
+      await store.setSlackWebhook(null);
+      expect(await store.claimStaleNudge("2026-12-20")).toBe(false);
     });
 
     it("moves the runway alert level only from the level the caller saw", async () => {
