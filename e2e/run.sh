@@ -51,9 +51,21 @@ for spec in e2e/*.e2e.mjs; do
   psql -q -X -d "$DB" -c "delete from public.organizations where slug like 'org\_%'; delete from public.company_invites; delete from public.rate_limits;"
   node "$spec" || status=1
 done
+leaked=0
 if grep -iE "gusto|payroll|slack technologies" "$LOG_DIR/app.log" >/dev/null; then
   echo "FAIL  uploaded file contents appeared in the server log"
   status=1
+  leaked=1
 fi
-[ "$status" -eq 0 ] && echo "All browser suites passed." || echo "Server log: $LOG_DIR/app.log"
+if [ "$status" -eq 0 ]; then
+  echo "All browser suites passed."
+else
+  echo "Server log: $LOG_DIR/app.log"
+  # For a failure seen only in CI: the servers' last lines, unless the log is the thing that failed
+  # (it would then hold uploaded file contents, which are never printed).
+  if [ "$leaked" -eq 0 ]; then
+    echo "--- last 60 lines of the app server log ---"; tail -n 60 "$LOG_DIR/app.log"
+    echo "--- last 30 lines of the auth server log ---"; tail -n 30 "$LOG_DIR/auth.log"
+  fi
+fi
 exit "$status"
