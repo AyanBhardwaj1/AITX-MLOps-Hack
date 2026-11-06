@@ -1,0 +1,96 @@
+import { describe, expect, it } from "vitest";
+import { renewalsCalendar } from "@/lib/export/ics";
+import type { Renewal } from "@/lib/finance/renewals";
+
+const renewal = (over: Partial<Renewal> = {}): Renewal => ({
+  vendorKey: "figma",
+  vendorName: "Figma",
+  cardholder: null,
+  cadence: "annual",
+  dueDate: "2027-02-14",
+  daysAway: 100,
+  amountCents: 1_200_00,
+  decide: true,
+  ...over,
+});
+const NOW = new Date("2026-11-06T17:30:00Z");
+
+const lines = (ics: string) => ics.split("\r\n");
+
+describe("renewals as a calendar file", () => {
+  it("writes one all-day event per renewal, with a reminder two weeks before", () => {
+    const ics = renewalsCalendar({ renewals: [renewal()], company: "Acme", now: NOW });
+    const l = lines(ics);
+    expect(l[0]).toBe("BEGIN:VCALENDAR");
+    expect(l.at(-2)).toBe("END:VCALENDAR");
+    expect(ics.endsWith("\r\n")).toBe(true);
+    expect(l).toContain("VERSION:2.0");
+    expect(l).toContain("DTSTART;VALUE=DATE:20270214");
+    expect(l).toContain("DTEND;VALUE=DATE:20270215");
+    expect(l).toContain("SUMMARY:Figma renews: $1\\,200 (annual)");
+    expect(l).toContain("TRIGGER:-P14D");
+    expect(l).toContain("DTSTAMP:20261106T173000Z");
+    // Importing a fresh copy updates the same events instead of adding new ones.
+    const uid = l.find((x) => x.startsWith("UID:"))!;
+    expect(lines(renewalsCalendar({ renewals: [renewal()], company: "Acme", now: new Date("2026-12-01T00:00:00Z") }))).toContain(uid);
+  });
+
+  it("escapes text and folds long lines as the calendar format requires", () => {
+    const ics = renewalsCalendar({ renewals: [renewal({ vendorName: "Smith, Jones; & Co\\Law", cardholder: "Maya Chen" })], company: "Acme; Robotics, Inc", now: NOW });
+    expect(ics).toContain("SUMMARY:Smith\\, Jones\\; & Co\\\\Law renews: $1\\,200 (annual)");
+    expect(ics).toContain("X-WR-CALNAME:Acme\\; Robotics\\, Inc renewals (Runway)");
+    for (const line of lines(ics)) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+    // Unfolded, the description is whole again.
+    const unfolded = ics.replace(/\r\n /g, "");
+    expect(unfolded).toContain("on Maya Chen’s card");
+  });
+
+  it("keeps only renewals worth deciding on, in the next year, from today on", () => {
+    const ics = renewalsCalendar({
+      renewals: [
+        renewal({ vendorKey: "slack", vendorName: "Slack", cadence: "monthly", amountCents: 875_00, decide: false, dueDate: "2026-11-20" }),
+        renewal({ vendorKey: "old", vendorName: "Old", dueDate: "2026-11-01" }),
+        renewal({ vendorKey: "later", vendorName: "Later", dueDate: "2027-12-01" }),
+        renewal({ vendorKey: "aws", vendorName: "AWS", cadence: "monthly", amountCents: 6_000_00, decide: true, dueDate: "2026-11-30" }),
+      ],
+      company: "Acme",
+      now: NOW,
+    });
+    expect(ics).not.toContain("Slack");
+    expect(ics).not.toContain("SUMMARY:Old");
+    expect(ics).not.toContain("SUMMARY:Later");
+    expect(ics).toContain("SUMMARY:AWS renews: $6\\,000 (monthly)");
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+  });
+
+  it("is still a valid, empty calendar when nothing is due", () => {
+    const ics = renewalsCalendar({ renewals: [], company: "Acme", now: NOW });
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).not.toContain("BEGIN:VEVENT");
+  });
+});
+
+describe("GET /api/export?kind=calendar", () => {
+  it("downloads the demo company's renewals as a calendar file", async () => {
+    const { vi } = await import("vitest");
+    vi.resetModules();
+    vi.doMock("server-only", () => ({}));
+    vi.doMock("next/headers", () => ({ headers: async () => new Headers(), cookies: async () => ({ get: () => undefined, getAll: () => [], set: () => undefined }) }));
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+    vi.stubEnv("APP_PASSWORD", "");
+    try {
+      const { GET } = await import("@/app/api/export/route");
+      const res = await GET(new Request("http://localhost/api/export?mode=demo&kind=calendar"));
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("text/calendar; charset=utf-8");
+      expect(res.headers.get("content-disposition")).toContain("runway-renewals.ics");
+      const body = await res.text();
+      expect(body.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+      expect(body).toContain("BEGIN:VEVENT");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});

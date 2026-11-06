@@ -31,6 +31,8 @@ demo, the free grader and the public site work exactly as before.
   budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
   connected, the daily job posts there the day a budget goes over (once per budget per month;
   changing the amount re-arms it).
+- **Renewals in your calendar.** The "Coming up" card downloads the next year of annual,
+  quarterly and $5k+ renewals as a calendar file, each with a reminder two weeks before.
 - **Transactions by account.** The transactions page filters to one account (a card, savings,
   checking), with the same totals and download.
 - **Runway alerts in Slack.** With the company's Slack connected, the daily job posts the day

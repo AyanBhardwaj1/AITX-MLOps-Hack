@@ -5,7 +5,7 @@ import { formatDollars } from "@/lib/money";
 
 const MAX_ROWS = 7;
 
-export function RenewalsCard({ renewals }: { renewals: Renewal[] }) {
+export function RenewalsCard({ renewals, calendarHref }: { renewals: Renewal[]; calendarHref?: string }) {
   const total = renewals.reduce((s, r) => s + r.amountCents, 0);
   return (
     <section className="rounded-xl border border-line bg-panel p-5">
@@ -37,6 +37,11 @@ export function RenewalsCard({ renewals }: { renewals: Renewal[] }) {
       {renewals.length > MAX_ROWS && <p className="mt-2 text-xs text-muted">+{renewals.length - MAX_ROWS} more charges in this window.</p>}
       {renewals.some((r) => r.decide) && (
         <p className="mt-3 text-xs text-muted">“Decide” = annual, quarterly or $5k+: cancel, downgrade or renegotiate before it renews.</p>
+      )}
+      {calendarHref && (
+        <a href={calendarHref} download className="mt-3 inline-block text-xs font-medium text-brand hover:underline">
+          Add the next year&apos;s renewals to your calendar (.ics)
+        </a>
       )}
     </section>
   );

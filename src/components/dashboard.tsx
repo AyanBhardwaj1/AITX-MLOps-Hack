@@ -373,7 +373,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         </div>
 
         <div className="mb-6 grid gap-6 md:grid-cols-2">
-          <RenewalsCard renewals={data.renewals} />
+          <RenewalsCard renewals={data.renewals} calendarHref={`/api/export?mode=${data.mode}&kind=calendar`} />
           <AiSpendCard trend={data.aiSpend} grossBurnCents={data.snapshot.grossBurnCents} />
         </div>
 
