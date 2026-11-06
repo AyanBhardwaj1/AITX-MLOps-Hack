@@ -5,6 +5,9 @@ import { formatDollars } from "@/lib/money";
 
 const MAX_PEOPLE = 8;
 
+const vendorLine = (p: PeopleSpend["rows"][number]) =>
+  `${p.top.map((v) => `${v.name} ${formatDollars(v.monthlyCents)}`).join(" · ")}${p.vendors > p.top.length ? ` · +${p.vendors - p.top.length} more` : ""}`;
+
 /** Card spend per cardholder, over the same months as burn. Hidden when no row names a cardholder. */
 export function PeopleSpendCard({ people, mode, burnMonths }: { people: PeopleSpend | null; mode: string; burnMonths: number }) {
   if (!people) return null;
@@ -30,7 +33,7 @@ export function PeopleSpendCard({ people, mode, burnMonths }: { people: PeopleSp
               <th scope="col" className="px-3 py-2 text-right font-medium">
                 Of gross burn
               </th>
-              <th scope="col" className="px-5 py-2 font-medium">
+              <th scope="col" className="hidden px-5 py-2 font-medium sm:table-cell">
                 Biggest vendors
               </th>
             </tr>
@@ -42,13 +45,12 @@ export function PeopleSpendCard({ people, mode, burnMonths }: { people: PeopleSp
                   <Link href={`/app/transactions?mode=${mode}&q=${encodeURIComponent(p.cardholder)}`} className="hover:text-brand hover:underline">
                     <bdi>{p.cardholder}</bdi>
                   </Link>
+                  {/* On a phone the vendors sit under the name instead of in a narrow column. */}
+                  <span className="mt-0.5 block text-xs font-normal text-muted sm:hidden">{vendorLine(p)}</span>
                 </th>
                 <td className="tabular px-3 py-2 text-right">{formatDollars(p.monthlyCents)}</td>
                 <td className="tabular px-3 py-2 text-right text-muted">{(p.shareOfGross * 100).toFixed(1)}%</td>
-                <td className="px-5 py-2 text-muted">
-                  {p.top.map((v) => `${v.name} ${formatDollars(v.monthlyCents)}`).join(" · ")}
-                  {p.vendors > p.top.length ? ` · +${p.vendors - p.top.length} more` : ""}
-                </td>
+                <td className="hidden px-5 py-2 text-muted sm:table-cell">{vendorLine(p)}</td>
               </tr>
             ))}
           </tbody>
