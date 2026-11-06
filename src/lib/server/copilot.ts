@@ -141,7 +141,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
       }),
       get_committed_spend: tool({
         description:
-          "Recurring charges already scheduled over the next 30 days from today: items (date, vendorName, category, amountCents), totalCents and cashAfterCents. A floor: one-off and usage spend aren't included. Integer cents.",
+          "Recurring charges already scheduled over the 30 days from the data's date (the date the cash figure is from): items (date, vendorName, category, amountCents), totalCents and cashAfterCents. A floor: one-off and usage spend aren't included. Integer cents.",
         inputSchema: committedInput,
         execute: async () => getCommitted(a),
       }),

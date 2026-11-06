@@ -206,6 +206,12 @@ export function GraderPanel() {
                   ))}
                 </ul>
               )}
+              {result.findingsCount > result.topFindings.length && (
+                <p className="mt-2 text-xs text-muted">
+                  The {result.topFindings.length} biggest of {result.findingsCount}; the other {result.findingsCount - result.topFindings.length} add{" "}
+                  {formatDollars(result.wasteMonthlyCents - result.topFindings.reduce((x, f) => x + f.monthlySavingsCents, 0))}/mo to the total.
+                </p>
+              )}
             </div>
 
             <BurnBridgeCard bridge={result.bridge} mode={null} />

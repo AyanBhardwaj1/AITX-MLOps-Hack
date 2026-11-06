@@ -137,7 +137,7 @@ export function ScenarioPlanner({
             <label htmlFor={`${id}-hires`} className={label}>
               New hires
             </label>
-            <input id={`${id}-hires`} name="hires" type="number" inputMode="numeric" min="0" max={MAX_HIRES} value={hires} onChange={(e) => setHires(e.target.value)} className={field} />
+            <input id={`${id}-hires`} name="hires" type="number" inputMode="numeric" min="0" max={MAX_HIRES} value={hires} onChange={(e) => setHires(e.target.value)} onBlur={() => setHires(String(n.hires))} className={field} />
           </div>
           <div>
             <label htmlFor={`${id}-cost`} className={label}>

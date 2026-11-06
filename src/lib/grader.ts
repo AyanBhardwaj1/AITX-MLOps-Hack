@@ -34,6 +34,8 @@ export interface GraderResult {
   wasteMonthlyCents: Cents;
   oneTimeCents: Cents;
   topFindings: Finding[];
+  /** All findings, of which topFindings are the biggest. */
+  findingsCount: number;
   /** What this upload can't see, in plain words. */
   notes: string[];
   /** Files that couldn't be read at all. */
@@ -210,6 +212,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     range: { p10: forecast.runwayMonths.p10, p90: forecast.runwayMonths.p90 },
     bridge: burnBridge(a.txns, a.asOf),
     pnl: cashPnl(a.txns, a.asOf),
+    findingsCount: a.findings.length,
     moneyIn: moneyIn(a.txns, a.snapshot),
     wasteMonthlyCents: a.findings.reduce((s, f) => s + f.monthlySavingsCents, 0),
     oneTimeCents: a.findings.reduce((s, f) => s + f.oneTimeCents, 0),

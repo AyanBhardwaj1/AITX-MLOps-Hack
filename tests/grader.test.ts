@@ -169,3 +169,13 @@ describe("grader: who pays you", () => {
     expect(html).not.toContain("<a ");
   });
 });
+
+describe("grader: the waste list adds up to its total", () => {
+  it("says how many findings aren't listed and what they add", () => {
+    const demo = generateDemoCompany();
+    const g = gradeCsvFiles([{ name: "mercury.csv", text: mercuryCsv(demo.transactions) }], cashBalanceCents(demo.accounts));
+    expect(g.findingsCount).toBeGreaterThan(g.topFindings.length);
+    const rest = g.wasteMonthlyCents - g.topFindings.reduce((x, f) => x + f.monthlySavingsCents, 0);
+    expect(rest).toBeGreaterThan(0);
+  });
+});

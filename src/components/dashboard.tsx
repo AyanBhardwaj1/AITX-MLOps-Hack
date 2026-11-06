@@ -177,6 +177,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const savings = monthly.filter((f) => selected.has(f.id)).reduce((s, f) => s + f.monthlySavingsCents, 0);
   const sim = simulateSavings(data.snapshot, savings);
   const allSim = simulateSavings(data.snapshot, monthly.reduce((s, f) => s + f.monthlySavingsCents, 0));
+  // The gain as the two shown figures differ (12.4 − 12.2 = +0.2), not each rounded on its own.
+  const shownDelta = (after: number) => (Number.isFinite(after) ? (Number(after.toFixed(1)) - Number(data.snapshot.runwayMonths.toFixed(1))).toFixed(1) : "∞");
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
   const oneTime = live.reduce((s, f) => s + f.oneTimeCents, 0);
   const totalAnalysisMs = Object.values(data.timingsMs).reduce((s, v) => s + v, 0);
@@ -288,7 +290,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               <p className="text-sm font-medium text-muted">Runway</p>
               {savings > 0 && Number.isFinite(data.snapshot.runwayMonths) && (
                 <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand" aria-live="polite">
-                  +{months(sim.deltaMonths)} mo with {selected.size} fix{selected.size === 1 ? "" : "es"}
+                  +{shownDelta(sim.runwayMonths)} mo with {selected.size} fix{selected.size === 1 ? "" : "es"}
                 </span>
               )}
             </div>
@@ -310,7 +312,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               )}
               {monthly.length > 0 && Number.isFinite(data.snapshot.runwayMonths) && (
                 <Fact label="Fix all waste" tone="brand">
-                  +{months(allSim.deltaMonths)} mo
+                  +{shownDelta(allSim.runwayMonths)} mo
                 </Fact>
               )}
             </dl>

@@ -22,7 +22,7 @@ describe("who decided a finding", () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
-  it("records the signed-in teammate on a company's finding, and nobody on the demo", async () => {
+  it("records the signed-in teammate on a company's finding, and saves nothing on the shared demo", async () => {
     const { POST } = await import("@/app/api/findings/route");
     const { getStore } = await import("@/lib/server/store");
     const { scopeFor } = await import("@/lib/server/scope");
@@ -33,10 +33,11 @@ describe("who decided a finding", () => {
     expect((await POST(post({ mode: "company", fingerprint: "zombie:loom", status: "dismissed" }))).status).toBe(200);
     expect((await store.findingDecisions()).get("zombie:loom")).toMatchObject({ actorId: userId, by: "maya@acme.example" });
 
+    // On the shared demo a decision isn't saved for everyone.
     await getStore("demo").syncFindings([finding("zombie:demo-test")]);
     expect((await POST(post({ mode: "demo", fingerprint: "zombie:demo-test", status: "dismissed" }))).status).toBe(200);
-    expect((await getStore("demo").findingDecisions()).get("zombie:demo-test")!.by).toBeNull();
-    await POST(post({ mode: "demo", fingerprint: "zombie:demo-test", status: "open" }));
+    expect((await getStore("demo").findingDecisions()).get("zombie:demo-test")).toBeUndefined();
+    expect(await getStore("demo").findingStatus("zombie:demo-test")).toBe("open");
   });
 });
 

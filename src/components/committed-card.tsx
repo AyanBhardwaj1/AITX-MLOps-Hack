@@ -37,7 +37,8 @@ export function CommittedCard({ committed }: { committed: CommittedSpend }) {
       )}
       {committed.items.length > MAX_ROWS && <p className="mt-2 text-xs text-muted">+{committed.items.length - MAX_ROWS} more charges in this window.</p>}
       <p className="mt-2 text-xs text-muted">
-        Recurring charges from their usual billing days and amounts; one-off and usage spend aren&apos;t included, so the real total is at least this.
+        {formatDate(committed.from)} to {formatDate(committed.until)}, from the date your data runs to. Recurring charges from their usual billing days and amounts;
+        one-off and usage spend aren&apos;t included, so the real total is at least this.
         {committed.cashAsOf ? ` Cash is the latest figure Runway has (as of ${formatDate(committed.cashAsOf)}).` : ""}
       </p>
     </section>

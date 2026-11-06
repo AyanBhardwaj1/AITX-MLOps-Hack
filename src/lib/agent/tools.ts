@@ -243,9 +243,9 @@ export function getChanges(a: Analysis) {
 }
 
 export const committedInput = z.object({});
-/** Recurring charges scheduled over the next 30 days from today (cents), the total and the cash left after them. */
-export function getCommitted(a: Analysis, today: string = new Date().toISOString().slice(0, 10)) {
-  return committedSpend(a.streams, { from: today, days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf });
+/** Recurring charges scheduled over the 30 days from the data's date (cents), the total and the cash left after them. */
+export function getCommitted(a: Analysis, from: string = a.asOf) {
+  return committedSpend(a.streams, { from, days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf });
 }
 
 export const form1099Input = z.object({});

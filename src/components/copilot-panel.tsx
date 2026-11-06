@@ -28,6 +28,14 @@ const TOOL_LABEL: Record<string, string> = {
   get_ai_spend: "Checked AI spend",
   plan_scenario: "Ran the default-alive test",
   get_recent_changes: "Checked what changed",
+  get_budgets: "Checked budgets",
+  get_burn_bridge: "Compared last month's burn",
+  get_people_spend: "Checked spend by person",
+  get_committed_spend: "Checked what's scheduled",
+  get_1099_prep: "Checked who may need a 1099",
+  get_money_in: "Checked who pays you",
+  suggest_budgets: "Suggested budgets",
+  get_uncategorised: "Checked uncategorised spend",
 };
 
 const INSTANT = Object.entries(INSTANT_QUESTIONS).map(([id, text]) => ({ id: id as InstantQuestion, text }));
@@ -79,7 +87,8 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
   return (
     // Grows with the conversation up to a cap, so the empty state has no dead space.
     <div className="flex max-h-[640px] flex-col">
-      <div ref={scroller} className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4" role="log" aria-label="Copilot conversation" tabIndex={0} aria-live="polite">
+      {/* The conversation keeps room to read, however many questions are left to ask. */}
+      <div ref={scroller} className="relative min-h-48 flex-1 space-y-4 overflow-y-auto p-4" role="log" aria-label="Copilot conversation" tabIndex={0} aria-live="polite">
         <p className="rounded-lg bg-canvas px-3 py-2 text-xs text-muted">
           AI chat is off on this server (no <code>OPENAI_API_KEY</code>). Pick a question: Copilot&apos;s own tools answer it, written up from a
           template instead of by AI. Every number is the same as the dashboard&apos;s.
@@ -109,7 +118,7 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
           </div>
         ))}
       </div>
-      <div className="space-y-1.5 border-t border-line p-3">
+      <div className="max-h-64 shrink-0 space-y-1.5 overflow-y-auto border-t border-line p-3">
         {entries.length < INSTANT.length && <p className="px-1 pb-0.5 text-xs font-medium text-muted">{entries.length ? "Ask another" : "Try asking"}</p>}
         {INSTANT.filter((q) => !entries.some((e) => e.id === q.id)).map((q) => (
           <button

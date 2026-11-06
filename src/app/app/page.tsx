@@ -195,8 +195,9 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     people: peopleSpend(a.txns, a.snapshot),
     moneyIn: moneyIn(a.txns, a.snapshot),
     uncategorised: uncategorisedSpend(a.txns, a.snapshot),
-    // From today (data can stop a while back): what the schedules say is still to go out.
-    committed: committedSpend(a.streams, { from: new Date().toISOString().slice(0, 10), days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf }),
+    // From the data's date, like the cash it's taken from and the renewals card: starting at today
+    // instead skipped bills between the two that the cash figure hasn't paid yet.
+    committed: committedSpend(a.streams, { from: a.asOf, days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf }),
     form1099: prep1099(a.txns, form1099Year(a.asOf)),
     capabilities: {
       copilot: hasOpenAI(),
