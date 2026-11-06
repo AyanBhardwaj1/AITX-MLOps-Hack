@@ -8,6 +8,7 @@ import type { Analysis } from "../pipeline";
 import type { Cents, Finding, IsoDate } from "../types";
 import { detectChanges, type Change } from "./changes";
 import type { SavingsSummary } from "./savings";
+import { burnBridge, type BurnBridge } from "../finance/burn-bridge";
 
 /**
  * The Monday digest: runway, the default-alive verdict, what changed, and the waste still open.
@@ -32,6 +33,8 @@ export interface DigestInput {
   staleDays?: number;
   /** The company's budgets this month; only those over or heading over are named. */
   budgets?: readonly BudgetRow[];
+  /** Last complete month's net burn against the month before, vendor by vendor. */
+  bridge?: BurnBridge | null;
 }
 
 export interface Digest {
@@ -56,6 +59,7 @@ export function digestInputFromAnalysis(
     scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS) }),
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     findings: a.findings.filter((f) => !exclude.has(f.id)),
+    bridge: burnBridge(a.txns, a.asOf),
     savings,
     appUrl,
   };
@@ -103,6 +107,18 @@ function blocks(d: DigestInput): Block[] {
       ? { kind: "ul", items: d.changes.map((c) => [{ bold: c.title }, `: ${c.detail}`]) }
       : { kind: "p", spans: ["Nothing unusual this week."] },
   ];
+  if (d.bridge && d.bridge.changeCents !== 0) {
+    const b = d.bridge;
+    const name = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
+    const signed = (c: number) => `${c > 0 ? "+" : "−"}${formatDollars(Math.abs(c))}`;
+    out.push(
+      { kind: "h", text: "Why burn moved" },
+      { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: `${formatDollars(b.netBurnCents)}` }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
+    );
+    const items: Span[][] = b.drivers.slice(0, TOP_FINDINGS).map((x) => [`${x.name}${x.kind === "new" ? " (new)" : x.kind === "stopped" ? " (stopped)" : ""}: ${signed(x.changeCents)}`]);
+    if (b.revenueChangeCents) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
+    if (items.length) out.push({ kind: "ul", items });
+  }
   if (d.budgets?.length) {
     const off = d.budgets.filter((b) => b.status !== "under");
     const label = (c: BudgetRow["category"]) => categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1);

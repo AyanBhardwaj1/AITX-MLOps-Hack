@@ -94,3 +94,29 @@ describe("weekly digest", () => {
     expect(buildDigest({ ...input, budgets: [close] }).markdown).toContain("$500.40 so far of $500");
   });
 });
+
+describe("why burn moved, in the digest", () => {
+  it("names last month's change and the vendors behind it, escaped for Slack", () => {
+    const bridge = {
+      month: "2026-10",
+      previous: "2026-09",
+      netBurnCents: 51_400_00,
+      previousNetBurnCents: 38_900_00,
+      changeCents: 12_500_00,
+      drivers: [
+        { key: "aws", name: "AWS", category: "cloud" as const, changeCents: 8_100_00, kind: "up" as const },
+        { key: "smith", name: "Smith & <Co>", category: "legal_accounting" as const, changeCents: 1_500_00, kind: "new" as const },
+      ],
+      otherCents: 2_900_00,
+      revenueChangeCents: 0,
+    };
+    const d = buildDigest({ ...input, bridge });
+    expect(d.markdown).toContain("Why burn moved");
+    expect(d.markdown).toContain("Net burn in October was **$51,400**, up $12,500 on September.");
+    expect(d.markdown).toContain("- AWS: +$8,100");
+    expect(d.slack).toContain("Smith &amp; &lt;Co&gt; (new): +$1,500");
+    // Nothing moved: no section.
+    expect(buildDigest({ ...input, bridge: { ...bridge, changeCents: 0 } }).markdown).not.toContain("Why burn moved");
+    expect(buildDigest({ ...input, bridge: null }).markdown).not.toContain("Why burn moved");
+  });
+});
