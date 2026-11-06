@@ -119,6 +119,10 @@ demo, the free grader and the public site work exactly as before.
 - **Billing dates.** A late or early posting doesn't skip or shift a cycle, quarterly bills stay
   in their months, and month-end bills stay on the month's end.
 - A test runs 32 generated companies and checks the cards against each other to the cent.
+- **Bank files read as written.** A quote inside a field (DELL 27" MONITOR) no longer swallows
+  every row after it; a quote that never closes is refused with its line. ".50", "12." and a
+  Unicode minus read as amounts, rows over $100 billion are refused, and skipped rows are named by
+  their line in the file, blank lines counted.
 - **Scheduled payments wait for their date.** Uploaded rows dated after today aren't counted
   until then (the dashboard says how many), so a payment due on the 1st can't turn the month
   early or quiet the alerts. "Today" is the UTC date for uploads; the grader, which runs in your

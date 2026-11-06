@@ -132,3 +132,31 @@ describe("amounts too large to be real", () => {
     expect(parseAmountCents("9999999999999.99")).toBeNull();
   });
 });
+
+describe("amounts some banks write differently", () => {
+  it("reads a missing leading zero, a trailing point and a Unicode minus", () => {
+    expect(parseAmountCents(".50")).toBe(50);
+    expect(parseAmountCents("-.50")).toBe(-50);
+    expect(parseAmountCents("12.")).toBe(1_200);
+    expect(parseAmountCents("−12.00")).toBe(-1_200);
+    expect(parseAmountCents("(.50)")).toBe(-50);
+    // Still refused: nothing to read, or two points.
+    for (const bad of [".", "-.", "1..2", "1.2.3"]) expect(parseAmountCents(bad)).toBeNull();
+  });
+});
+
+describe("skipped rows are named by their line in the file", () => {
+  it("counts blank lines, so the line number matches what a spreadsheet or editor shows", () => {
+    const text = "Date,Description,Amount\n\n2026-01-05,AWS,-50.00\n\n\n2026-01-06,BAD ROW,not money\n2026-01-07,GITHUB,-10.00\n";
+    const r = importCsv(text, { accountId: "a" });
+    expect(r.transactions).toHaveLength(2);
+    expect(r.skipped).toEqual([6]);
+  });
+});
+
+describe("line ends", () => {
+  it("keeps a quoted field's own line break as written, and counts CRLF lines", () => {
+    expect(parseCsv('a,b\r\n"x\r\ny",z\r\n')).toEqual([["a", "b"], ["x\r\ny", "z"]]);
+    expect(() => parseCsv('Date,Description,Amount\r\n2026-01-05,AWS,-1\r\n2026-01-06,"OPEN,-2\r\n')).toThrow(/line 3 never closes/);
+  });
+});

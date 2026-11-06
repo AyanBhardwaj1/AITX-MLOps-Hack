@@ -61,40 +61,56 @@ const isRevenuePayout = (description: string) => resolveVendor(description).cate
  * closes is refused, rather than reading the rest of the file as one field.
  */
 export function parseCsv(text: string): string[][] {
+  return parseCsvLines(text).rows;
+}
+
+/** parseCsv, plus the line in the file each row starts on (blank lines and CRLF counted). */
+export function parseCsvLines(text: string): { rows: string[][]; lines: number[] } {
   const rows: string[][] = [];
+  const lines: number[] = [];
   let row: string[] = [];
   let field = "";
   let quoted = false;
   let line = 1;
+  let rowStart = 1;
   let openedOn = 0;
-  const src = text.replace(/^﻿/, "");
+  const src = text.replace(/^\ufeff/, "");
+  const endRow = () => {
+    row.push(field);
+    if (row.some((f) => f.trim() !== "")) {
+      rows.push(row);
+      lines.push(rowStart);
+    }
+    row = [];
+    field = "";
+  };
   for (let i = 0; i < src.length; i++) {
     const ch = src[i]!;
-    if (ch === "\n") line++;
+    const newline = ch === "\n" || ch === "\r";
+    const crlf = ch === "\r" && src[i + 1] === "\n";
+    if (crlf) i++;
     if (quoted) {
       if (ch === '"' && src[i + 1] === '"') {
         field += '"';
         i++;
       } else if (ch === '"') quoted = false;
-      else field += ch;
+      else field += crlf ? "\r\n" : ch; // kept as written: it's part of the row's identity
+      if (newline) line++;
     } else if (ch === '"' && field === "") {
       quoted = true;
       openedOn = line;
     } else if (ch === ",") {
       row.push(field);
       field = "";
-    } else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && src[i + 1] === "\n") i++;
-      row.push(field);
-      if (row.some((f) => f.trim() !== "")) rows.push(row);
-      row = [];
-      field = "";
+    } else if (newline) {
+      endRow();
+      line++;
+      rowStart = line;
     } else field += ch;
   }
   if (quoted) throw new Error(`The quote (") that opens a field on line ${openedOn} never closes, so the rest of the file can't be read. Fix that row and try again.`);
-  row.push(field);
-  if (row.some((f) => f.trim() !== "")) rows.push(row);
-  return rows;
+  endRow();
+  return { rows, lines };
 }
 
 /**
@@ -104,7 +120,8 @@ export function parseCsv(text: string): string[][] {
 export function parseAmountCents(raw: string): number | null {
   // Spaces (any kind) only around the "$", sign and parentheses, or as a thousands group ("1 234.56"):
   // "12 50" has no safe reading.
-  const spaced = raw.replace(/\s+/g, " ").trim().replace(/ ?([$()+-]) ?/g, "$1");
+  // A Unicode minus (−12.00) is a minus.
+  const spaced = raw.replace(/\u2212/g, "-").replace(/\s+/g, " ").trim().replace(/ ?([$()+-]) ?/g, "$1");
   if (/\d \d/.test(spaced) && !/(^|[^\d ])\d{1,3}( \d{3})+(\.\d{1,2})?([^\d ]|$)/.test(spaced)) return null;
   let s = spaced.replace(/[$ ]/g, "");
   let negative = false;
@@ -125,7 +142,8 @@ export function parseAmountCents(raw: string): number | null {
   s = s.replaceAll(",", "");
   // Eleven digits of dollars at most (under $100 billion, as cash is capped), so every amount and
   // any month's sum of them stays exact in cents.
-  if (!/^\d{1,11}(\.\d{1,2})?$/.test(s)) return null;
+  // ".50" and "12." are written by some banks; "." alone isn't an amount.
+  if (!/^(\d{1,11}(\.\d{0,2})?|\.\d{1,2})$/.test(s)) return null;
   const cents = Math.round(Number(s) * 100);
   return negative ? -cents : cents;
 }
@@ -405,7 +423,7 @@ function assertUsd(header: readonly string[], data: readonly string[][]) {
 }
 
 export function importCsv(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: { accountId: string; resolvePayoffs?: boolean; flipSigns?: boolean }): CsvImport {
-  const rows = parseCsv(text);
+  const { rows, lines } = parseCsvLines(text);
   const m = findMapping(rows, flipSigns);
   if (!m) throw new Error("Unrecognised columns: expected at least Date, Description and Amount (or Debit and Credit)");
   const data = rows.slice(m.headerRow + 1);
@@ -419,7 +437,8 @@ export function importCsv(text: string, { accountId, resolvePayoffs = true, flip
     const t = rowToTransaction(cells, m, accountId, line, flipSigns, order);
     if (t === "not_completed") return;
     if (t) transactions.push(t);
-    else skipped.push(line);
+    // Named by its line in the file (blank lines counted), as an editor or spreadsheet shows it.
+    else skipped.push(lines[m.headerRow + 1 + i] ?? line);
   });
   const mostlyPositive = transactions.length > 0 && transactions.filter((t) => t.amount.amount > 0).length / transactions.length > MOSTLY_POSITIVE_SHARE;
   // Our own export ("rho") carries explicit types, so its payoffs are already right.
