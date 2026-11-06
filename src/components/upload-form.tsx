@@ -22,6 +22,21 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 interface Picked {
   file: File;
   account: string;
+  /** The file lists charges as positive numbers; flip them so spending is negative. */
+  flip: boolean;
+  /** What a first read of the file found, shown before uploading. */
+  preview: { rows: number; mostlyPositive: boolean } | { error: string } | null;
+}
+
+/** Reads a file once on selection, so problems show before anything is sent. */
+async function previewFile(file: File): Promise<Picked["preview"]> {
+  if (file.size > MAX_FILE_BYTES) return { error: "Over 20 MB. Export a shorter date range." };
+  try {
+    const r = importCsv(await file.text(), { accountId: "preview", resolvePayoffs: false });
+    return { rows: r.transactions.length, mostlyPositive: r.mostlyPositive };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't read this file." };
+  }
 }
 
 type State =
@@ -38,16 +53,16 @@ interface Parsed {
 async function parseFiles(files: readonly Picked[]): Promise<Parsed> {
   const rows: UploadRow[] = [];
   const notes: string[] = [];
-  for (const { file: f, account } of files) {
+  for (const { file: f, account, flip } of files) {
     if (f.size > MAX_FILE_BYTES) {
       notes.push(`${f.name} is over 20 MB, so it was skipped. Export a shorter date range.`);
       continue;
     }
     try {
-      const r = importCsv(await f.text(), { accountId: account.trim() || fileAccountLabel(f.name), resolvePayoffs: false });
+      const r = importCsv(await f.text(), { accountId: account.trim() || fileAccountLabel(f.name), resolvePayoffs: false, flipSigns: flip });
       rows.push(...toUploadRows(r.transactions));
       if (r.skipped.length > 0) notes.push(`${f.name}: ${r.skipped.length} row${r.skipped.length === 1 ? "" : "s"} couldn't be read and were left out.`);
-      if (r.mostlyPositive) notes.push(`${f.name}: most amounts are positive. If spending shows as money in, flip the sign column before uploading.`);
+      if (r.mostlyPositive && !flip) notes.push(`${f.name}: most amounts are positive. If this export lists charges as positive numbers, tick "Charges are positive" for it and upload again.`);
     } catch (err) {
       notes.push(`${f.name}: ${err instanceof Error ? err.message : "couldn't read this file"}`);
     }
@@ -106,7 +121,7 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
     const { sampleExport } = await import("@/lib/seed/sample-export");
     const sample = sampleExport();
     const file = new File([sample.text], sample.name, { type: "text/csv" });
-    setFiles([{ file, account: fileAccountLabel(file.name) }]);
+    setFiles([{ file, account: fileAccountLabel(file.name), flip: false, preview: await previewFile(file) }]);
     setCash(Number(sample.cashDollars).toLocaleString("en-US"));
     setSampleChosen(true);
     setState({ kind: "idle" });
@@ -217,7 +232,7 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
           <label htmlFor={`${id}-files`} className="block text-sm font-medium">
             1. Bank and card exports (CSV)
           </label>
-          <p className="text-xs text-muted">Date, Description and Amount columns at least (Rho- and Mercury-style layouts are recognised). Up to 20 MB each.</p>
+          <p className="text-xs text-muted">Most bank and card exports work: a date, a description and an amount (or debit and credit) column, with or without a header row. Up to 20 MB each.</p>
           <input
             key={inputKey}
             id={`${id}-files`}
@@ -226,7 +241,11 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
             accept=".csv,text/csv"
             multiple
             onChange={(e) => {
-              setFiles([...(e.target.files ?? [])].map((file) => ({ file, account: fileAccountLabel(file.name) })));
+              const picked = [...(e.target.files ?? [])];
+              setFiles(picked.map((file) => ({ file, account: fileAccountLabel(file.name), flip: false, preview: null })));
+              void Promise.all(picked.map(previewFile)).then((previews) =>
+                setFiles((prev) => (prev.length === picked.length && prev.every((p, i) => p.file === picked[i]) ? prev.map((p, i) => ({ ...p, preview: previews[i]! })) : prev)),
+              );
               setState({ kind: "idle" });
             }}
             className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand"
@@ -247,6 +266,17 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
                     onChange={(e) => setFiles((prev) => prev.map((q, j) => (j === i ? { ...q, account: e.target.value } : q)))}
                     className="rounded-lg border border-line bg-panel px-2 py-1 text-sm focus-visible:border-brand"
                   />
+                  {p.preview && (
+                    <p className={`text-xs sm:col-span-2 ${"error" in p.preview ? "text-warn" : "text-muted"}`}>
+                      {"error" in p.preview ? p.preview.error : `${p.preview.rows.toLocaleString("en-US")} transactions found.`}
+                    </p>
+                  )}
+                  {p.preview && !("error" in p.preview) && (p.preview.mostlyPositive || p.flip) && (
+                    <label className="flex items-center gap-2 text-xs sm:col-span-2">
+                      <input type="checkbox" checked={p.flip} onChange={(e) => setFiles((prev) => prev.map((q, j) => (j === i ? { ...q, flip: e.target.checked } : q)))} />
+                      Charges are positive numbers in this file (most amounts are positive): count them as spending
+                    </label>
+                  )}
                 </div>
               ))}
             </fieldset>

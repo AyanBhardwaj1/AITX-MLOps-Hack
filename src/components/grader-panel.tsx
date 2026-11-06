@@ -68,7 +68,7 @@ export function GraderPanel() {
           <label htmlFor={`${id}-files`} className="block text-sm font-medium">
             1. Bank and card exports (CSV)
           </label>
-          <p className="text-xs text-muted">Any bank export with Date, Description and Amount columns (Rho- and Mercury-style layouts are recognised; untested on real exports). Add your card&apos;s export too, to see card waste.</p>
+          <p className="text-xs text-muted">Most bank and card exports: a date, a description and an amount (or debit and credit) column, with or without a header row (common layouts recognised; not yet tested on every bank's real files). Add your card&apos;s export too, to see card waste.</p>
           <input
             id={`${id}-files`}
             name="files"
