@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { accessErrorResponse, NoCompanyData } from "@/lib/server/errors";
 import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
-import { findingsCsv, recurringCsv, uploadsCsv } from "@/lib/export/csv";
+import { findingsCsv, matchesCsv, recurringCsv, uploadsCsv } from "@/lib/export/csv";
+import { matchingTransactions, parseTxnQuery } from "@/lib/finance/transaction-search";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { loadAnalysis } from "@/lib/server/data";
+import { loadAnalysis, loadTransactions, type DataMode } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
 
@@ -12,7 +13,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions"]) });
+const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions", "matches"]) });
+
+/** The transactions a search on /app/transactions matched, with the same filters from the address. */
+async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<NextResponse> {
+  const { dataset, txns } = await loadTransactions(mode, { visitorFixes: true });
+  const rows = matchingTransactions(txns, parseTxnQuery(Object.fromEntries(params)));
+  const names = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
+  return new NextResponse(matchesCsv(rows, names), {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="runway-matches-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
 
 /** A company's own uploaded transactions, as a backup it can upload again. */
 async function transactionsExport(): Promise<NextResponse> {
@@ -32,11 +47,12 @@ export async function GET(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const params = new URL(request.url).searchParams;
   const parsed = query.safeParse({ mode: params.get("mode") ?? undefined, kind: params.get("kind") });
-  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings or transactions" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings, transactions or matches" }, { status: 400 });
   const { mode, kind } = parsed.data;
   if (kind === "transactions" && mode !== "company") return NextResponse.json({ error: "Transactions download only for your company's uploads." }, { status: 400 });
   try {
     if (kind === "transactions") return await transactionsExport();
+    if (kind === "matches") return await matchesExport(mode, params);
     const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     let body: string;
     if (kind === "recurring") body = recurringCsv(analysis);

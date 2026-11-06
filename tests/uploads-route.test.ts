@@ -177,4 +177,26 @@ describe("POST /api/uploads", () => {
     const res = await cash(new Request("http://localhost/api/uploads/cash", { method: "POST", body: JSON.stringify({ cashCents: 1 }) }));
     expect(res.status).toBe(503);
   });
+
+  it("downloads what a transactions search matched: the demo's, or the signed-in company's own", async () => {
+    const { POST } = await import("@/app/api/uploads/route");
+    const { GET } = await import("@/app/api/export/route");
+    const get = (q: string) => GET(new Request(`http://localhost/api/export?${q}`, { headers: { "x-forwarded-for": "203.0.113.10" } }));
+    const demo = await get("mode=demo&kind=matches&vendor=zoom");
+    expect(demo.status).toBe(200);
+    expect(demo.headers.get("content-disposition")).toMatch(/runway-matches-\d{4}-\d{2}-\d{2}\.csv/);
+    const demoLines = (await demo.text()).trim().split("\r\n").slice(1);
+    expect(demoLines.length).toBeGreaterThan(0);
+    for (const l of demoLines) expect(l).toMatch(/,Zoom,/);
+
+    as("user-o");
+    await POST(post({ cashCents: 1, rows: [row({ description: "OHS VENDOR" }), row({ description: "OTHER THING", date: "2026-08-02" })] }, "203.0.113.10"));
+    as("user-p");
+    await POST(post({ cashCents: 1, rows: [row({ description: "PEES VENDOR" })] }, "203.0.113.10"));
+    const mine = await (await get("mode=company&kind=matches&q=vendor")).text();
+    expect(mine).toContain("PEES VENDOR");
+    expect(mine).not.toContain("OHS VENDOR");
+    as(null);
+    expect((await get("mode=company&kind=matches")).status).toBe(401);
+  });
 });

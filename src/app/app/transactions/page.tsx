@@ -217,12 +217,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
           </nav>
         )}
       </section>
-      {mode === "company" && (
+      {result.total > 0 && (
         <p className="mt-4 text-sm text-muted">
-          <a href="/api/export?mode=company&kind=transactions" download className="font-medium text-brand hover:underline">
-            Download all as CSV
+          <a href={hrefFor(mode, query, 1).replace("/app/transactions?", "/api/export?kind=matches&")} download className="font-medium text-brand hover:underline">
+            Download {result.total === 1 ? "this transaction" : `these ${result.total.toLocaleString("en-US")}`} as CSV
           </a>{" "}
-          to work with them in a spreadsheet.
+          for a spreadsheet or your accountant.
         </p>
       )}
     </main>

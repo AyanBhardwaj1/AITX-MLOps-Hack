@@ -20,8 +20,8 @@ demo, the free grader and the public site work exactly as before.
   type the new balance on the upload page and the runway uses it at once. The page shows when cash was
   last entered, and the dashboard asks for a fresh figure once it's a week old.
 - **Transactions page.** Search every transaction by vendor, the bank's description or cardholder;
-  filter by category, month and money in or out, with totals for the whole match. Works on the
-  demo too.
+  filter by category, month and money in or out, with totals for the whole match, and download
+  exactly what matched as a CSV. Works on the demo too.
 - **Monthly budgets.** Set a budget per spending category. The dashboard shows this month so far,
   where it's heading (recurring bills still due plus one-off spend at its pace) and last month, and
   the Monday digest names any budget that's over or heading over. The demo has a sample set.

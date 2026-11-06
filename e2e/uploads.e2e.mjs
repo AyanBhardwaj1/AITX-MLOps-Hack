@@ -63,6 +63,10 @@ await suite("uploads", async ({ browser, step }) => {
     const rows = p.getByRole("region", { name: "Transactions" }).locator("tbody tr");
     assert.ok((await rows.count()) > 0);
     for (const text of await rows.allInnerTexts()) assert.match(text, /slack/i);
+    const [dl] = await Promise.all([p.waitForEvent("download"), p.getByRole("link", { name: /^Download (this transaction|these \d+) as CSV$/ }).click()]);
+    const csv = readFileSync(await dl.path(), "utf8").trim().split("\r\n");
+    assert.equal(csv.length - 1, await rows.count());
+    for (const line of csv.slice(1)) assert.match(line, /slack/i);
     // Signed out, the same address asks for sign-in instead of showing anything.
     const stranger = await (await browser.newContext()).newPage();
     await stranger.goto(`${APP}/app/transactions?mode=company&q=slack`);

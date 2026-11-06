@@ -98,4 +98,11 @@ describe("transaction search", () => {
     const moves = searchTransactions(withMoves, parseTxnQuery({ category: "transfer" }));
     expect(moves).toMatchObject({ total: 2, outCents: 50_000_00, inCents: 50_000_00, uncounted: 0 });
   });
+
+  it("gives every match, unpaged, for a download", async () => {
+    const { matchingTransactions } = await import("@/lib/finance/transaction-search");
+    const many = Array.from({ length: PAGE_SIZE + 7 }, (_, i) => txn(`d${String(i).padStart(3, "0")}`, "2026-10-01", -100, "Zoom", "software"));
+    expect(matchingTransactions(many, parseTxnQuery({ page: "2" }))).toHaveLength(PAGE_SIZE + 7);
+    expect(matchingTransactions(txns, parseTxnQuery({ q: "zoom" })).map((t) => t.id)).toEqual(["t2", "t1"]);
+  });
 });

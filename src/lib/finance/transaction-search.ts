@@ -70,9 +70,14 @@ function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boo
 /** Newest first; ties broken by id so pages never repeat or skip a row. */
 const newestFirst = (a: EnrichedTxn, b: EnrichedTxn) => (a.postedAt === b.postedAt ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : a.postedAt < b.postedAt ? 1 : -1);
 
-export function searchTransactions(txns: readonly EnrichedTxn[], query: TxnQuery): TxnSearchResult {
+/** Every transaction the filters match (all pages), newest first: what a download holds. */
+export function matchingTransactions(txns: readonly EnrichedTxn[], query: TxnQuery): EnrichedTxn[] {
   const words = query.q.toLowerCase().split(/\s+/).filter(Boolean);
-  const found = txns.filter((t) => matches(t, words, query)).sort(newestFirst);
+  return txns.filter((t) => matches(t, words, query)).sort(newestFirst);
+}
+
+export function searchTransactions(txns: readonly EnrichedTxn[], query: TxnQuery): TxnSearchResult {
+  const found = matchingTransactions(txns, query);
   let outCents = 0;
   let inCents = 0;
   let uncounted = 0;

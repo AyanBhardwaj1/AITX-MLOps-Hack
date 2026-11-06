@@ -48,4 +48,14 @@ describe("exports from the demo company", () => {
     expect(lines.some((l) => l.includes(",dismissed,"))).toBe(true);
     expect(lines.some((l) => l.includes(",open,"))).toBe(true);
   });
+
+  it("downloads the transactions a search matched, newest first, with vendor, category and account", async () => {
+    const { matchesCsv } = await import("@/lib/export/csv");
+    const { matchingTransactions, parseTxnQuery } = await import("@/lib/finance/transaction-search");
+    const rows = matchingTransactions(a.txns, parseTxnQuery({ vendor: "zoom" }));
+    const lines = matchesCsv(rows, new Map([["rho_card", "Rho Card"]])).replace(/^\uFEFF/, "").trim().split("\r\n");
+    expect(lines[0]).toBe("Date,Vendor,Category,Description,Account,Cardholder,Amount (USD)");
+    expect(lines).toHaveLength(rows.length + 1);
+    expect(lines[1]).toMatch(/^2026-10-\d\d,Zoom,software,ZOOM\.US 888-799-9666,.*,-149\.9$/);
+  });
 });

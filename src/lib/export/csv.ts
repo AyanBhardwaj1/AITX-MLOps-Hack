@@ -1,6 +1,6 @@
 import type { Analysis } from "../pipeline";
 import type { RhoTransaction } from "../rho/schema";
-import type { Finding } from "../types";
+import type { EnrichedTxn, Finding } from "../types";
 
 /**
  * CSV downloads for spreadsheets and board prep. Vendor names and details come from bank
@@ -64,5 +64,13 @@ export function uploadsCsv(rows: readonly RhoTransaction[]): string {
     rows
       .toSorted((a, b) => (a.posted_at ?? a.initiated_at).localeCompare(b.posted_at ?? b.initiated_at))
       .map((t) => [(t.posted_at ?? t.initiated_at).slice(0, 10), t.counterparty_name, dollars(t.amount.amount), t.transaction_type, t.account_id, t.user_full_name ?? null]),
+  );
+}
+
+/** The transactions a search matched (see finance/transaction-search), for an accountant or a spreadsheet. */
+export function matchesCsv(rows: readonly EnrichedTxn[], accountNames: ReadonlyMap<string, string>): string {
+  return toCsv(
+    ["Date", "Vendor", "Category", "Description", "Account", "Cardholder", "Amount (USD)"],
+    rows.map((t) => [t.postedAt, t.vendor.name, t.vendor.category, t.description, accountNames.get(t.accountId) ?? t.accountId, t.cardholder ?? null, dollars(t.amountCents)]),
   );
 }
