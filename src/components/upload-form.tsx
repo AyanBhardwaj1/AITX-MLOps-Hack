@@ -51,7 +51,8 @@ async function previewFile(file: File): Promise<Picked["preview"]> {
     return { error: "Over 20 MB. Export a shorter date range." };
   try {
     const r = importStatement(await file.text(), {
-      accountId: "preview",
+      // Distinct per file, so statements without an account number aren't taken for one another.
+      accountId: `preview:${file.name}:${file.size}:${file.lastModified}`,
       resolvePayoffs: false,
     });
     return { rows: r.transactions.length, mostlyPositive: r.mostlyPositive, balances: r.balances };

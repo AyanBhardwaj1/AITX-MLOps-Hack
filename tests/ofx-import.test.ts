@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combineBalances, importOfx, importStatement, looksLikeOfx } from "@/lib/csv/ofx";
+import { combineBalances, importOfx, importStatement, looksLikeOfx, readOfxBalances } from "@/lib/csv/ofx";
 import { toUploadRows } from "@/lib/uploads/rows";
 
 // OFX 1.x (SGML): a header block, then tags whose values aren't closed. Quicken (.qfx) and
@@ -120,7 +120,7 @@ describe("OFX, QFX and QBO statements", () => {
   it("names each account in a file that holds several, and flips a file on request", () => {
     const both = sgmlChecking.replace("</BANKMSGSRSV1>", "</BANKMSGSRSV1>" + xmlCard.slice(xmlCard.indexOf("<CREDITCARDMSGSRSV1>"), xmlCard.indexOf("</OFX>")));
     const r = importOfx(both, { accountId: "bank" });
-    expect(new Set(r.transactions.map((t) => t.account_id))).toEqual(new Set(["bank …6789", "bank …4321"]));
+    expect(new Set(r.transactions.map((t) => t.account_id))).toEqual(new Set(["bank …6789", "bank …4321 card"]));
     const flipped = importOfx(xmlCard, { accountId: "amex", flipSigns: true, resolvePayoffs: false });
     expect(flipped.transactions[0]!.amount.amount).toBe(89_00);
   });
@@ -164,6 +164,11 @@ describe("balances in OFX downloads", () => {
     // The suggestion is only as fresh as its oldest balance.
     expect(combineBalances(lists)).toEqual({ cents: 162_345_67, asOf: "2026-10-30", accounts: 2 });
     expect(combineBalances([[], undefined])).toBeNull();
+    // Statements without an account number are each their own account, in every file.
+    const noId = (cents: string) => sgmlChecking.replace("<ACCTID>000123456789", "").replace("<BALAMT>152345.67", `<BALAMT>${cents}`);
+    expect(combineBalances([importOfx(noId("100"), { accountId: "a.ofx" }).balances, importOfx(noId("200"), { accountId: "b.ofx" }).balances])).toMatchObject({ cents: 300_00, accounts: 2 });
+    // The grader reads balances without building every transaction.
+    expect(readOfxBalances(sgmlChecking, "x")).toEqual(importOfx(sgmlChecking, { accountId: "x" }).balances);
     // A balance without a date still counts; it just can't be dated.
     const undated = sgmlChecking.replace("<DTASOF>20261031", "");
     expect(combineBalances([importOfx(undated, { accountId: "x" }).balances])).toEqual({ cents: 152_345_67, asOf: null, accounts: 1 });
@@ -177,13 +182,13 @@ describe("OFX review fixes", () => {
   it("reads OFX amounts: either decimal mark, no thousands separators, extra zero decimals", () => {
     expect(first(withAmount("-.50")).amount.amount).toBe(-50);
     expect(first(withAmount("-12,50")).amount.amount).toBe(-12_50);
-    // OFX has no thousands separators: "-12,000" is twelve dollars, never twelve thousand.
-    expect(first(withAmount("-12,000")).amount.amount).toBe(-12_00);
+    // A comma and exactly three digits could be twelve dollars or twelve thousand: not guessed.
     expect(first(withAmount("+12.5")).amount.amount).toBe(12_50);
     expect(first(withAmount("-1234.5600")).amount.amount).toBe(-1_234_56);
     // Fractions of a cent and stray text aren't guessed at.
     expect(first(withAmount("-1,234,567.8")).amount.amount).toBe(-1_234_567_80);
-    for (const bad of ["-12.345", "12.3.4", "1,23.45", "-", "", "12-", "$12"]) expect(importOfx(withAmount(bad), { accountId: "a" }).transactions.map((t) => t.counterparty_name)).not.toContain("GUSTO PAYROLL");
+    expect(first(withAmount(" -12.50 ")).amount.amount).toBe(-12_50);
+    for (const bad of ["-12,000", "1,500", "12 50", "1 234.56", "-12.345", "12.3.4", "1,23.45", "-", "", "12-", "$12"]) expect(importOfx(withAmount(bad), { accountId: "a" }).transactions.map((t) => t.counterparty_name)).not.toContain("GUSTO PAYROLL");
   });
 
   it("keeps every transaction when a close tag is missing, and says when a statement is cut short", () => {
@@ -200,11 +205,16 @@ describe("OFX review fixes", () => {
     const both = sgmlChecking.replace("</BANKMSGSRSV1>", "</BANKMSGSRSV1>" + xmlCard.slice(xmlCard.indexOf("<CREDITCARDMSGSRSV1>"), xmlCard.indexOf("</OFX>")));
     expect(alone).toBe("chase …6789");
     expect(importOfx(both, { accountId: "chase" }).transactions[0]!.account_id).toBe(alone);
-    // Checking and a card that both end in 6789 stay two accounts.
+    // Checking and a card that both end in 6789 stay two accounts, each named as it is alone.
     const twin = both.replace("<ACCTID>4111111111114321", "<ACCTID>4111111111116789");
-    const accounts = new Set(importOfx(twin, { accountId: "chase" }).transactions.map((t) => `${t.account_id}|${t.account_type}`));
-    expect(accounts.size).toBe(2);
-    expect(new Set([...accounts].map((a) => a.split("|")[0])).size).toBe(2);
+    const names = importOfx(twin, { accountId: "chase" }).transactions.map((t) => t.account_id);
+    expect(new Set(names)).toEqual(new Set(["chase …6789", "chase …6789 card"]));
+    const cardAlone = importOfx(xmlCard.replace("<ACCTID>4111111111114321", "<ACCTID>4111111111116789"), { accountId: "chase" }).transactions[0]!.account_id;
+    expect(cardAlone).toBe("chase …6789 card");
+    // Savings is named as savings; no name carries more than the last four digits.
+    const savings = importOfx(sgmlChecking.replace("<ACCTTYPE>CHECKING", "<ACCTTYPE>SAVINGS"), { accountId: "chase" }).transactions[0]!.account_id;
+    expect(savings).toBe("chase …6789 savings");
+    for (const n of [...names, savings]) expect(n.replace(/\D/g, "").length).toBeLessThanOrEqual(4);
   });
 
   it("treats a card statement's PAYMENT as the payoff, so card spend isn't counted twice", () => {

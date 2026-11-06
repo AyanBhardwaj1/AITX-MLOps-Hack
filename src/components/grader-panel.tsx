@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
-import { combineBalances, importStatement, looksLikeOfx } from "@/lib/csv/ofx";
+import { combineBalances, looksLikeOfx, readOfxBalances } from "@/lib/csv/ofx";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader";
 import { formatDollars } from "@/lib/money";
@@ -35,13 +35,7 @@ export function GraderPanel() {
     const read = await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));
     setFiles(read);
     // Bank downloads carry their balances; a file that can't be read says so when grading.
-    const balances = read.filter((f) => looksLikeOfx(f.text)).map((f) => {
-      try {
-        return importStatement(f.text, { accountId: f.name }).balances;
-      } catch {
-        return undefined;
-      }
-    });
+    const balances = read.filter((f) => looksLikeOfx(f.text)).map((f, i) => readOfxBalances(f.text, `${i}:${f.name}`));
     setFileCash(combineBalances(balances));
     setResult(null);
     setError(null);

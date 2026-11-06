@@ -63,6 +63,7 @@ const STATEMENT_OPEN = /<(?:STMTRS|CCSTMTRS)>/gi;
 /** Where transactions start and end; a missing </STMTTRN> ends at the next one (SGML files can be sloppy). */
 const TXN_TAGS = /<STMTTRN>|<\/STMTTRN>|<\/BANKTRANLIST>/gi;
 const F_TRNTYPE = /<TRNTYPE>([^<]*)/i;
+const F_ACCTTYPE = /<ACCTTYPE>([^<]*)/i;
 const field = (tag: string) => new RegExp(`<${tag}>([^<]*)`, "i");
 const F = { curdef: field("CURDEF"), acctid: field("ACCTID"), posted: field("DTPOSTED"), amount: field("TRNAMT"), name: field("NAME"), memo: field("MEMO") };
 const TXN_CURRENCY = /<CURRENCY>[\s\S]*?<CURSYM>([^<]*)/i;
@@ -89,11 +90,13 @@ function ofxDate(raw: string): string | null {
 
 /**
  * OFX amounts: an optional sign, digits, and "." or "," as the decimal mark ("-.50", "-12,50").
- * OFX has no thousands separators, so "-12,000" is twelve dollars (only "1,234.56", with both marks, is read as thousands). Extra zero decimals are fine;
- * fractions of a cent and anything else are refused rather than guessed.
+ * "1,234.56" (both marks) can only be comma thousands, which some banks write. A comma and exactly
+ * three digits ("1,500") could be either, so it's refused, as are spaces inside a number, fractions
+ * of a cent and anything else: never guessed. Extra zero decimals are fine.
  */
 function ofxAmount(raw: string): number | null {
-  let s = raw.replace(/\s/g, "");
+  let s = raw.trim();
+  if (/^[+-]?\d{1,3},\d{3}$/.test(s)) return null;
   // Both marks ("1,234.56") can only mean comma thousands, which some banks write anyway.
   if (/^[+-]?\d{1,3}(,\d{3})+\.\d*$/.test(s)) s = s.replaceAll(",", "");
   const m = /^([+-]?)(\d*)(?:[.,](\d*))?$/.exec(s);
@@ -125,6 +128,42 @@ function refuseOtherCurrency(code: string) {
   if (c && c !== "USD") throw new Error(`Runway works in US dollars; this file has ${c} amounts.`);
 }
 
+interface StatementAccount {
+  id: string;
+  card: boolean;
+  savings: boolean;
+}
+
+function statementAccount(kind: string, body: string): StatementAccount {
+  return { id: value(body, F.acctid).replace(/\s/g, ""), card: kind.toUpperCase() === "CCSTMTRS", savings: value(body, F_ACCTTYPE).toUpperCase() === "SAVINGS" };
+}
+
+/**
+ * An account's name from its own statement only, so every download of it agrees whatever else
+ * the file holds: the founder's label, the last four digits (never more: the name is sent to the
+ * server), and "card" or "savings" so a checking, a savings and a card ending alike stay apart.
+ */
+function accountName(label: string, a: StatementAccount): string {
+  if (!a.id) return label;
+  return `${label} …${a.id.slice(-4)}${a.card ? " card" : a.savings ? " savings" : ""}`;
+}
+
+/**
+ * A bank statement's closing balance (LEDGERBAL); cards have none, since what's owed isn't cash.
+ * Keyed by the account number (kept in the browser), or by `fallback` when the file gives none.
+ */
+function statementBalance(body: string, a: StatementAccount, fallback: string): OfxBalance | null {
+  if (a.card) return null;
+  const ledger = LEDGER.exec(body.slice(body.lastIndexOf("</BANKTRANLIST>") + 1))?.[1];
+  const cents = ledger ? ofxAmount(value(ledger, F_BAL.amount)) : null;
+  return cents === null ? null : { key: a.id || fallback, cents, asOf: ofxDate(value(ledger!, F_BAL.asOf)) };
+}
+
+/** Just the bank balances in a download, without reading every transaction (the grader's cash hint). */
+export function readOfxBalances(text: string, fileKey: string): OfxBalance[] {
+  return [...text.matchAll(STATEMENT)].flatMap((s, i) => statementBalance(s[2]!, statementAccount(s[1]!, s[2]!), `${fileKey}#${i}`) ?? []);
+}
+
 /** Parses one OFX file. Throws on another currency or no statement; skips (and reports) unreadable transactions. */
 export function importOfx(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: ImportOptions): StatementImport & { balances: OfxBalance[] } {
   const statements = [...text.matchAll(STATEMENT)];
@@ -140,16 +179,7 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
     }
     return line;
   };
-  // Every account is named by its number, whatever else is in the file, so a single-account and an
-  // all-accounts download of the same account agree. Two accounts the last four can't tell apart
-  // (a checking and a card both ending 1234) get more digits.
-  const ids = statements.map((s) => ({ id: value(s[2]!, F.acctid).replace(/\s/g, ""), card: s[1]!.toUpperCase() === "CCSTMTRS" }));
-  const distinct = new Map(ids.map((a) => [`${a.card}|${a.id}`, a]));
-  const nameFor = (id: string, card: boolean) => {
-    if (!id) return accountId;
-    const clash = [...distinct.values()].some((o) => (o.id !== id || o.card !== card) && o.id.slice(-4) === id.slice(-4));
-    return clash ? `${accountId} …${id.slice(-8)}${card ? " card" : ""}` : `${accountId} …${id.slice(-4)}`;
-  };
+  const ids = statements.map((s) => statementAccount(s[1]!, s[2]!));
   const transactions: RhoTransaction[] = [];
   const skipped: number[] = [];
   const balances: OfxBalance[] = [];
@@ -157,12 +187,10 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
     const body = s[2]!;
     const onCard = ids[i]!.card;
     refuseOtherCurrency(value(body, F.curdef));
-    const account = nameFor(ids[i]!.id, onCard);
+    const account = accountName(accountId, ids[i]!);
     const bodyStart = s.index! + s[0].indexOf(body);
-    // A bank account's balance is cash; a card's balance is what's owed, never cash.
-    const ledger = onCard ? null : LEDGER.exec(body.slice(body.lastIndexOf("</BANKTRANLIST>") + 1))?.[1];
-    const balance = ledger ? ofxAmount(value(ledger, F_BAL.amount)) : null;
-    if (balance !== null) balances.push({ key: ids[i]!.id || account, cents: balance, asOf: ofxDate(value(ledger!, F_BAL.asOf)) });
+    const balance = statementBalance(body, ids[i]!, `${accountId}#${i}`);
+    if (balance) balances.push(balance);
     for (const { block, at } of transactionBlocks(body)) {
       const currency = TXN_CURRENCY.exec(block)?.[1];
       if (currency) refuseOtherCurrency(currency);
