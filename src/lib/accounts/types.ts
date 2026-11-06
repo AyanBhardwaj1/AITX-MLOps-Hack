@@ -20,16 +20,42 @@ export const companyNameSchema = z
   .max(80)
   .refine((s) => !/[\u0000-\u001f\u007f]/.test(s), "no control characters");
 
+/** People in a company, counting pending invites. */
+export const MAX_TEAM_SIZE = 10;
+export type InviteResult = "invited" | "exists" | "member" | "limit" | "not_owner";
+export interface TeamMember {
+  userId: string;
+  email: string | null;
+  role: CompanyRole;
+}
+export interface Team {
+  members: TeamMember[];
+  invites: { email: string; createdAt: string }[];
+}
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 export interface AccountsStore {
   kind: "memory" | "postgres";
   companyFor(userId: string): Promise<Company | null>;
-  /** The user's company, created with an owner membership on first use; atomic and idempotent. */
+  /**
+   * The user's company: the one they're in, else the one that invited their (verified) email, else a
+   * new one they own. Atomic and idempotent.
+   */
   ensureCompanyFor(user: { id: string; email: string | null }): Promise<Company>;
   renameCompany(userId: string, name: string): Promise<void>;
   /** A company's name by its scope, or null (for work done outside a request, like the daily cron). */
   nameForScope(scope: string): Promise<string | null>;
   /** Deletes the company the user owns, with everything in it; false when they own none. */
   deleteCompany(userId: string): Promise<boolean>;
+  /** The owner invites a teammate by email; they join when they first sign in. Atomic under the team cap. */
+  invite(ownerId: string, email: string): Promise<InviteResult>;
+  /** The members and pending invites of the user's company. */
+  team(userId: string): Promise<Team | null>;
+  revokeInvite(ownerId: string, email: string): Promise<boolean>;
+  /** The owner removes a member (never the owner). */
+  removeMember(ownerId: string, memberUserId: string): Promise<boolean>;
+  /** Whether any company has invited this email (it then counts as invited to Runway). */
+  hasCompanyInvite(email: string): Promise<boolean>;
 }
 
 const PERSONAL_DOMAINS = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "me.com", "proton.me", "protonmail.com", "aol.com"]);

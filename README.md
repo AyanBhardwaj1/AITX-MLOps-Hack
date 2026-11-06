@@ -204,7 +204,7 @@ The eval and two independent code reviews caught real bugs during development, e
 ## Known limitations and next steps
 
 - **Accounts are new and minimal** (see [ADR-0001](docs/adr/0001-accounts-and-uploaded-data.md)):
-  - One owner per company; no teammates or roles yet, and no second sign-in factor beyond the email link.
+  - Teams are simple: the owner invites up to 9 teammates by email from `/app/settings`; members see and work on the same data, and only the owner renames, deletes or manages the team. There's no invite email yet (the owner tells them to sign in), someone who already has their own company stays in it, and there's no second sign-in factor beyond the email link.
   - Companies connect by uploading CSV exports; per-company Rho connections wait on Rho partner OAuth. With accounts on, the env Rho feed is off.
   - The daily Autopilot reviews every company with uploads (least recently reviewed first, within the cron's time limit), so each company's Inbox has fresh drafts in the morning. The Monday digest isn't per company yet, and app-initiated Slack and Jira are off with accounts on (they're the operator's tools).
   - The company name starts from the email domain; the owner can rename or delete the company at `/app/settings`.

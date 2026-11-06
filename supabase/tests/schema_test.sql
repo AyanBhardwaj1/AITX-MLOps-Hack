@@ -132,6 +132,32 @@ do $$ begin
 end $$;
 reset role;
 
+-- Company invites hold other people's emails: no public or signed-in access at all.
+set role anon;
+do $$ begin
+  begin
+    perform count(*) from public.company_invites;
+    raise exception 'FAIL: anon read company invites';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  begin
+    perform count(*) from public.company_invites;
+    raise exception 'FAIL: a signed-in user read company invites';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.company_invites (org_id, email, invited_by) select id, 'x@example.com', gen_random_uuid() from public.organizations limit 1;
+    raise exception 'FAIL: a signed-in user wrote a company invite';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 -- Vendor corrections: members read their own org's fixes only, and never write them directly.
 insert into public.vendor_corrections (org_id, vendor_key, category, job) values
   ('00000000-0000-0000-0000-00000000000a', 'loom', 'software', 'video_meetings'),

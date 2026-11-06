@@ -69,5 +69,86 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
       expect(fresh.scope).not.toBe(first.scope);
       expect(await store.deleteCompany(crypto.randomUUID())).toBe(false);
     });
+
+    describe("teams", () => {
+      it("lets the owner invite a teammate, who joins as a member when they first sign in", async () => {
+        const store = await makeStore();
+        const owner = user();
+        const company = await store.ensureCompanyFor(owner);
+        const mate = { id: crypto.randomUUID(), email: `Mate+${crypto.randomUUID().slice(0, 6)}@Acme.example` };
+        expect(await store.hasCompanyInvite(mate.email)).toBe(false);
+        expect(await store.invite(owner.id, mate.email)).toBe("invited");
+        expect(await store.invite(owner.id, mate.email.toLowerCase())).toBe("exists");
+        expect(await store.hasCompanyInvite(mate.email)).toBe(true);
+        const joined = await store.ensureCompanyFor(mate);
+        expect(joined).toEqual({ ...company, role: "member" });
+        expect(await store.hasCompanyInvite(mate.email)).toBe(false);
+        const team = await store.team(owner.id);
+        expect(team!.invites).toEqual([]);
+        expect(team!.members.map((m) => [m.email, m.role])).toEqual([
+          [owner.email, "owner"],
+          [mate.email.toLowerCase(), "member"],
+        ]);
+        expect(await store.invite(owner.id, mate.email)).toBe("member");
+      });
+
+      it("lets only the owner manage the team", async () => {
+        const store = await makeStore();
+        const owner = user();
+        await store.ensureCompanyFor(owner);
+        const mate = user();
+        await store.invite(owner.id, mate.email);
+        await store.ensureCompanyFor(mate);
+        expect(await store.invite(mate.id, "someone@acme.example")).toBe("not_owner");
+        expect(await store.removeMember(mate.id, owner.id)).toBe(false);
+        expect(await store.deleteCompany(mate.id)).toBe(false);
+        await store.renameCompany(mate.id, "Hijacked");
+        expect((await store.companyFor(owner.id))!.name).not.toBe("Hijacked");
+      });
+
+      it("removes a member, revokes an invite, and never removes the owner", async () => {
+        const store = await makeStore();
+        const owner = user();
+        await store.ensureCompanyFor(owner);
+        const mate = user();
+        await store.invite(owner.id, mate.email);
+        await store.ensureCompanyFor(mate);
+        expect(await store.removeMember(owner.id, owner.id)).toBe(false);
+        expect(await store.removeMember(owner.id, mate.id)).toBe(true);
+        expect(await store.companyFor(mate.id)).toBeNull();
+        await store.invite(owner.id, "later@acme.example");
+        expect(await store.revokeInvite(owner.id, "LATER@acme.example")).toBe(true);
+        expect(await store.hasCompanyInvite("later@acme.example")).toBe(false);
+      });
+
+      it("caps a team at ten people, counting pending invites", async () => {
+        const store = await makeStore();
+        const owner = user();
+        await store.ensureCompanyFor(owner);
+        for (let i = 0; i < 9; i++) expect(await store.invite(owner.id, `p${i}@acme.example`)).toBe("invited");
+        expect(await store.invite(owner.id, "tenth@acme.example")).toBe("limit");
+      });
+
+      it("keeps someone who already has a company in it; an invite doesn't move them", async () => {
+        const store = await makeStore();
+        const owner = user();
+        const company = await store.ensureCompanyFor(owner);
+        const other = user();
+        const own = await store.ensureCompanyFor(other);
+        await store.invite(owner.id, other.email);
+        expect(await store.ensureCompanyFor(other)).toEqual(own);
+        expect(own.orgId).not.toBe(company.orgId);
+      });
+
+      it("drops pending invites with the company", async () => {
+        const store = await makeStore();
+        const owner = user();
+        await store.ensureCompanyFor(owner);
+        const email = `gone+${crypto.randomUUID().slice(0, 6)}@acme.example`;
+        await store.invite(owner.id, email);
+        await store.deleteCompany(owner.id);
+        expect(await store.hasCompanyInvite(email)).toBe(false);
+      });
+    });
   });
 }

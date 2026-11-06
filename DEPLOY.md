@@ -72,6 +72,8 @@ In **Vercel**: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (
 
 With accounts on: the env Rho feed (`sandbox` mode) is off, since companies connect by uploading exports until Rho partner sign-in exists; app-initiated Slack sends and Jira filing are off, because those webhooks belong to your team, not to the companies using the app; the daily Autopilot also reviews every company that has uploaded data (needs `CRON_SECRET`), least recently reviewed first within the cron's 60-second limit; the Monday digest still goes to your Slack for `AUTOPILOT_CRON_MODE=demo` only.
 
+Founders invite their own teammates from `/app/settings` (no email is sent; the teammate signs in at `/login` with the invited address). A company invite counts as an invitation to Runway, so teammates don't need a waitlist invite. Run `npm run db:migrate` so the `company_invites` table exists.
+
 ### Inviting founders
 
 In invite mode, a sign-in link creates an account only for an email you've invited. In Supabase → SQL Editor:

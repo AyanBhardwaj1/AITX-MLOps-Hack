@@ -5,7 +5,7 @@ import { DEFAULT_AFTER_SIGN_IN, NEXT_COOKIE, NEXT_COOKIE_MAX_AGE, safeNextPath }
 import { supabaseForRoute } from "@/lib/auth/supabase-route";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { env } from "@/lib/server/env";
-import { getWaitlist } from "@/lib/server/waitlist";
+import { isInvited } from "@/lib/server/company";
 import { siteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -25,8 +25,8 @@ export async function POST(request: Request) {
     sendLink: async (email) => {
       // Skipped quietly, so the answer is the same and says nothing about the address.
       if (!allowEmail(email.toLowerCase())) return;
-      // Invite mode: new accounts only for emails invited from the waitlist; existing users still get links.
-      const mayCreate = env().SIGNUPS === "open" || (await getWaitlist()?.isInvited(email)) === true;
+      // Invite mode: new accounts only for emails invited from the waitlist or by a company; existing users still get links.
+      const mayCreate = env().SIGNUPS === "open" || (await isInvited(email));
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: `${origin}/auth/callback`, shouldCreateUser: mayCreate },

@@ -1,9 +1,10 @@
 import "server-only";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createMemoryAccounts } from "../accounts/memory";
 import { createPostgresAccounts } from "../accounts/postgres";
-import type { AccountsStore, Company } from "../accounts/types";
+import type { AccountsStore, Company, InviteResult, Team } from "../accounts/types";
 import { EMAIL_HEADER, USER_HEADER, type SessionUser } from "../auth/session";
 import type { DataMode } from "../modes";
 import { accountsEnabled, env } from "./env";
@@ -38,8 +39,13 @@ export async function ensureCompanyFor(user: SessionUser): Promise<Company> {
   const accounts = getAccounts();
   const existing = await accounts.companyFor(user.id);
   if (existing) return existing;
-  if (env().SIGNUPS !== "open" && !(user.email && (await getWaitlist()?.isInvited(user.email)))) throw new NotInvited();
+  if (env().SIGNUPS !== "open" && !(user.email && (await isInvited(user.email)))) throw new NotInvited();
   return accounts.ensureCompanyFor(user);
+}
+
+/** Invited to Runway: from the waitlist, or by a company that wants them on its team. */
+export async function isInvited(email: string): Promise<boolean> {
+  return (await getAccounts().hasCompanyInvite(email)) || (await getWaitlist()?.isInvited(email)) === true;
 }
 
 const FIXED_NAMES = { demo: "Taco Robotics, Inc.", sandbox: "Our company" } as const;
@@ -84,4 +90,43 @@ export async function deleteCurrentCompany(confirmName: string): Promise<"delete
   await getStore(company.scope).clearUploads();
   await getAccounts().deleteCompany(user.id);
   return "deleted";
+}
+
+/** Who's in the signed-in user's company, and who's invited. Any member can see it. */
+export async function currentTeam(): Promise<Team> {
+  const user = await sessionUser();
+  if (!user) throw new SignInRequired();
+  await ensureCompanyFor(user);
+  return (await getAccounts().team(user.id)) ?? { members: [], invites: [] };
+}
+
+/** The owner invites a teammate by email (validated by the caller). */
+export async function inviteTeammate(email: string): Promise<InviteResult> {
+  const { user } = await ownedCompany();
+  return getAccounts().invite(user.id, email);
+}
+
+export async function revokeTeammateInvite(email: string): Promise<boolean> {
+  const { user } = await ownedCompany();
+  return getAccounts().revokeInvite(user.id, email);
+}
+
+export async function removeTeammate(memberUserId: string): Promise<boolean> {
+  const { user } = await ownedCompany();
+  return getAccounts().removeMember(user.id, memberUserId);
+}
+
+/**
+ * For company pages: the signed-in user's company, or a redirect to sign in (signed out) or to the
+ * invite notice (signed in but not part of any company).
+ */
+export async function companyForPage(next: string): Promise<{ user: SessionUser; company: Company }> {
+  const user = await sessionUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent(next)}`);
+  try {
+    return { user, company: await ensureCompanyFor(user) };
+  } catch (err) {
+    if (err instanceof Error && err.name === "NotInvited") redirect("/login?error=invite");
+    throw err;
+  }
 }

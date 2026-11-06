@@ -71,6 +71,10 @@ export default function SecurityPage() {
                 are never written to logs. You can delete everything you uploaded, and everything worked out from it, from the upload page.
               </li>
               <li>Accounts are invite-only during early access, and that’s enforced on the server, not only on the sign-in form.</li>
+              <li>
+                Only a company’s owner can invite or remove teammates, rename the company or delete it. A teammate joins only by signing in with the
+                exact email the owner invited, and loses access on their next request once removed.
+              </li>
             </ul>
           ),
         },
@@ -87,8 +91,8 @@ export default function SecurityPage() {
           heading: "Not finished yet",
           body: (
             <p>
-              Runway is in early access. Each company has a single owner today; inviting teammates with their own permissions comes before general
-              availability, as does a second sign-in factor. Companies connect by uploading bank exports until partner sign-in with Rho is available.
+              Runway is in early access. A company has one owner and up to nine teammates, all with the same view of the data; finer permissions
+              and a second sign-in factor come before general availability. Companies connect by uploading bank exports until partner sign-in with Rho is available.
             </p>
           ),
         },

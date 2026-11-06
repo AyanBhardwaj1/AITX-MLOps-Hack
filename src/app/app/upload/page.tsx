@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UploadForm, type UploadSummary } from "@/components/upload-form";
-import { currentCompany, sessionUser } from "@/lib/server/company";
+import { companyForPage } from "@/lib/server/company";
 import { accountsEnabled } from "@/lib/server/env";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
 
@@ -18,9 +18,7 @@ async function summaryFor(scope: string): Promise<UploadSummary | null> {
 
 export default async function UploadPage() {
   if (!accountsEnabled()) redirect("/app");
-  if (!(await sessionUser())) redirect(`/login?next=${encodeURIComponent("/app/upload")}`);
-  const company = await currentCompany();
-  if (!company) redirect(`/login?next=${encodeURIComponent("/app/upload")}`);
+  const { company } = await companyForPage("/app/upload");
   const summary = await summaryFor(company.scope);
   return (
     <main id="main" className="mx-auto max-w-3xl px-4 py-8 sm:px-6">

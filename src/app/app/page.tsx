@@ -138,6 +138,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   } catch (err) {
     // A signed-in company with nothing uploaded yet starts at onboarding.
     if (err instanceof Error && err.name === "NoCompanyData") redirect("/app/upload");
+    // Signed in but not (or no longer) part of a company, e.g. removed from a team.
+    if (err instanceof Error && err.name === "NotInvited") redirect("/login?error=invite");
     console.error("[page] failed to load data", { mode, err });
     data = await buildData("demo");
     notice =

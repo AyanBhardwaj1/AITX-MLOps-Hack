@@ -25,7 +25,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Your account:</strong> the email you sign in with, the company created for you (named from your email’s domain), and a session
-                cookie set only once you sign in.
+                cookie set only once you sign in. If you invite teammates, their email addresses, so they can join when they sign in; the owner can
+                withdraw an invite or remove a teammate at any time.
               </li>
               <li>
                 <strong>Uploaded bank exports:</strong> your files are read in your browser. Only the transaction rows are sent and stored for your
