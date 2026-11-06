@@ -40,6 +40,22 @@ await suite("settings", async ({ browser, step }) => {
     await budgets.getByLabel("Category").selectOption("software");
     await budgets.getByRole("button", { name: /^Use \$[\d,]+ as the Software budget$/ }).click();
     assert.match(await budgets.getByLabel("Per month ($)").inputValue(), /^\d+00$/);
+    // While one Inbox draft saves, every Approve/Reject is unavailable, not just that draft's.
+    await p.getByRole("tab", { name: "Autopilot" }).click();
+    await p.getByRole("button", { name: "Run now" }).click();
+    await p.getByRole("button", { name: "Open Inbox →" }).click();
+    const approves = p.locator("#panel-inbox").getByRole("button", { name: /^Approve/ });
+    await approves.first().waitFor();
+    assert.ok((await approves.count()) >= 2);
+    let release;
+    const held = new Promise((r) => (release = r));
+    await p.route("**/api/actions", async (route) => (route.request().method() === "POST" ? (await held, route.continue()) : route.continue()));
+    await approves.first().click();
+    assert.equal(await approves.nth(1).getAttribute("aria-disabled"), "true");
+    assert.equal(await p.locator("#panel-inbox").getByRole("button", { name: "Reject" }).nth(1).getAttribute("aria-disabled"), "true");
+    release();
+    await p.waitForFunction(() => !document.querySelector('#panel-inbox [aria-disabled="true"]'));
+    await p.unroute("**/api/actions");
     await p.goto(`${APP}/app/settings`);
     const activity = p.getByRole("region", { name: "Recent activity" });
     await activity.getByText(/Uploaded [\d,]+ transactions · founder-a@acme\.example/).waitFor();

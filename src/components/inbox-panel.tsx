@@ -134,17 +134,17 @@ export function InboxPanel({
                 <>
                   <button
                     type="button"
-                    aria-disabled={busy === a.id}
+                    aria-disabled={busy !== null}
                     onClick={() => void decide(a.id, "approved")}
-                    className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px aria-disabled:opacity-50"
+                    className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px aria-disabled:cursor-wait aria-disabled:opacity-50"
                   >
                     {a.kind === "jira_ticket" && jira ? "Approve & file" : "Approve"}
                   </button>
                   <button
                     type="button"
-                    aria-disabled={busy === a.id}
+                    aria-disabled={busy !== null}
                     onClick={() => void decide(a.id, "rejected")}
-                    className="rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-canvas active:translate-y-px aria-disabled:opacity-50"
+                    className="rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-canvas active:translate-y-px aria-disabled:cursor-wait aria-disabled:opacity-50"
                   >
                     Reject
                   </button>
