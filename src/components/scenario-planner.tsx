@@ -6,13 +6,12 @@ import type { MonthHistory } from "@/lib/finance/history";
 import { estimateRevenueGrowthDetail, projectScenario } from "@/lib/finance/scenario";
 import { formatCompactDollars, formatDate, formatMonth } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
-import { DEFAULT_SCENARIO, MAX_HIRES, MAX_START_MONTH, scenarioParams, type ScenarioPlan } from "@/lib/finance/scenario-link";
+import { DEFAULT_SCENARIO, MAX_HIRES, MAX_START_MONTH, normalizeScenario, SCENARIO_KEYS, scenarioParams, type ScenarioPlan } from "@/lib/finance/scenario-link";
 
 const CHART_MONTHS = 36;
-const PLAN_KEYS = ["sc_growth", "sc_hires", "sc_cost", "sc_start", "sc_raise", "sc_raisemonth", "sc_cut"];
+/** Wait for typing to settle before touching the address (browsers limit how often it can change). */
+const URL_DELAY_MS = 300;
 const pct = (g: number) => `${(g * 100).toFixed(1)}%`;
-/** Number inputs can be empty or out of range mid-edit; clamp to something the model accepts. */
-const num = (v: string, lo: number, hi: number) => Math.min(hi, Math.max(lo, Number.isFinite(Number(v)) ? Number(v) : lo));
 
 /**
  * Plan hires, a raise and cuts, and see whether the company is "default alive" (reaches
@@ -42,22 +41,41 @@ export function ScenarioPlanner({
   const [raise, setRaise] = useState(initial.raise);
   const [raiseMonth, setRaiseMonth] = useState(initial.raiseMonth);
   const [cutWaste, setCutWaste] = useState(initial.cutWaste);
-  const [copied, setCopied] = useState("");
+  /** The copy message, and which plan it was about: it goes away once the plan changes. */
+  const [copied, setCopied] = useState<{ text: string; query: string } | null>(null);
 
-  // The address follows the plan (other parameters kept), so it can be bookmarked or sent.
+  const plan: ScenarioPlan = { growthPct, hires, hireCost, hireStart, raise, raiseMonth, cutWaste };
+  // What the projection and the link both use, so a link always shows what its sender saw.
+  const n = normalizeScenario(plan);
+  const linkQuery = scenarioParams(plan, estimate.rate).toString();
+
+  // The address follows the plan (other parameters kept), so it can be bookmarked or sent. A null
+  // history state is how Next wants outside changes made, so its router keeps the new address
+  // through refreshes and Back.
   useEffect(() => {
-    const url = new URL(window.location.href);
-    for (const k of PLAN_KEYS) url.searchParams.delete(k);
-    for (const [k, v] of scenarioParams({ growthPct, hires, hireCost, hireStart, raise, raiseMonth, cutWaste })) url.searchParams.set(k, v);
-    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
-  }, [growthPct, hires, hireCost, hireStart, raise, raiseMonth, cutWaste]);
+    const timer = window.setTimeout(() => {
+      try {
+        const url = new URL(window.location.href);
+        for (const k of SCENARIO_KEYS) url.searchParams.delete(k);
+        for (const [k, v] of new URLSearchParams(linkQuery)) url.searchParams.set(k, v);
+        if (url.href !== window.location.href) window.history.replaceState(null, "", url);
+      } catch {
+        // A browser refusing too many address changes just leaves the old one.
+      }
+    }, URL_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [linkQuery]);
 
   async function copyLink() {
+    // Built from the plan itself, not the address bar, so it's right even mid-typing.
+    const url = new URL(window.location.href);
+    for (const k of SCENARIO_KEYS) url.searchParams.delete(k);
+    for (const [k, v] of new URLSearchParams(linkQuery)) url.searchParams.set(k, v);
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied("Link copied. Anyone on your team who opens it sees this plan.");
+      await navigator.clipboard.writeText(url.href);
+      setCopied({ text: "Link copied. It carries this plan's numbers (hires, raise, growth), so share it with people who should see them.", query: linkQuery });
     } catch {
-      setCopied("Couldn't copy: copy the address from the address bar instead.");
+      setCopied({ text: "Couldn't copy: copy the address from the address bar instead.", query: linkQuery });
     }
   }
 
@@ -65,10 +83,10 @@ export function ScenarioPlanner({
     asOf,
     cashCents,
     history,
-    revenueGrowth: growthPct === null ? estimate.rate : num(growthPct, -50, 100) / 100,
-    hires: [{ count: Math.round(num(hires, 0, MAX_HIRES)), monthlyCostCents: Math.round(num(hireCost, 0, 1_000_000) * 100), startMonth: Math.round(num(hireStart, 0, MAX_START_MONTH)) }],
-    raise: { amountCents: Math.round(num(raise, 0, 1e9) * 100), month: Math.round(num(raiseMonth, 0, MAX_START_MONTH)) },
-    monthlyCutsCents: cutWaste ? wasteSavingsCents : 0,
+    revenueGrowth: n.growthPct === null ? estimate.rate : n.growthPct / 100,
+    hires: [{ count: n.hires, monthlyCostCents: n.hireCostDollars * 100, startMonth: n.hireStart }],
+    raise: { amountCents: n.raiseDollars * 100, month: n.raiseMonth },
+    monthlyCutsCents: n.cutWaste ? wasteSavingsCents : 0,
   });
   const rows = result.points.slice(0, CHART_MONTHS + 1).map((p) => ({ month: formatMonth(p.month), cash: p.cashCents / 100 }));
   const breakEven = result.breakEvenMonth === null ? null : result.points[result.breakEvenMonth];
@@ -152,7 +170,7 @@ export function ScenarioPlanner({
               Copy link to this plan
             </button>
             <span role="status" className="text-xs text-muted">
-              {copied}
+              {copied?.query === linkQuery ? copied.text : ""}
             </span>
           </div>
         </form>

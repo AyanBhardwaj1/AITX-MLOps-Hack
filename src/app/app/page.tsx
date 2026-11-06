@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
 import { cashFreshness, dataFreshness, laggingAccounts } from "@/lib/freshness";
-import { parseScenarioParams } from "@/lib/finance/scenario-link";
+import { parseScenarioParams, scenarioParams } from "@/lib/finance/scenario-link";
 import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
@@ -201,7 +201,11 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const mode = parseMode((await searchParams).mode);
   const user = await sessionUser();
-  if (mode === "company" && !user) redirect(`/login?next=${encodeURIComponent("/app?mode=company")}`);
+  if (mode === "company" && !user) {
+    // A shared plan survives signing in.
+    const plan = scenarioParams(parseScenarioParams(await searchParams)).toString();
+    redirect(`/login?next=${encodeURIComponent(`/app?mode=company${plan ? `&${plan}` : ""}`)}`);
+  }
   let data: DashboardData;
   let notice: string | undefined;
   try {
