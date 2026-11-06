@@ -19,6 +19,8 @@ import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
 import { AutopilotPanel } from "./autopilot-panel";
 import { HowItWorks } from "./how-it-works";
+import { GettingStartedCard } from "./getting-started-card";
+import type { GettingStartedStep } from "@/lib/onboarding";
 import { InvestorUpdateCard } from "./investor-update-card";
 import { CopilotPanel } from "./copilot-panel";
 import { InboxPanel } from "./inbox-panel";
@@ -50,6 +52,8 @@ export interface DashboardData {
   label: string;
   /** The company this dashboard is about (the demo company, or the signed-in founder's own). */
   companyName: string;
+  /** A signed-in company's first steps (company mode only). */
+  gettingStarted?: { steps: GettingStartedStep[]; remaining: number };
   asOf: string;
   asOfFromData: boolean;
   transactionCount: number;
@@ -270,6 +274,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </div>
         </section>
 
+        {data.gettingStarted && <GettingStartedCard {...data.gettingStarted} />}
+
         <ThisWeekCard changes={data.changes} mode={data.mode} slack={data.capabilities.slack} />
 
         <HowItWorks source={data.mode === "company" ? "uploads" : "feed"} />
@@ -317,7 +323,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         />
 
         <InvestorUpdateCard mode={data.mode} />
-        <ShareLinksPanel mode={data.mode} />
+        <div id="share-with-investors" className="scroll-mt-4">
+          <ShareLinksPanel mode={data.mode} />
+        </div>
 
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <RenewalsCard renewals={data.renewals} />
@@ -326,7 +334,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="min-w-0 space-y-6 lg:col-span-3">
-            <section className="rounded-xl border border-line bg-panel">
+            <section id="waste-found" className="scroll-mt-4 rounded-xl border border-line bg-panel">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
                 <div className="min-w-0">
                   <h2 className="font-semibold">Waste found</h2>

@@ -7,7 +7,8 @@ import { upcomingRenewals } from "@/lib/finance/renewals";
 import { detectChanges } from "@/lib/insights/changes";
 import { analyze } from "@/lib/pipeline";
 import { redirect } from "next/navigation";
-import { companyName, sessionUser } from "@/lib/server/company";
+import { companyName, currentTeam, sessionUser } from "@/lib/server/company";
+import { gettingStarted } from "@/lib/onboarding";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
@@ -52,6 +53,18 @@ async function findingStatuses(mode: DataMode, findings: Parameters<ReturnType<t
   }
 }
 
+/** What a signed-in company has done so far. Best effort: a storage hiccup just hides the card. */
+async function companyProgress(mode: DataMode, decidedFindings: number): Promise<DashboardData["gettingStarted"]> {
+  if (mode !== "company") return undefined;
+  try {
+    const [team, links] = await Promise.all([currentTeam(), getStore(await scopeFor(mode)).listShareLinks()]);
+    return gettingStarted({ uploaded: true, decidedFindings, teamSize: team.members.length + team.invites.length, shareLinks: links.length });
+  } catch (err) {
+    console.error("[page] couldn't work out getting-started progress", err instanceof Error ? err.message : "unknown error");
+    return undefined;
+  }
+}
+
 async function buildData(mode: DataMode): Promise<DashboardData> {
   const { dataset, analysis: a } = await loadAnalysis(mode, { visitorFixes: true });
   // A demo visitor's own fixes can surface findings nobody else has. They're shown as a preview, but
@@ -66,6 +79,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     mode,
     label: dataset.label,
     companyName: await companyName(mode),
+    gettingStarted: await companyProgress(mode, [...statuses.values()].filter((s) => s !== "open").length),
     asOf: a.asOf,
     asOfFromData: a.asOfFromData,
     transactionCount: a.txns.length,
