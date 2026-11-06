@@ -8,12 +8,13 @@ import { detectChanges } from "../insights/changes";
 import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
-import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budgets";
+import { budgetStatus, runwayWithinBudgets, type Budget, suggestBudgets } from "../finance/budgets";
 import { burnBridge } from "../finance/burn-bridge";
 import { peopleSpend } from "../finance/people-spend";
 import { committedSpend } from "../finance/committed";
 import { form1099Year, prep1099 } from "../finance/form-1099";
 import { moneyIn } from "../finance/money-in";
+import { uncategorisedSpend } from "../finance/uncategorised";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -251,6 +252,18 @@ export const form1099Input = z.object({});
 /** Contractors, lawyers and landlords paid by bank this year (last year to the end of March) who may need a 1099 (cents). */
 export function get1099Prep(a: Analysis) {
   return prep1099(a.txns, form1099Year(a.asOf));
+}
+
+export const suggestBudgetsInput = z.object({});
+/** A starting monthly budget per category: the last full months' average (up to 3), rounded up to $100 (cents). */
+export function getSuggestedBudgets(a: Analysis) {
+  return suggestBudgets(a.txns, a.asOf);
+}
+
+export const uncategorisedInput = z.object({});
+/** Spend Runway couldn't categorise over burn's months (cents), its share of gross burn, and the biggest vendors. */
+export function getUncategorised(a: Analysis) {
+  return uncategorisedSpend(a.txns, a.snapshot);
 }
 
 export const moneyInInput = z.object({});

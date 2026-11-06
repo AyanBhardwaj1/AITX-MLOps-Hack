@@ -4,7 +4,7 @@ import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { get1099Prep, getMoneyIn, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { get1099Prep, getMoneyIn, getSuggestedBudgets, getUncategorised, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -205,6 +205,39 @@ function whoSpends(a: Analysis): InstantAnswer {
   };
 }
 
+function suggestBudgetsAnswer(a: Analysis): InstantAnswer {
+  const s = getSuggestedBudgets(a);
+  const tools = ["suggest_budgets"];
+  if (!s) return { question: INSTANT_QUESTIONS.suggest_budgets, tools, text: "There isn't a full month of data yet to suggest budgets from." };
+  const rows = Object.entries(s.byCategory)
+    .sort((x, y) => y[1]! - x[1]!)
+    .map(([c, cents]) => `- ${categoryName(c)}: ${formatDollars(cents!)}`);
+  return {
+    question: INSTANT_QUESTIONS.suggest_budgets,
+    tools,
+    text: [
+      `A place to start, per month: each category's average over the last ${s.months === 1 ? "full month" : `${s.months} full months`}, rounded up to the next $100.`,
+      rows.join("\n"),
+      "Set any of them under Budgets (\"Use $X\" fills it in), then trim the ones you want to bring down.",
+    ].join("\n\n"),
+  };
+}
+
+function uncategorisedAnswer(a: Analysis): InstantAnswer {
+  const u = getUncategorised(a);
+  const tools = ["get_uncategorised"];
+  if (!u) return { question: INSTANT_QUESTIONS.uncategorised, tools, text: "Everything that counts in burn has a category." };
+  return {
+    question: INSTANT_QUESTIONS.uncategorised,
+    tools,
+    text: [
+      `**${formatDollars(u.monthlyCents)}/month** (${Math.round(u.shareOfGross * 100)}% of spending) goes to ${u.vendorCount === 1 ? "a vendor" : `${u.vendorCount} vendors`} Runway couldn't categorise, so it's filed under Other. The biggest:`,
+      u.vendors.map((v) => `- ${v.name}: ${formatDollars(v.monthlyCents)}/month`).join("\n"),
+      "Open a vendor from the transactions page to set its category; one fix covers every charge from it.",
+    ].join("\n\n"),
+  };
+}
+
 function moneyInAnswer(a: Analysis): InstantAnswer {
   const m = getMoneyIn(a);
   const tools = ["get_money_in"];
@@ -298,6 +331,8 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   committed: committedAnswer,
   form_1099: form1099Answer,
   money_in: moneyInAnswer,
+  suggest_budgets: suggestBudgetsAnswer,
+  uncategorised: uncategorisedAnswer,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */

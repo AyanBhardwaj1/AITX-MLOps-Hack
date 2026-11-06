@@ -181,3 +181,21 @@ describe("dismissed findings stay dismissed", () => {
     expect(draftAction(a, { findingId: f.id, kind: "jira_ticket" }, new Set([f.id]))).toMatchObject({ error: expect.stringMatching(/dismissed/) });
   });
 });
+
+describe("budgets to start from, and spend Runway can't place", () => {
+  it("suggests a budget per category from the last full months, from the same tool as the card", async () => {
+    const { suggestBudgets } = await import("@/lib/finance/budgets");
+    const s = suggestBudgets(a.txns, a.asOf)!;
+    const ans = instantAnswer(a, "suggest_budgets");
+    expect(ans.tools).toEqual(["suggest_budgets"]);
+    expect(ans.text).toContain(formatDollars(s.byCategory.software!));
+    expect(ans.text).toMatch(/rounded up/);
+  });
+
+  it("names uncategorised vendors, or says everything has a category", () => {
+    expect(instantAnswer(a, "uncategorised").text).toMatch(/Everything (that counts in burn )?has a category/);
+    const extra = [0, 1, 2].map((i) => ({ ...a.txns[0]!, id: `u${i}`, postedAt: a.snapshot.burnPeriod!.from.slice(0, 8) + "1" + i, amountCents: -9_000_00, type: "ach" as const, status: "posted" as const, vendor: { key: "mystery_llc", name: "Mystery LLC", category: "other" as const, job: null, source: "fallback" as const } }));
+    const text = instantAnswer({ ...a, txns: [...a.txns, ...extra] }, "uncategorised").text;
+    expect(text).toContain("Mystery LLC");
+  });
+});

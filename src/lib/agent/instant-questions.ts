@@ -12,5 +12,7 @@ export const INSTANT_QUESTIONS = {
   committed: "What's going out in the next 30 days?",
   form_1099: "Who needs a 1099 from us?",
   money_in: "Who pays us the most?",
+  suggest_budgets: "What should our budgets be?",
+  uncategorised: "What can't Runway categorise?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;

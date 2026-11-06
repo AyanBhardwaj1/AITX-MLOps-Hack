@@ -15,6 +15,10 @@ import {
   get1099Prep,
   moneyInInput,
   getMoneyIn,
+  suggestBudgetsInput,
+  getSuggestedBudgets,
+  uncategorisedInput,
+  getUncategorised,
   changesInput,
   getChanges,
   runScenario,
@@ -56,6 +60,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 - For "what changed" or "anything I should know" questions, call get_recent_changes.
 - For "what's going out soon" or "what's due this month" questions, call get_committed_spend.
 - For "who spends the most" or card-holder questions, call get_people_spend.
+- For "what should our budgets be" questions, call suggest_budgets; for "what can't Runway categorise" or "what's in Other", call get_uncategorised.
 - For "who pays us", customer or revenue-concentration questions, call get_money_in; a payment processor's payouts are many customers, never one.
 - For 1099 or contractor tax-form questions, call get_1099_prep, and say it's a list to check with their accountant (W-9s settle who needs one), not tax advice.
 - For "why did burn go up/down" questions, call get_burn_bridge: drivers' changeCents plus otherCents minus revenueChangeCents equals changeCents exactly.
@@ -139,6 +144,18 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
           "Recurring charges already scheduled over the next 30 days from today: items (date, vendorName, category, amountCents), totalCents and cashAfterCents. A floor: one-off and usage spend aren't included. Integer cents.",
         inputSchema: committedInput,
         execute: async () => getCommitted(a),
+      }),
+      suggest_budgets: tool({
+        description:
+          "A starting monthly budget per spending category: its average over the last full months the data covers (up to 3; months), rounded up to the next $100 (byCategory, integer cents). null before a full month of data.",
+        inputSchema: suggestBudgetsInput,
+        execute: async () => getSuggestedBudgets(a),
+      }),
+      get_uncategorised: tool({
+        description:
+          "Spend Runway couldn't categorise (filed under Other) over burn's months: monthlyCents, shareOfGross (0-1), vendorCount and the biggest vendors (monthlyCents). null when everything has a category. Integer cents.",
+        inputSchema: uncategorisedInput,
+        execute: async () => getUncategorised(a),
       }),
       get_money_in: tool({
         description:
