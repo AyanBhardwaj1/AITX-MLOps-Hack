@@ -348,7 +348,8 @@ export function resolveCardPayoffs(input: readonly RhoTransaction[]): { transact
     const day = (t: RhoTransaction) => Date.parse(t.initiated_at.slice(0, 10));
     const unmatched = [...out];
     const matches = (t: RhoTransaction) => {
-      const i = unmatched.findIndex((o) => o.account_id !== t.account_id && o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
+      // Same account allowed: unnamed checking and card files share the default "uploaded" account.
+      const i = unmatched.findIndex((o) => o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
       if (i < 0) return false;
       unmatched.splice(i, 1);
       return true;

@@ -217,3 +217,15 @@ describe("import hunt, final review", () => {
     }
   });
 });
+
+describe("import hunt, upload path", () => {
+  it("files sharing the default 'uploaded' account still match a card's leg to its payoff", () => {
+    const one = (rows: string[], accountId = "uploaded") => importCsv(csv(rows), { accountId, resolvePayoffs: false }).transactions;
+    const r = resolveCardPayoffs([
+      ...one(["2026-10-01,GUSTO PAYROLL,-20000.00", "2026-10-03,AUTOPAY CHASE CARD,-3000.00", "2026-10-04,AMEX EPAYMENT,-1000.00"]),
+      ...one(["2026-10-05,ONLINE PAYMENT FROM CHASE,3000.00", "2026-10-06,FIGMA,-15.00"]),
+      ...one(["2026-10-06,PAYMENT THANK YOU,1000.00", "2026-10-07,UBER,-20.00"], "amex"),
+    ]);
+    expect(r.transactions.find((t) => t.counterparty_name.includes("FROM CHASE"))!.transaction_type).toBe("credit_repayment");
+  });
+});
