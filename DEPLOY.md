@@ -21,10 +21,12 @@ Never commit `.env.local`; it's gitignored.
 | `OPENAI_MODEL_FAST` / `OPENAI_MODEL_AGENT` | Model choice (optional) | Defaults: `gpt-6-luna` / `gpt-6.1-sol` |
 | `DATABASE_URL` | Early-access signups, decisions, Inbox and run history saved permanently (**set this before sharing the site**, or signups are lost on restart) | Supabase → **Connect** → *Transaction pooler* URI (port 6543), with your database password filled in |
 | `DATABASE_CA_CERT` | Verified TLS to Supabase | Supabase → Project Settings → Database → **SSL Configuration → Download certificate**. Paste the whole PEM (including `-----BEGIN CERTIFICATE-----`). |
-| `APP_PASSWORD` | Password prompt on the app (`/app` and its APIs; any username). The public site, legal pages, grader and signup stay open. | Pick one, at least 8 characters. **Required before using a real Rho account.** |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Accounts:** founders sign in by email link, get their own company, and upload bank exports. Needs `DATABASE_URL`. See [Accounts](#accounts-sign-in-and-uploads). | Supabase → Project Settings → API: the Project URL and the `anon` *public* key. Never use the `service_role` key here. |
+| `SIGNUPS` | Who can create an account: `invite` (default; emails you invite from the waitlist) or `open` (anyone) | See [Inviting founders](#inviting-founders) |
+| `APP_PASSWORD` | Password prompt on the app (`/app` and its APIs; any username) for a single-company deployment. Ignored once accounts are on. The public site, legal pages, grader and signup stay open. | Pick one, at least 8 characters. **Required before using a real Rho account.** |
 | `RHO_BASE_URL` / `RHO_API_TOKEN` | Your real Rho account instead of the sandbox | Rho → Settings → API. Production URL: `https://rhoapi.rho.co/api/v1`; tokens start with `rhobat_`. |
 | `CRON_SECRET` | Daily 8 AM (Austin) Autopilot run | Any random string of 16+ characters, e.g. `openssl rand -hex 24` |
-| `AUTOPILOT_CRON_MODE` | Which data the daily run and the Monday digest review | `demo` (default) or `sandbox` (the configured Rho feed) |
+| `AUTOPILOT_CRON_MODE` | Which data the daily run and the Monday digest review | `demo` (default) or `sandbox` (the configured Rho feed; skipped once accounts are on) |
 | `SLACK_WEBHOOK_URL` | Monday digest in Slack (13:30 UTC, about 8 AM in Austin; needs `CRON_SECRET`); "Send to Slack now" also needs `APP_PASSWORD` | Slack → Apps → Incoming Webhooks → add to a channel. Must start with `https://hooks.slack.com/services/` |
 | `CONTACT_EMAIL` | The contact address shown on the privacy, security and terms pages | An inbox you read, e.g. `hello@yourdomain.com`. Without it the pages point to GitHub issues and replies. |
 | `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | "Approve & file" creates a Jira issue | `https://<site>.atlassian.net`, your Atlassian email, id.atlassian.com → Security → API tokens, and the project key (e.g. `RUN`) |
@@ -56,9 +58,33 @@ Never commit `.env.local`; it's gitignored.
    - Approving a ticket files it in Jira, if configured.
    - With an OpenAI key, Copilot answers "Get me to 14 months without touching payroll".
 
+## Accounts (sign-in and uploads)
+
+With `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `DATABASE_URL` set, Runway serves many companies: a founder signs in with an email link, gets a private company, uploads CSV exports from their bank and cards plus today's cash at `/app/upload`, and sees their own dashboard at `/app?mode=company`. The demo at `/app` stays public. Design notes: [docs/adr/0001-accounts-and-uploaded-data.md](docs/adr/0001-accounts-and-uploaded-data.md).
+
+In **Supabase**:
+1. **Authentication → URL Configuration:** set **Site URL** to your app (e.g. `https://runway-for-rho.vercel.app`) and add `https://runway-for-rho.vercel.app/auth/callback` under **Redirect URLs** (add `http://localhost:3000/auth/callback` too for local development).
+2. **Authentication → Sign In / Providers → Email:** keep Email enabled and **Allow new users to sign up** on. Runway decides who may create an account (`SIGNUPS`), and checks it again on the server when a company is created, so a sign-up made directly against Supabase doesn't get a company.
+3. **Authentication → Emails → SMTP Settings:** add your own SMTP sender before real users arrive. Supabase's built-in sender is for testing and allows only a few emails an hour.
+4. Run the migrations (`npm run db:migrate`) so the `invited_at` column and the `csv` connection type exist.
+
+In **Vercel**: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (and `SIGNUPS` if you want `open`), then **Redeploy**: `NEXT_PUBLIC_*` values are built into the app, so a redeploy is required. The `service_role` key is never needed and must not be added.
+
+With accounts on: the env Rho feed (`sandbox` mode) is off, since companies connect by uploading exports until Rho partner sign-in exists; app-initiated Slack sends and Jira filing are off, because those webhooks belong to your team, not to the companies using the app; the Monday digest and daily Autopilot still run for `AUTOPILOT_CRON_MODE=demo` only.
+
+### Inviting founders
+
+In invite mode, a sign-in link creates an account only for an email you've invited. In Supabase → SQL Editor:
+```sql
+insert into public.waitlist (email, invited_at) values ('founder@company.com', now())
+on conflict (email) do update set invited_at = now();
+```
+Emails are stored lowercase. To see who is waiting: `select email, role, bank, created_at from waitlist where invited_at is null order by created_at;`
+
 ## Safety notes
 
-- There's no per-user login yet. With a real Rho token the app **refuses to show the account unless `APP_PASSWORD` is set**, and the password then protects the app and its APIs.
+- With accounts on, each company's data is read and written only for the company of the verified session (the proxy checks the session with Supabase on every request and strips any client-sent identity header). Founders can delete their uploads, and everything derived from them, on the upload page.
+- On a single-company deployment (no Supabase Auth), a real Rho token is **refused unless `APP_PASSWORD` is set**, and the password then protects the app and its APIs.
 - Early-access emails are personal data. Read them in Supabase (the table has row-level security on with no policies, so the public and signed-in API roles can't); export with `select email, role, bank, created_at from waitlist order by created_at;` in the SQL Editor.
 - Agents only ever create **drafts**. The database itself rejects anything else, and a person approves each one in the Inbox.
 - Rotate any key that was ever pasted into a chat or committed anywhere.

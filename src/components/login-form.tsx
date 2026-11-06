@@ -24,7 +24,7 @@ export function LoginForm() {
   if (state.kind === "sent") {
     return (
       <p ref={sent} tabIndex={-1} className="mt-6 rounded-lg bg-brand-soft px-3 py-3 text-sm outline-none">
-        If {state.email} can sign in, a link is on its way. It works once and expires soon.
+        If {state.email} can sign in, a link is on its way. Open it in this browser: it works once and expires soon.
       </p>
     );
   }

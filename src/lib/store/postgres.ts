@@ -63,9 +63,12 @@ const toShareLink = (r: ShareRow): StoredShareLink => ({
 });
 
 /** A share link by token hash in any organization (the public /s/<token> page has no session). */
-export async function findShareLinkByTokenHash(pool: Pool, tokenHash: string): Promise<StoredShareLink | null> {
-  const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where token_hash = $1`, [tokenHash]);
-  return rows[0] ? toShareLink(rows[0]) : null;
+export async function findShareLinkByTokenHash(pool: Pool, tokenHash: string): Promise<{ scope: string; link: StoredShareLink } | null> {
+  const { rows } = await pool.query<ShareRow & { scope: string }>(
+    `select ${SHARE_COLUMNS}, (select o.slug from public.organizations o where o.id = share_links.org_id) as scope from public.share_links where token_hash = $1`,
+    [tokenHash],
+  );
+  return rows[0] ? { scope: rows[0].scope, link: toShareLink(rows[0]) } : null;
 }
 
 /** The company's uploaded-exports connection (created on first upload when `create`). */
@@ -90,6 +93,9 @@ async function inTransaction<T>(pool: Pool, fn: (c: PoolClient) => Promise<T>): 
     client.release();
   }
 }
+
+/** Org data computed from uploads (steps go with their runs). Fixed names, never from input. */
+const DERIVED_TABLES = ["share_links", "entity_events", "memos", "actions", "findings", "agent_runs", "vendor_corrections"] as const;
 
 export function createPostgresStore(pool: Pool, scope: string): Store {
   let orgIdPromise: Promise<string> | undefined;
@@ -439,8 +445,20 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
 
     async clearUploads() {
       const org = await orgId();
-      // Accounts and transactions go with the connection (on delete cascade).
-      await pool.query(`delete from public.connections where org_id = $1 and provider = 'csv'`, [org]);
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        // Accounts and transactions go with the connection (on delete cascade); then everything worked
+        // out from them, including share links, so nothing keeps publishing the numbers.
+        await client.query(`delete from public.connections where org_id = $1 and provider = 'csv'`, [org]);
+        for (const table of DERIVED_TABLES) await client.query(`delete from public.${table} where org_id = $1`, [org]);
+        await client.query("commit");
+      } catch (err) {
+        await client.query("rollback");
+        throw err;
+      } finally {
+        client.release();
+      }
     },
 
     async revokeShareLink(id) {

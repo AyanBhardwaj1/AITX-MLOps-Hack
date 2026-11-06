@@ -16,7 +16,7 @@ export default function SecurityPage() {
     <LegalPage
       title="Security"
       intro="Runway is built so the worst case is a wrong number on a screen, never money moving. This page says how, and what isn’t finished yet."
-      updated="2026-11-02"
+      updated="2026-11-06"
       sections={[
         {
           heading: "It can’t move money",
@@ -54,6 +54,27 @@ export default function SecurityPage() {
           ),
         },
         {
+          heading: "Accounts and your company’s data",
+          body: (
+            <ul className="bullet-list space-y-2">
+              <li>
+                You sign in with a one-time link sent to your email; there’s no password to leak. The link works once, in the browser that asked for it,
+                and the exchange runs on our server, so your browser never talks to the sign-in provider directly.
+              </li>
+              <li>
+                Every request is checked with the sign-in provider before the app sees it. Each company’s data is read and written only for the company
+                that belongs to your verified session, never for an ID the browser sends; automated tests check that one founder can’t see or change
+                another’s data.
+              </li>
+              <li>
+                Uploaded bank exports are read in your browser; only the transaction rows are sent, and the server checks every row again. File contents
+                are never written to logs. You can delete everything you uploaded, and everything worked out from it, from the upload page.
+              </li>
+              <li>Accounts are invite-only during early access, and that’s enforced on the server, not only on the sign-in form.</li>
+            </ul>
+          ),
+        },
+        {
           heading: "The free grader",
           body: (
             <p>
@@ -66,8 +87,8 @@ export default function SecurityPage() {
           heading: "Not finished yet",
           body: (
             <p>
-              Runway is in early access. Today each deployment serves one company behind a password; per-user sign-in and team permissions come before general
-              availability. Rho connections use a company API token until partner sign-in with Rho is available.
+              Runway is in early access. Each company has a single owner today; inviting teammates with their own permissions comes before general
+              availability, as does a second sign-in factor. Companies connect by uploading bank exports until partner sign-in with Rho is available.
             </p>
           ),
         },

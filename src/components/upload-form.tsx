@@ -6,7 +6,7 @@ import { useId, useState } from "react";
 import { importCsv } from "@/lib/csv/import";
 import { formatDate } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
-import { MAX_CHUNK_ROWS, toUploadRows, type UploadRow } from "@/lib/uploads/rows";
+import { fileAccountLabel, MAX_CHUNK_ROWS, toUploadRows, type UploadRow } from "@/lib/uploads/rows";
 
 export interface UploadSummary {
   transactions: number;
@@ -16,8 +16,11 @@ export interface UploadSummary {
 }
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
-/** Every file's rows share one account id, so the same row in an overlapping export is the same row. */
-const ACCOUNT_ID = "uploaded";
+/** A chosen file and the account its rows belong to (used when the file has no Account column). */
+interface Picked {
+  file: File;
+  account: string;
+}
 
 type State =
   | { kind: "idle" }
@@ -30,16 +33,16 @@ interface Parsed {
   notes: string[];
 }
 
-async function parseFiles(files: readonly File[]): Promise<Parsed> {
+async function parseFiles(files: readonly Picked[]): Promise<Parsed> {
   const rows: UploadRow[] = [];
   const notes: string[] = [];
-  for (const f of files) {
+  for (const { file: f, account } of files) {
     if (f.size > MAX_FILE_BYTES) {
       notes.push(`${f.name} is over 20 MB, so it was skipped. Export a shorter date range.`);
       continue;
     }
     try {
-      const r = importCsv(await f.text(), { accountId: ACCOUNT_ID, resolvePayoffs: false });
+      const r = importCsv(await f.text(), { accountId: account.trim() || fileAccountLabel(f.name), resolvePayoffs: false });
       rows.push(...toUploadRows(r.transactions));
       if (r.skipped.length > 0) notes.push(`${f.name}: ${r.skipped.length} row${r.skipped.length === 1 ? "" : "s"} couldn't be read and were left out.`);
       if (r.mostlyPositive) notes.push(`${f.name}: most amounts are positive. If spending shows as money in, flip the sign column before uploading.`);
@@ -66,10 +69,12 @@ function dollarsToCents(text: string): number | null {
 export function UploadForm({ summary, storageReady }: { summary: UploadSummary | null; storageReady: boolean }) {
   const id = useId();
   const router = useRouter();
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<Picked[]>([]);
   const [cash, setCash] = useState(summary ? String(summary.cashCents / 100) : "");
   const [state, setState] = useState<State>({ kind: "idle" });
   const [deleting, setDeleting] = useState(false);
+  // Remounts the file input after an upload, so it shows nothing chosen and the same file can be picked again.
+  const [inputKey, setInputKey] = useState(0);
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -88,12 +93,13 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
       duplicates += r.duplicates;
     }
     setFiles([]);
+    setInputKey((k) => k + 1);
     setState({ kind: "done", inserted, duplicates, notes });
     router.refresh();
   }
 
   async function deleteAll() {
-    if (!window.confirm("Delete every transaction you've uploaded and the cash you entered? This can't be undone.")) return;
+    if (!window.confirm("Delete every transaction you've uploaded, the cash you entered, and everything worked out from them (findings, drafts, fixes and share links)? This can't be undone.")) return;
     setDeleting(true);
     const res = await fetch("/api/uploads/clear", { method: "POST" }).catch(() => null);
     setDeleting(false);
@@ -149,17 +155,38 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
           </label>
           <p className="text-xs text-muted">Date, Description and Amount columns at least (Rho- and Mercury-style layouts are recognised). Up to 20 MB each.</p>
           <input
+            key={inputKey}
             id={`${id}-files`}
             name="files"
             type="file"
             accept=".csv,text/csv"
             multiple
             onChange={(e) => {
-              setFiles([...(e.target.files ?? [])]);
+              setFiles([...(e.target.files ?? [])].map((file) => ({ file, account: fileAccountLabel(file.name) })));
               setState({ kind: "idle" });
             }}
             className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand"
           />
+          {files.length > 0 && (
+            <fieldset className="mt-3 space-y-2">
+              <legend className="text-xs text-muted">Which account is each file from? The same charge on two accounts is kept twice; the same account uploaded again isn&apos;t.</legend>
+              {files.map((p, i) => (
+                <div key={`${p.file.name}-${i}`} className="grid gap-1 sm:grid-cols-[1fr_12rem] sm:items-center sm:gap-3">
+                  <label htmlFor={`${id}-acct-${i}`} className="truncate text-sm" title={p.file.name}>
+                    {p.file.name}
+                  </label>
+                  <input
+                    id={`${id}-acct-${i}`}
+                    value={p.account}
+                    maxLength={80}
+                    spellCheck={false}
+                    onChange={(e) => setFiles((prev) => prev.map((q, j) => (j === i ? { ...q, account: e.target.value } : q)))}
+                    className="rounded-lg border border-line bg-panel px-2 py-1 text-sm focus-visible:border-brand"
+                  />
+                </div>
+              ))}
+            </fieldset>
+          )}
         </div>
         <div>
           <label htmlFor={`${id}-cash`} className="block text-sm font-medium">

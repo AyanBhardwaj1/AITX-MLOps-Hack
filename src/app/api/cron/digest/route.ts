@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkBearer } from "@/lib/access";
 import { sendDigest } from "@/lib/server/digest-service";
-import { env, hasSlack } from "@/lib/server/env";
+import { accountsEnabled, env, hasSlack } from "@/lib/server/env";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -12,6 +12,8 @@ export async function GET(request: Request) {
   if (!checkBearer(request.headers.get("authorization"), e.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // The env Rho feed is off once accounts are on; per-company schedules aren't built yet.
+  if (accountsEnabled() && e.AUTOPILOT_CRON_MODE === "sandbox") return NextResponse.json({ skipped: "AUTOPILOT_CRON_MODE=sandbox is off when accounts are on" });
   if (!hasSlack()) return NextResponse.json({ skipped: "SLACK_WEBHOOK_URL not set" });
   try {
     const digest = await sendDigest(e.AUTOPILOT_CRON_MODE);

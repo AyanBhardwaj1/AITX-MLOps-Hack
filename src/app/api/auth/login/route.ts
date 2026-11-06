@@ -9,6 +9,8 @@ import { siteUrl } from "@/lib/site-url";
 export const runtime = "nodejs";
 
 const allow = createRateLimiter({ limit: 5, windowMs: 60_000 });
+/** Per inbox, whatever IP asks: someone can't flood a person's email with links. */
+const allowEmail = createRateLimiter({ limit: 3, windowMs: 10 * 60_000 });
 
 /** Email a magic link. Server-side, so the PKCE verifier cookie is ours and the browser never calls Supabase. */
 export async function POST(request: Request) {
@@ -19,6 +21,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const result = await handleLoginRequest(body, {
     sendLink: async (email) => {
+      // Skipped quietly, so the answer is the same and says nothing about the address.
+      if (!allowEmail(email.toLowerCase())) return;
       // Invite mode: new accounts only for emails invited from the waitlist; existing users still get links.
       const mayCreate = env().SIGNUPS === "open" || (await getWaitlist()?.isInvited(email)) === true;
       const { error } = await supabase.auth.signInWithOtp({

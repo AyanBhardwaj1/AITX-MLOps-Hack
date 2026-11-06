@@ -16,6 +16,8 @@ describe("scopeFor with accounts on", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key-for-tests-0000000000");
     vi.stubEnv("DATABASE_URL", "");
+    // These tests are about isolation; invite-only is covered in accounts-hardening.test.ts.
+    vi.stubEnv("SIGNUPS", "open");
   });
   afterEach(() => vi.unstubAllEnvs());
 

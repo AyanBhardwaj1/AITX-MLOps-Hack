@@ -39,22 +39,46 @@ export const uploadChunk = z.object({
 });
 export type UploadChunk = z.infer<typeof uploadChunk>;
 
+const DEFAULT_ACCOUNT = "uploaded";
+/** Words in export file names that say nothing about which account it is. */
+const NOISE = new Set(["export", "exports", "statement", "statements", "transactions", "transaction", "activity", "history", "download", "csv", "copy", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december"]);
+
+/**
+ * The account a file without an Account column belongs to, guessed from its name and editable by
+ * the founder. It's part of each row's identity, so the same charge on two cards is kept twice
+ * while an overlapping export of the same account is recognised.
+ */
+export function fileAccountLabel(fileName: string): string {
+  const words = fileName
+    .replace(/\.[a-z0-9]{1,5}$/i, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w && !/\d/.test(w) && !NOISE.has(w));
+  return words.join(" ").slice(0, 40).trim() || DEFAULT_ACCOUNT;
+}
+
+const clean = (s: string, max: number) => s.trim().slice(0, max).trim();
+
 /** One file's imported transactions as upload rows, numbering identical rows so real duplicates survive. */
 export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {
   const seen = new Map<string, number>();
   return txns.map((t) => {
     const date = (t.posted_at ?? t.initiated_at).slice(0, 10);
-    const key = `${date}|${t.counterparty_name}|${t.amount.amount}|${t.account_id}`;
+    // Number copies on exactly what's stored (and hashed), so formatting differences don't change identity.
+    const description = clean(t.counterparty_name, 200);
+    const account = clean(t.account_id, 80) || DEFAULT_ACCOUNT;
+    const key = `${date}|${description}|${t.amount.amount}|${account}`;
     const n = seen.get(key) ?? 0;
     seen.set(key, n + 1);
+    const cardholder = clean(t.user_full_name ?? "", 80);
     return {
       date,
-      description: t.counterparty_name.slice(0, 200),
+      description,
       amountCents: t.amount.amount,
       type: t.transaction_type,
-      account: t.account_id.slice(0, 80),
+      account,
       accountType: t.account_type === "credit" ? "credit" : "checking",
-      cardholder: t.user_full_name ?? null,
+      cardholder: cardholder || null,
       n,
     };
   });

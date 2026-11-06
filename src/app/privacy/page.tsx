@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <LegalPage
       title="Privacy"
       intro="Runway reads financial data so it can tell you about your runway. Here is exactly what it keeps and why."
-      updated="2026-11-02"
+      updated="2026-11-06"
       sections={[
         {
           heading: "What we collect",
@@ -22,6 +22,15 @@ export default function PrivacyPage() {
             <ul className="bullet-list space-y-2">
               <li>
                 <strong>Early-access list:</strong> your email, the role and bank you chose, which part of the site you signed up from, and the time.
+              </li>
+              <li>
+                <strong>Your account:</strong> the email you sign in with, the company created for you (named from your email’s domain), and a session
+                cookie set only once you sign in.
+              </li>
+              <li>
+                <strong>Uploaded bank exports:</strong> your files are read in your browser. Only the transaction rows are sent and stored for your
+                company: date, description, amount, the account name you give each file, and the cardholder where the export has one, plus the
+                cash balance you enter. Nobody else’s account can read them.
               </li>
               <li>
                 <strong>Connected bank data:</strong> account names and balances and the transaction history your bank’s API returns (the
@@ -42,7 +51,7 @@ export default function PrivacyPage() {
           heading: "What we don’t do",
           body: (
             <p>
-              We don’t sell or rent your data, show ads, or use advertising or analytics trackers. The public site sets no cookies; the live demo keeps any category fixes you make in a cookie in your own browser, so nobody else sees them. Bank data is used only to
+              We don’t sell or rent your data, show ads, or use advertising or analytics trackers. The public site sets no cookies (signing in sets a session cookie); the live demo keeps any category fixes you make in a cookie in your own browser, so nobody else sees them. Bank data is used only to
               produce your own analysis.
             </p>
           ),
@@ -52,7 +61,7 @@ export default function PrivacyPage() {
           body: (
             <ul className="bullet-list space-y-2">
               <li>Vercel hosts the app.</li>
-              <li>Supabase stores the database (Postgres), in the region the deployment is configured for.</li>
+              <li>Supabase stores the database (Postgres), in the region the deployment is configured for, and handles sign-in: it holds your email and sends your sign-in links.</li>
               <li>
                 OpenAI, only when AI features are switched on. It receives the transaction descriptions of unfamiliar vendors (to label them); when
                 you ask Copilot a question, the computed figures and the individual transactions it looks up (date, amount, vendor, category and
@@ -66,8 +75,10 @@ export default function PrivacyPage() {
           heading: "How long we keep it",
           body: (
             <p>
-              Early-access entries are kept until early access ends or you ask us to remove yours. Connected bank data is kept while your account is active and
-              deleted when you disconnect and ask for deletion.
+              Early-access entries are kept until early access ends or you ask us to remove yours. Uploaded transactions are kept until you delete them:
+              the upload page deletes every row, the cash you entered, and everything worked out from them (findings, drafts, fixes and share links) at
+              once. Connected bank data is kept while your account is active and deleted when you disconnect and ask for deletion. To close your account
+              entirely, ask us.
             </p>
           ),
         },

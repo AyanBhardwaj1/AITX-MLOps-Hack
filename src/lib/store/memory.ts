@@ -130,6 +130,14 @@ export function createMemoryStore(): Store {
     async clearUploads() {
       uploads.clear();
       uploadCash = null;
+      // Everything worked out from the uploads goes too, share links included.
+      findingStatus.clear();
+      latestFinding.clear();
+      acceptedAt.clear();
+      actions.length = 0;
+      runs.length = 0;
+      corrections.clear();
+      shareLinks.length = 0;
     },
     async revokeShareLink(id) {
       const l = shareLinks.find((x) => x.id === id);

@@ -23,6 +23,7 @@ export const DEFAULT_AFTER_SIGN_IN = "/app?mode=company";
 
 /** Where to go after the magic link: only a path on this site, never another origin. */
 export function safeNextPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return DEFAULT_AFTER_SIGN_IN;
-  return next;
+  // Control characters are refused too: URL parsers strip tabs and newlines, so "/\t/x.com" becomes "//x.com".
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\") || /[\u0000-\u001f\u007f]|%0[0-9a-f]|%1[0-9a-f]/i.test(next)) return DEFAULT_AFTER_SIGN_IN;
+  return new URL(next, "https://x.invalid").origin === "https://x.invalid" ? next : DEFAULT_AFTER_SIGN_IN;
 }

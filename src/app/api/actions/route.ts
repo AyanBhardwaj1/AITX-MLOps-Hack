@@ -4,7 +4,7 @@ import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
-import { hasJira } from "@/lib/server/env";
+import { canFileJiraFromApp } from "@/lib/server/env";
 import { fileJiraTicket } from "@/lib/server/jira-client";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
@@ -41,10 +41,10 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = decideBody.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  const store = getStore(await scopeFor(parseMode(parsed.data.mode)));
   try {
+    const store = getStore(await scopeFor(parseMode(parsed.data.mode)));
     const action = await store.decideAction(parsed.data.id, parsed.data.decision);
-    if (action.status === "approved" && action.kind === "jira_ticket" && hasJira()) {
+    if (action.status === "approved" && action.kind === "jira_ticket" && canFileJiraFromApp()) {
       try {
         const { externalRef } = await fileJiraTicket({
           fingerprint: action.fingerprint,

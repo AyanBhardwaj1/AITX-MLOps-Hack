@@ -26,9 +26,16 @@ row-level security keyed on `auth.uid()`, unused by the app.
   session's user id, never from the request.
 - **Uploaded data:** bank CSVs are parsed in the browser with the grader's importer and sent as
   rows (never as files); the server re-validates every row, gives each a content-derived id
-  (date, description, amount, account and its occurrence within the file), and inserts with
+  (date, description, amount, the file's account and its occurrence within the file; files without
+  an Account column get an account name from the file name that the founder can edit, so the same
+  charge on two cards is kept twice), and inserts with
   `on conflict do nothing`, so overlapping exports don't duplicate. Card payoffs are resolved at
   read time over everything uploaded, as the grader does. Today's cash is entered with each upload.
+
+- **Invites and integrations (after review):** invite-only is enforced when a company is created,
+  not only when the link is sent, since anyone with the public anon key can create a Supabase user.
+  With accounts on, app-initiated Slack sends and Jira filing are off: those are the operator's
+  tools. Deleting uploads also deletes everything derived from them, share links included.
 
 ## Alternatives
 

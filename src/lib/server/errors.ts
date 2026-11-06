@@ -25,10 +25,19 @@ export class NoCompanyData extends Error {
   }
 }
 
+/** The verified user wasn't invited, and sign-ups are invite-only. */
+export class NotInvited extends Error {
+  constructor() {
+    super("Runway is invite-only for now. Join the list and we'll let you know.");
+    this.name = "NotInvited";
+  }
+}
+
 /** Maps the expected access errors to a response; null for anything else (a real failure). Checked by name: route bundles each carry their own copy of these classes. */
 export function accessErrorResponse(err: unknown): NextResponse | null {
   if (!(err instanceof Error)) return null;
   if (err.name === "SignInRequired") return NextResponse.json({ error: err.message }, { status: 401 });
+  if (err.name === "NotInvited") return NextResponse.json({ error: err.message }, { status: 403 });
   if (err.name === "ModeUnavailable") return NextResponse.json({ error: err.message }, { status: 403 });
   if (err.name === "NoCompanyData") return NextResponse.json({ error: err.message }, { status: 409 });
   return null;

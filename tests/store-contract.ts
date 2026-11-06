@@ -188,6 +188,25 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.loadUploads()).toBeNull();
     });
 
+    it("deleting the uploads also deletes what was worked out from them, including public share links", async () => {
+      const store = await makeStore();
+      const now = new Date();
+      const tokenHash = "c".repeat(64);
+      await store.syncFindings([finding("price_creep:datadog")]);
+      await store.setFindingStatus("price_creep:datadog", "dismissed");
+      await store.saveDrafts([draft("cancel_email:datadog", "price_creep:datadog")]);
+      await store.setCorrection({ vendorKey: "datadog", category: "other", job: null }, 10);
+      await store.createShareLink({ tokenHash, label: null, payload: { v: 1, company: "Co" } as never, expiresAt: new Date(now.getTime() + 86_400_000).toISOString() }, 5, now);
+      await store.clearUploads();
+      expect(await store.findShareLink(tokenHash)).toBeNull();
+      expect(await store.listShareLinks()).toEqual([]);
+      expect(await store.listCorrections()).toEqual([]);
+      // A finding seen again afterwards starts fresh, with no remembered decision.
+      expect(await store.syncFindings([finding("price_creep:datadog")])).toEqual(new Map([["price_creep:datadog", "open"]]));
+      expect(await store.listActions(10)).toEqual([]);
+      expect(await store.listRuns(10)).toEqual([]);
+    });
+
     it("never stores more corrections than the limit, even when requests race", async () => {
       const store = await makeStore();
       const limit = 5;

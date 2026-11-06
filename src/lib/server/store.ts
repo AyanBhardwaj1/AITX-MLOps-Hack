@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { createMemoryStore } from "../store/memory";
 import { createPostgresStore, findShareLinkByTokenHash } from "../store/postgres";
 import type { Store } from "../store/types";
-import { env } from "./env";
+import { accountsEnabled, env } from "./env";
 
 const POOL_MAX = 3;
 
@@ -54,13 +54,23 @@ export function getStore(scope: string): Store {
 
 /** A share link by token hash across every organization: the link page has no session to scope by. */
 export async function findShareLinkAnywhere(tokenHash: string) {
-  if (hasDatabase()) return findShareLinkByTokenHash(getPool(), tokenHash);
-  for (const store of stores.values()) {
+  const found = hasDatabase() ? await findShareLinkByTokenHash(getPool(), tokenHash) : await findInMemory(tokenHash);
+  return found && servable(found.scope) ? found.link : null;
+}
+
+async function findInMemory(tokenHash: string) {
+  for (const [scope, store] of stores) {
     const link = await store.findShareLink(tokenHash);
-    if (link) return link;
+    if (link) return { scope, link };
   }
   return null;
 }
+
+/**
+ * With accounts on, only the demo's and companies' own links are served. Links made earlier from
+ * the env-configured feed can no longer be listed or revoked by anyone, so they stop working.
+ */
+const servable = (scope: string) => !accountsEnabled() || scope === "demo" || scope.startsWith("org_");
 
 const PING_TIMEOUT_MS = 3_000;
 

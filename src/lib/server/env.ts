@@ -55,5 +55,10 @@ export const hasJira = () => {
 export const hasSlack = () => Boolean(env().SLACK_WEBHOOK_URL);
 /** Accounts (sign-in, companies, uploads) are on when Supabase Auth is configured. */
 export const accountsEnabled = () => Boolean(env().NEXT_PUBLIC_SUPABASE_URL && env().NEXT_PUBLIC_SUPABASE_ANON_KEY);
-/** Sending to Slack on demand needs the site password too; the scheduled digest uses CRON_SECRET instead. */
-export const canSendSlackFromApp = () => hasSlack() && Boolean(env().APP_PASSWORD);
+/**
+ * Slack and Jira here are the operator's own team tools. Sending to Slack on demand needs the site
+ * password (the scheduled digest uses CRON_SECRET instead), and neither is offered to the companies
+ * on a deployment with accounts: one company's data must never land in the operator's channels.
+ */
+export const canSendSlackFromApp = () => hasSlack() && Boolean(env().APP_PASSWORD) && !accountsEnabled();
+export const canFileJiraFromApp = () => hasJira() && !accountsEnabled();

@@ -5,7 +5,7 @@ import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { buildDigestFor, sendDigest } from "@/lib/server/digest-service";
-import { canSendSlackFromApp, hasSlack } from "@/lib/server/env";
+import { accountsEnabled, canSendSlackFromApp, hasSlack } from "@/lib/server/env";
 
 export const runtime = "nodejs";
 
@@ -32,7 +32,10 @@ export async function POST(request: Request) {
   if (!allowSend(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   if (!hasSlack()) return NextResponse.json({ error: "Slack isn't set up: add SLACK_WEBHOOK_URL on the server." }, { status: 503 });
   // Without a site password anyone could make the app post into the team's Slack.
-  if (!canSendSlackFromApp()) return NextResponse.json({ error: "Set APP_PASSWORD to send from the app. The Monday digest still goes out on schedule." }, { status: 403 });
+  if (!canSendSlackFromApp()) {
+    const error = accountsEnabled() ? "Sending to Slack from the app isn't available yet." : "Set APP_PASSWORD to send from the app. The Monday digest still goes out on schedule.";
+    return NextResponse.json({ error }, { status: 403 });
+  }
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {

@@ -21,6 +21,11 @@ export async function GET(request: Request) {
   try {
     await ensureCompanyFor({ id: data.user.id, email: data.user.email ?? null });
   } catch (err) {
+    if (err instanceof Error && err.name === "NotInvited") {
+      // Signed in, but not invited: end the session rather than leave a useless one behind.
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/login?error=invite", url.origin), { status: 303 });
+    }
     console.error("[auth] couldn't set up the company", err instanceof Error ? err.message : "unknown error");
     return NextResponse.redirect(new URL("/login?error=setup", url.origin), { status: 303 });
   }

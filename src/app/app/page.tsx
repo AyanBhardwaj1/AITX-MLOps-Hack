@@ -9,7 +9,7 @@ import { analyze } from "@/lib/pipeline";
 import { redirect } from "next/navigation";
 import { companyName, sessionUser } from "@/lib/server/company";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
-import { canSendSlackFromApp, hasJira, hasOpenAI, accountsEnabled } from "@/lib/server/env";
+import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { KNOWN_JOBS } from "@/lib/vendors/catalog";
 import { categorySpend } from "@/lib/finance/category-spend";
@@ -117,7 +117,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     capabilities: {
       copilot: hasOpenAI(),
-      jira: hasJira(),
+      jira: canFileJiraFromApp(),
       slack: canSendSlackFromApp(),
       persistence: hasDatabase() ? "postgres" : "memory",
       storeOk,

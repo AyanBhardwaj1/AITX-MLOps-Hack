@@ -71,6 +71,24 @@ describe("proxy with accounts configured", () => {
     expect(res.status).toBe(403);
   });
 
+  it("sends a signed-out visitor to sign in before rendering a company page, and leaves the demo open", async () => {
+    const proxy = createProxy({ authConfigured: () => true, appPassword: () => undefined, getUser: async () => ({ user: null, setCookies: [] }) });
+    for (const path of ["/app?mode=company", "/app/upload", "/app/upload/"]) {
+      const res = await proxy(req(path));
+      expect(res.status, path).toBe(307);
+      const to = new URL(res.headers.get("location")!);
+      expect(to.pathname).toBe("/login");
+      expect(to.searchParams.get("next")).toBe(path);
+    }
+    for (const path of ["/app", "/app?mode=demo", "/", "/grader", "/s/abc", "/login"]) expect((await proxy(req(path))).status, path).toBe(200);
+  });
+
+  it("lets a signed-in founder through to their company pages", async () => {
+    const proxy = createProxy({ authConfigured: () => true, appPassword: () => undefined, getUser: async () => ({ user: { id: "user-1", email: null }, setCookies: [] }) });
+    expect((await proxy(req("/app?mode=company"))).status).toBe(200);
+    expect((await proxy(req("/app/upload"))).status).toBe(200);
+  });
+
   it("doesn't ask for the old shared password once accounts are on", async () => {
     const proxy = createProxy({ authConfigured: () => true, appPassword: () => "hunter22hunter", getUser: async () => ({ user: null, setCookies: [] }) });
     expect((await proxy(req("/app"))).status).toBe(200);

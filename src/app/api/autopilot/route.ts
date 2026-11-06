@@ -21,8 +21,15 @@ export async function POST(request: Request) {
   }
   const parsed = body.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  const run = await executeAutopilot(parsed.data.mode, "manual");
-  return NextResponse.json(run, { status: run.status === "failed" ? 502 : 200 });
+  try {
+    const run = await executeAutopilot(parsed.data.mode, "manual");
+    return NextResponse.json(run, { status: run.status === "failed" ? 502 : 200 });
+  } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
+    console.error("[autopilot] run failed", err instanceof Error ? err.message : "unknown error");
+    return NextResponse.json({ error: "Autopilot couldn't run. Try again." }, { status: 500 });
+  }
 }
 
 /** Recent runs, newest first, for the Autopilot history list. */

@@ -6,6 +6,7 @@ export const metadata: Metadata = { title: "Sign in", robots: { index: false, fo
 
 const ERRORS: Record<string, string> = {
   link: "That sign-in link has expired or was already used. Ask for a new one.",
+  invite: "That email isn't invited yet. Runway is invite-only while in early access; join the list and we'll email you.",
   setup: "You're signed in, but we couldn't set up your company. Try again in a minute.",
 };
 

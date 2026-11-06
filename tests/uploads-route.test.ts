@@ -18,6 +18,8 @@ describe("POST /api/uploads", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key-for-tests-0000000000");
     vi.stubEnv("DATABASE_URL", "");
+    // These tests are about isolation; invite-only is covered in accounts-hardening.test.ts.
+    vi.stubEnv("SIGNUPS", "open");
     vi.stubEnv("VERCEL", "");
   });
   afterEach(() => vi.unstubAllEnvs());
@@ -26,6 +28,8 @@ describe("POST /api/uploads", () => {
     const { POST } = await import("@/app/api/uploads/route");
     as(null);
     expect((await POST(post({ cashCents: 100, rows: [row()] }))).status).toBe(401);
+    // Even a malformed body gets the same answer, before any validation runs.
+    expect((await POST(post({ cashCents: 1, rows: [] }))).status).toBe(401);
   });
 
   it("saves rows into the user's own company, and a re-upload adds nothing", async () => {

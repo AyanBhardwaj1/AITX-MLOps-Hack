@@ -11,7 +11,8 @@ Runway reads a company's bank feed (read-only), works out burn, runway and the z
 | Where | What |
 |---|---|
 | `/` | Public site: live runway calculator, what Runway finds, security, FAQ and the early-access form |
-| `/app` | The product, on a synthetic demo company by default (or your Rho feed, behind `APP_PASSWORD`) |
+| `/app` | The product, on a synthetic demo company by default; signed-in founders see their own company (`/app?mode=company`) |
+| `/login`, `/app/upload` | Email-link sign-in, and uploading your bank exports into your company |
 | `/grader` | Free CSV runway grader; runs entirely in the browser |
 | `/privacy`, `/security`, `/terms` | Early-access policies (drafts pending legal review) |
 
@@ -50,6 +51,7 @@ Runway reads a company's bank feed (read-only), works out burn, runway and the z
 - **Free CSV Runway Grader** (`/grader`, no signup). Drop a bank export (a generic Date/Description/Amount CSV, or Rho- and Mercury-*style* layouts; those column layouts are our assumptions and untested on real exports) and type today's cash. You get runway, a range with the burn trend and the top wasted spend. It runs in your browser: a Playwright check logged zero network requests during grading. It also states plainly what a given upload can't see, such as card waste in a checking-only export. After a result you can print it or save it as a PDF (built in the browser), and join early access; only the email is sent.
 - **Runway over time.** Runway at the start of each of the last six months, rebuilt from the feed (that day's cash over the burn measured then), so you can see whether it is growing or shrinking.
 - **Vendor history.** Click any recurring charge for its last 12 months: monthly totals, price changes and the latest bills with who paid.
+- **Your own company.** Founders sign in with an email link (invite-only during early access), get a private company, and upload CSV exports from their bank and cards plus today's cash. Files are parsed in the browser with the grader's importer; only rows are sent, re-validated on the server and stored once even when exports overlap. Every feature then runs on their own data, and they can delete it all from the upload page. Needs Supabase Auth and `DATABASE_URL` (see DEPLOY.md).
 - **Share with investors.** A read-only link (`/s/<token>`) to today's cash, burn, runway, its range and its trend, with no vendors, people or transactions. Links expire after 7, 30 or 90 days and can be revoked; only a SHA-256 hash of the token is stored, and the page sends `no-referrer`, `no-store` and `noindex`. The public demo stores nothing and points to a live sample at `/s/demo`. Needs `DATABASE_URL` and `APP_PASSWORD`.
 - **Runway goal.** Type the runway you want (18 months by default). Runway lists the findings that get there, largest first, and if they don't, how much more to cut each month or how much to raise instead.
 - **Where the money goes.** Average monthly spend per category for the last 3 complete months against the 3 before, as a dumbbell per category, with a table view.
@@ -201,10 +203,13 @@ The eval and two independent code reviews caught real bugs during development, e
 
 ## Known limitations and next steps
 
-- **There's one shared password, not per-user accounts.**
-  - With `APP_PASSWORD` set, the app and its APIs need it (the public site doesn't).
-  - The app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
-  - Multi-company use still needs Supabase Auth, per-org Rho tokens from Vault and an org-keyed cache. The schema already has `org_id` and RLS on every table.
+- **Accounts are new and minimal** (see [ADR-0001](docs/adr/0001-accounts-and-uploaded-data.md)):
+  - One owner per company; no teammates or roles yet, and no second sign-in factor beyond the email link.
+  - Companies connect by uploading CSV exports; per-company Rho connections wait on Rho partner OAuth. With accounts on, the env Rho feed is off.
+  - The daily Autopilot and the Monday digest don't run per company yet, and app-initiated Slack and Jira are off with accounts on (they're the operator's tools).
+  - The company name comes from the email domain; there's no rename screen yet.
+  - A magic link only works in the browser that asked for it (PKCE).
+- **Single-company deployments** (no Supabase Auth) keep the shared password: with `APP_PASSWORD` set, the app and its APIs need it, and the app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
 - **Basic abuse protection is in place:**
   - Agent routes are rate-limited per IP, but per server instance; production needs a shared store.
   - Copilot accepts only user/assistant text, capped in size, so clients can't inject system prompts or forge tool results.

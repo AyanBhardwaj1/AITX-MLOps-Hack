@@ -15,6 +15,12 @@ export interface ProxyDeps {
   getUser: (request: NextRequest) => Promise<{ user: SessionUser | null; setCookies: CookieToSet[] }>;
 }
 
+/** Pages that show a signed-in company's own data; the public demo at /app stays open. */
+function needsSignIn(url: URL): boolean {
+  const path = url.pathname.replace(/\/+$/, "");
+  return path === "/app/upload" || (path === "/app" && url.searchParams.get("mode") === "company");
+}
+
 /**
  * Every request (but static assets): refuse cross-site API writes, strip client-sent identity
  * headers, then either attach the verified Supabase user (accounts on) or apply the shared
@@ -33,7 +39,7 @@ export function createProxy(deps: ProxyDeps) {
         headers.set(USER_HEADER, user.id);
         if (user.email) headers.set(EMAIL_HEADER, user.email);
       }
-      const res = NextResponse.next({ request: { headers } });
+      const res = !user && needsSignIn(request.nextUrl) ? signInRedirect(request.nextUrl) : NextResponse.next({ request: { headers } });
       for (const c of setCookies) res.cookies.set(c.name, c.value, c.options);
       return res;
     }
@@ -44,4 +50,10 @@ export function createProxy(deps: ProxyDeps) {
     }
     return NextResponse.next({ request: { headers } });
   };
+}
+
+function signInRedirect(url: URL): NextResponse {
+  const to = new URL("/login", url);
+  to.searchParams.set("next", `${url.pathname}${url.search}`);
+  return NextResponse.redirect(to, 307);
 }
