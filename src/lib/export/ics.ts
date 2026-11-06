@@ -61,10 +61,10 @@ const fnv = (s: string) => {
   return h.toString(16).padStart(8, "0");
 };
 /**
- * A UID part. Plain names (letters, digits, spaces, hyphens) keep their slug, so calendars imported
- * before still update; anything the slug would lose (张伟, Zoë, a.b) also carries a hash of the text.
+ * A UID part. Plain ASCII keeps its slug exactly as before, so calendars imported earlier still
+ * update; text the slug would drop entirely or blur (张伟, Zoë) also carries a hash of it.
  */
-const uidPart = (s: string) => (/^[A-Za-z0-9 -]*$/.test(s) ? slug(s) : `${slug(s)}-${fnv(s)}`);
+const uidPart = (s: string) => (/^[\x20-\x7E]*$/.test(s) ? slug(s) : `${slug(s)}-${fnv(s)}`);
 
 export function renewalsCalendar({ renewals, company, now, link }: { renewals: readonly Renewal[]; company: string; now: Date; link?: string }): string {
   const today = now.toISOString().slice(0, 10);

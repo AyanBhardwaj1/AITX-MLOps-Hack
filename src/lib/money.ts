@@ -32,5 +32,5 @@ export function parseCashInput(text: string): Cents | null {
   const t = text.trim();
   const negative = t.startsWith("-");
   const cents = parseDollarsToCents(negative ? t.slice(1) : t);
-  return cents === null ? null : negative ? -cents : cents;
+  return cents === null ? null : negative ? -cents || 0 : cents;
 }

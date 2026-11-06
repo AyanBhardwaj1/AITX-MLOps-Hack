@@ -96,7 +96,9 @@ export function parseCsvLines(text: string): { rows: string[][]; lines: number[]
       } else if (ch === '"') quoted = false;
       else field += crlf ? "\r\n" : ch; // kept as written: it's part of the row's identity
       if (newline) line++;
-    } else if (ch === '"' && field === "") {
+    } else if (ch === '"' && (field.trim() === "" || field === "=")) {
+      // A field opens quoted at its start, after any spaces ("a, \"b, c\"") or Excel's = (="0123").
+      if (field !== "=") field = "";
       quoted = true;
       openedOn = line;
     } else if (ch === ",") {
@@ -108,7 +110,11 @@ export function parseCsvLines(text: string): { rows: string[][]; lines: number[]
       rowStart = line;
     } else field += ch;
   }
-  if (quoted) throw new Error(`The quote (") that opens a field on line ${openedOn} never closes, so the rest of the file can't be read. Fix that row and try again.`);
+  if (quoted) {
+    // On the last line it only spoils that row: keep the quote as text, so the row is skipped and named.
+    if (/[\r\n]/.test(field.trimEnd())) throw new Error(`The quote (") that opens a field on line ${openedOn} never closes, so the rest of the file can't be read. Fix that row and try again.`);
+    field = `"${field.trimEnd()}`;
+  }
   endRow();
   return { rows, lines };
 }

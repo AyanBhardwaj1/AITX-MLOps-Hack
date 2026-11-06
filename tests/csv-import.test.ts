@@ -157,6 +157,22 @@ describe("skipped rows are named by their line in the file", () => {
 describe("line ends", () => {
   it("keeps a quoted field's own line break as written, and counts CRLF lines", () => {
     expect(parseCsv('a,b\r\n"x\r\ny",z\r\n')).toEqual([["a", "b"], ["x\r\ny", "z"]]);
-    expect(() => parseCsv('Date,Description,Amount\r\n2026-01-05,AWS,-1\r\n2026-01-06,"OPEN,-2\r\n')).toThrow(/line 3 never closes/);
+    expect(() => parseCsv('Date,Description,Amount\r\n2026-01-05,AWS,-1\r\n2026-01-06,"OPEN,-2\r\n2026-01-07,X,-3\r\n')).toThrow(/line 3 never closes/);
+  });
+});
+
+describe("quotes after a space, Excel text and a last line cut short", () => {
+  it("reads quoted fields after a comma and a space", () => {
+    const r = importCsv('Date, Description, Amount\n2024-01-05, "ACME, INC", -12.00\n2024-01-06, "GUSTO, PAYROLL", -1500.00\n2024-01-07, STRIPE, 900.00\n', { accountId: "a" });
+    expect(r.transactions).toHaveLength(3);
+    expect(parseCsv('a,b\n1,  "quoted, with spaces"\n')).toEqual([["a", "b"], ["1", "quoted, with spaces"]]);
+  });
+  it("reads Excel's =\"...\" text as one field, as before", () => {
+    expect(parseCsv('a,b,c\n="1,234",x,y\n')).toEqual([["a", "b", "c"], ["=1,234", "x", "y"]]);
+  });
+  it("skips just the last row when its quote never closes, instead of refusing the file", () => {
+    const r = importCsv('Date,Description,Amount\n2024-01-05,AWS,-12.00\n2024-01-06,"BAD ROW,-1.00', { accountId: "a" });
+    expect(r.transactions).toHaveLength(1);
+    expect(r.skipped).toEqual([3]);
   });
 });

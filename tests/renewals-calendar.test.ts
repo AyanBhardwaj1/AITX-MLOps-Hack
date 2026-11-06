@@ -143,11 +143,13 @@ describe("event identity", () => {
     expect(ids).toHaveLength(2);
     expect(new Set(ids).size).toBe(2);
   });
-  it("keeps vendor keys apart that differ only in punctuation or accents", () => {
-    expect(new Set(uids([renewal({ vendorKey: "a.b" }), renewal({ vendorKey: "a-b" })])).size).toBe(2);
+  it("keeps names apart that differ only by an accent", () => {
     expect(new Set(uids([renewal({ cardholder: "Zoë" }), renewal({ cardholder: "Zo" })])).size).toBe(2);
   });
-  it("leaves plain names' identities as they were, so an imported calendar still updates", () => {
-    expect(uids([renewal({ cardholder: "Daniel Rivera" })])[0]).toMatch(/^UID:renewal-[a-z0-9-]+-daniel-rivera-\d{8}@runway$/);
+  it("leaves every plain-ASCII identity as it was, so an imported calendar still updates", () => {
+    const one = (over: Partial<Renewal>) => uids([renewal(over)])[0]!;
+    expect(one({ vendorKey: "google_workspace", cardholder: "Daniel Rivera" })).toMatch(/^UID:renewal-google-workspace-daniel-rivera-\d{8}@runway$/);
+    expect(one({ vendorKey: "aws", cardholder: "Sean O'Brien" })).toMatch(/^UID:renewal-aws-sean-o-brien-\d{8}@runway$/);
+    expect(one({ vendorKey: "aws", cardholder: "J. Smith" })).toMatch(/^UID:renewal-aws-j-smith-\d{8}@runway$/);
   });
 });

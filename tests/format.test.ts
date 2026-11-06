@@ -47,6 +47,7 @@ describe("the grader's cash box", () => {
     expect(parseCashInput("$1,234.50")).toBe(123_450);
     expect(parseCashInput(" 952350 ")).toBe(95_235_000);
     expect(parseCashInput("-5,000")).toBe(-500_000);
+    expect(Object.is(parseCashInput("-0"), 0)).toBe(true);
     for (const bad of ["0x10", "0b11", "1e3", "", "12.345", "--5", "1-", "abc", "200000000000"]) expect(parseCashInput(bad)).toBeNull();
   });
 });
