@@ -8,5 +8,6 @@ export const INSTANT_QUESTIONS = {
   what_changed: "What changed this week?",
   budgets: "Are we on budget this month?",
   burn_moved: "Why did burn change last month?",
+  people: "Who spends the most on cards?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;

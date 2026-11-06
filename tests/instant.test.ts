@@ -86,3 +86,16 @@ describe("why did burn change", () => {
     expect(instantAnswer(short, "burn_moved").text).toMatch(/two whole months/);
   });
 });
+
+describe("who spends the most", () => {
+  it("lists the demo's cardholders by card spend, from the same numbers as the card", async () => {
+    const { generateDemoCompany: gen } = await import("@/lib/seed/demo-company");
+    const demo = gen();
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions });
+    const { peopleSpend } = await import("@/lib/finance/people-spend");
+    const people = peopleSpend(a.txns, a.snapshot)!;
+    const ans = instantAnswer(a, "people");
+    expect(ans.tools).toEqual(["get_people_spend"]);
+    expect(ans.text).toContain(`**${people.rows[0]!.cardholder}**: ${formatDollars(people.rows[0]!.monthlyCents)}/month`);
+  });
+});

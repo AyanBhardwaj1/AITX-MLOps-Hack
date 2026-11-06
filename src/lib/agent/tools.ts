@@ -10,6 +10,7 @@ import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budgets";
 import { burnBridge } from "../finance/burn-bridge";
+import { peopleSpend } from "../finance/people-spend";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -231,6 +232,12 @@ export const changesInput = z.object({});
 /** Recent alerts: burn spikes, large one-offs, price changes, new vendors, renewals due, low runway. */
 export function getChanges(a: Analysis) {
   return detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths });
+}
+
+export const peopleSpendInput = z.object({});
+/** Card spend per cardholder per month over burn's months (cents), share of gross burn, top vendors. */
+export function getPeopleSpend(a: Analysis) {
+  return peopleSpend(a.txns, a.snapshot) ?? { note: "No transaction names a cardholder, so card spend can't be split by person." };
 }
 
 export const burnBridgeInput = z.object({});

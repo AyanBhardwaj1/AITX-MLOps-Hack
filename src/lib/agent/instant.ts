@@ -4,7 +4,7 @@ import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { getBudgets, getBurnBridge, getChanges, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { getBudgets, getBurnBridge, getChanges, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -182,6 +182,20 @@ function burnMoved(a: Analysis): InstantAnswer {
   return { question: INSTANT_QUESTIONS.burn_moved, tools, text: [head, ...(rows.length ? ["What moved it (these add up to the change):", rows.join("\n")] : [])].join("\n\n") };
 }
 
+function whoSpends(a: Analysis): InstantAnswer {
+  const tools = ["get_people_spend"];
+  const p = getPeopleSpend(a);
+  if ("note" in p) return { question: INSTANT_QUESTIONS.people, tools, text: p.note };
+  const rows = p.rows.slice(0, MAX_LISTED).map(
+    (r) => `- **${r.cardholder}**: ${formatDollars(r.monthlyCents)}/month (${(r.shareOfGross * 100).toFixed(1)}% of gross burn)${r.top.length ? `: ${r.top.map((v) => v.name).join(", ")}` : ""}`,
+  );
+  return {
+    question: INSTANT_QUESTIONS.people,
+    tools,
+    text: [`Card spend per person, per month, after refunds (same months as burn):`, rows.join("\n"), `Payroll, rent and other spending no card names come to ${formatDollars(p.unassignedMonthlyCents)}/month.`].join("\n\n"),
+  };
+}
+
 const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>, budgets: InstantBudgets) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
@@ -191,6 +205,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   what_changed: whatChanged,
   budgets: budgetsAnswer,
   burn_moved: burnMoved,
+  people: whoSpends,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */
