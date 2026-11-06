@@ -84,12 +84,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chromium for Playwright
-        # The download or apt step sometimes stalls with no error; give each try two minutes.
+        # The runner image already has every library Chromium needs; --with-deps only added
+        # optional fonts from an apt mirror that sometimes crawls (3.5 MB in 94 s), hanging the
+        # job. So just the browser, and a stalled download gets two minutes before another try.
         timeout-minutes: 8
         run: |
           for attempt in 1 2 3; do
-            timeout -k 10 120 npx playwright install --with-deps chromium && exit 0
-            echo "Chromium install attempt $attempt stalled or failed; trying again"
+            timeout -k 10 120 npx playwright install chromium && exit 0
+            echo "Chromium download attempt $attempt stalled or failed; trying again"
           done
           exit 1
       - name: Sign-in, isolation, settings, teams and uploads in a real browser
