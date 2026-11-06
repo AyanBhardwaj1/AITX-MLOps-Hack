@@ -89,7 +89,7 @@ export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): 
       console.error("[runway-alert] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
     }
     try {
-      const nudge = await sendStaleNudge({ store, load: loadAnalysis, cashEnteredAt: async () => (await loadData()).cashEnteredAt, company: company ?? "your company", now: new Date(), link: appUrl("company")?.replace(/\/app(\?.*)?$/, "/app/upload") });
+      const nudge = await sendStaleNudge({ store, load: loadAnalysis, company: company ?? "your company", now: new Date(), link: appUrl("company")?.replace(/\/app(\?.*)?$/, "/app/upload") });
       if (nudge.status === "sent") result.staleNudges += 1;
     } catch (err) {
       // The claim was given back: tomorrow's run tries again.

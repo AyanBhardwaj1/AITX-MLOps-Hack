@@ -31,7 +31,9 @@ describe("rows dated after today", () => {
 describe("the grader and future-dated rows", () => {
   it("leaves rows dated after today out, says so, and doesn't call the other export behind", async () => {
     const { gradeCsvFiles } = await import("@/lib/grader");
-    const today = new Date().toISOString().slice(0, 10);
+    // The grader runs in the browser and uses the visitor's own date.
+    const { localIsoDate } = await import("@/lib/dates");
+    const today = localIsoDate();
     const later = new Date(Date.now() + 40 * 86_400_000).toISOString().slice(0, 10);
     const g = gradeCsvFiles([{ name: "a.csv", text: `Date,Description,Amount\n${today},FIGMA,-15.00\n${later},SCHEDULED ACH,-1000.00` }], 100_000_00);
     expect(g.transactions).toBe(1);

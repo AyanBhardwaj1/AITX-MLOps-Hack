@@ -4,18 +4,10 @@ import { CASH_ACCOUNT_ID } from "./uploads/rows";
 export const STALE_AFTER_DAYS = 14;
 const DAY_MS = 86_400_000;
 
-/**
- * How old uploaded data is. `uploadedAt` (an ISO timestamp, when the export was last uploaded): rows
- * dated after it were scheduled payments, so once their date arrives they don't make old data fresh.
- * `through` is the date the data is judged current to: the earlier of the latest row and the upload.
- */
-export function dataFreshness(latestDate: string, now: Date, uploadedAt?: string): { daysOld: number; stale: boolean; through: string } {
-  const uploaded = uploadedAt === undefined ? Number.NaN : Date.parse(uploadedAt);
-  const uploadedOn = Number.isNaN(uploaded) ? undefined : new Date(uploaded).toISOString().slice(0, 10);
-  const through = uploadedOn !== undefined && uploadedOn < latestDate ? uploadedOn : latestDate;
+export function dataFreshness(latestDate: string, now: Date): { daysOld: number; stale: boolean } {
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const daysOld = Math.max(0, Math.floor((today - Date.parse(`${through}T00:00:00Z`)) / DAY_MS));
-  return { daysOld, stale: daysOld >= STALE_AFTER_DAYS, through };
+  const daysOld = Math.max(0, Math.floor((today - Date.parse(`${latestDate}T00:00:00Z`)) / DAY_MS));
+  return { daysOld, stale: daysOld >= STALE_AFTER_DAYS };
 }
 
 /** Cash moves faster than transactions: a week-old figure is worth confirming. */

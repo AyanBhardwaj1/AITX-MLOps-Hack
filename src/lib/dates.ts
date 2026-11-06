@@ -17,17 +17,6 @@ export function addDays(d: IsoDate, days: number): IsoDate {
   return new Date(toUtc(d) + Math.round(days) * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
-/** The furthest-ahead time zone (Kiribati, UTC+14). */
-const LATEST_OFFSET_MS = 14 * 3_600_000;
-
-/**
- * The latest calendar date anywhere on Earth right now: what "today" may be for a founder whose time
- * zone the server doesn't know. A row dated after it can't have happened yet for anyone.
- */
-export function latestDateOnEarth(now: Date = new Date()): IsoDate {
-  return new Date(now.getTime() + LATEST_OFFSET_MS).toISOString().slice(0, 10);
-}
-
 /** Today's date where this code runs (the visitor's own, in the browser). */
 export function localIsoDate(now: Date = new Date()): IsoDate {
   const pad = (n: number) => String(n).padStart(2, "0");

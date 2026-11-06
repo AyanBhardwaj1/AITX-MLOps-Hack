@@ -13,7 +13,6 @@ import { scopeFor } from "./scope";
 import { getStore } from "./store";
 import { NoCompanyData } from "./errors";
 import { uploadedDataset } from "../uploads/rows";
-import { latestDateOnEarth } from "../dates";
 import type { DataMode } from "../modes";
 import type { VendorCorrection } from "../vendors/corrections";
 import { DEMO_CORRECTIONS_COOKIE, decodeDemoCorrections } from "../vendors/demo-cookie";
@@ -61,7 +60,7 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
 async function loadCompanyDataset(scope: string): Promise<Dataset> {
   const uploads = await getStore(scope).loadUploads();
   if (!uploads) throw new NoCompanyData();
-  const data = uploadedDataset({ ...uploads, today: latestDateOnEarth() });
+  const data = uploadedDataset({ ...uploads, today: new Date().toISOString().slice(0, 10) });
   // Only rows dated after today: nothing has happened yet to analyse, as with no uploads at all.
   if (data.transactions.length === 0) throw new NoCompanyData();
   return { ...data, cashEnteredAt: uploads.cashEnteredAt, label: "company" };

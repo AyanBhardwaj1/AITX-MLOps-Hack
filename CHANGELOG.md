@@ -121,10 +121,8 @@ demo, the free grader and the public site work exactly as before.
 - A test runs 32 generated companies and checks the cards against each other to the cent.
 - **Scheduled payments wait for their date.** Uploaded rows dated after today aren't counted
   until then (the dashboard says how many), so a payment due on the 1st can't turn the month
-  early or quiet the alerts. "Today" is the latest date anywhere on Earth, so a founder east of UTC
-  keeps today's rows; the grader, which runs in your browser, uses your own date. Once a scheduled
-  row's date arrives it counts, but it doesn't make an old upload look fresh: the stale-data
-  banner, weekly digest and Slack nudge count from the last upload.
+  early or quiet the alerts. "Today" is the UTC date for uploads; the grader, which runs in your
+  browser, uses your own date.
 - **Safer approvals.** A dismissed finding's drafts leave the Inbox and can't be approved
   (reopening the finding brings them back); Copilot won't draft for one either. On the public
   demo, Inbox decisions show for the visitor but aren't saved for everyone.

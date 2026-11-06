@@ -45,8 +45,6 @@ describe("weekly digest", () => {
     expect(stale.slack).toMatch(/27 days ago/);
     expect(buildDigest({ ...input, staleDays: 5 }).markdown).not.toMatch(/days ago/);
     expect(buildDigest(input).markdown).not.toMatch(/days ago/);
-    // Judged from the last upload (a scheduled row's date arriving doesn't count): that's the date named.
-    expect(buildDigest({ ...input, staleDays: 37, staleThrough: "2026-10-01" }).markdown).toMatch(/end on Oct 1, 2026, 37 days ago/);
   });
 
   it("renders Slack mrkdwn: single-asterisk bold and a link back to the app", () => {

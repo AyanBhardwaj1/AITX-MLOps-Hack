@@ -31,8 +31,6 @@ export interface DigestInput {
   appUrl?: string;
   /** Days since the latest uploaded transaction (company data only); two weeks or more is called out first. */
   staleDays?: number;
-  /** The date the stale data runs to (the last upload, if rows run past it); defaults to asOf. */
-  staleThrough?: IsoDate;
   /** The company's budgets this month; only those over or heading over are named. */
   budgets?: readonly BudgetRow[];
   /** Last complete month's net burn against the month before, vendor by vendor. */
@@ -100,7 +98,7 @@ function blocks(d: DigestInput): Block[] {
   const stale = d.staleDays !== undefined && d.staleDays >= STALE_AFTER_DAYS;
   const out: Block[] = [
     stale
-      ? { kind: "p", spans: [{ bold: `Your transactions end on ${formatDate(d.staleThrough ?? d.asOf)}, ${d.staleDays} days ago` }, ", so these numbers may have drifted: upload a fresh export and update today's cash."] }
+      ? { kind: "p", spans: [{ bold: `Your transactions end on ${formatDate(d.asOf)}, ${d.staleDays} days ago` }, ", so these numbers may have drifted: upload a fresh export and update today's cash."] }
       : { kind: "p", spans: [`As of ${formatDate(d.asOf)}.`] },
     { kind: "p", spans: runway },
     { kind: "p", spans: verdict(d.scenario) },
