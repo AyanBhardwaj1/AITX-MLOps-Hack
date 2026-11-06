@@ -1,11 +1,12 @@
 import "server-only";
 import { runAutopilot, type AutopilotRun } from "../agent/autopilot";
-import type { StoredAction } from "../store/types";
-import { loadLabelledDataset, type DataMode } from "./data";
+import type { Store, StoredAction } from "../store/types";
+import { loadCompanyLabelled, loadLabelledDataset, type DataMode, type LabelledDataset } from "./data";
 import { hasOpenAI } from "./env";
 import { writeMemoWithLLM } from "./llm";
 import { scopeFor } from "./scope";
-import { getStore } from "./store";
+import { getStore, listCompanyScopesWithUploads } from "./store";
+import { companyName, getAccounts } from "./company";
 
 export interface PublicRun extends Omit<AutopilotRun, "memoFacts" | "findings" | "tickets"> {
   id: string | null;
@@ -19,10 +20,62 @@ export interface PublicRun extends Omit<AutopilotRun, "memoFacts" | "findings" |
  * Used by the "Run now" button and by the daily cron, so both behave identically.
  */
 export async function executeAutopilot(mode: DataMode, trigger: "manual" | "cron"): Promise<PublicRun> {
+  const company = mode === "company" ? await companyName("company") : undefined;
+  return runAndPersist({ store: getStore(await scopeFor(mode)), loadData: () => loadLabelledDataset(mode), label: mode, trigger, company });
+}
+
+/** Most companies the daily cron looks at in one go; the least recently reviewed come first. */
+const MAX_COMPANIES_PER_RUN = 500;
+
+export interface CompanyRunsResult {
+  /** Scopes reviewed this time. */
+  ran: string[];
+  /** Scopes whose run failed (logged by scope only, never their data). */
+  failed: string[];
+  /** Companies left for the next run because the time budget ran out. */
+  skipped: number;
+}
+
+/**
+ * The daily review for every company that uploaded data, one after another, within a time budget.
+ * Scopes come from the server's own list, never from a request. Least recently reviewed first, so
+ * if the budget runs out the rest are first in line tomorrow.
+ */
+export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): Promise<CompanyRunsResult> {
+  const deadline = Date.now() + budgetMs;
+  const scopes = await listCompanyScopesWithUploads(MAX_COMPANIES_PER_RUN);
+  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0 };
+  for (const [i, scope] of scopes.entries()) {
+    if (Date.now() >= deadline) {
+      result.skipped = scopes.length - i;
+      break;
+    }
+    try {
+      const company = (await getAccounts().nameForScope(scope)) ?? undefined;
+      const run = await runAndPersist({ store: getStore(scope), loadData: () => loadCompanyLabelled(scope), label: scope, trigger: "cron", company });
+      (run.status === "failed" || !run.persisted ? result.failed : result.ran).push(scope);
+    } catch (err) {
+      console.error("[autopilot] company run failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
+      result.failed.push(scope);
+    }
+  }
+  return result;
+}
+
+interface RunTarget {
+  store: Store;
+  loadData: () => Promise<LabelledDataset>;
+  /** For logs: the mode or the company's scope. */
+  label: string;
+  trigger: "manual" | "cron";
+  company?: string;
+}
+
+async function runAndPersist({ store, loadData, label: mode, trigger, company }: RunTarget): Promise<PublicRun> {
   const startedAt = new Date().toISOString();
-  const store = getStore(await scopeFor(mode));
   const run = await runAutopilot({
-    loadData: () => loadLabelledDataset(mode),
+    company,
+    loadData,
     writeMemo: hasOpenAI() ? writeMemoWithLLM : undefined,
     // Syncs findings and returns people's decisions, so dismissed ones are skipped.
     getFindingStatuses: (findings) => store.syncFindings(findings),

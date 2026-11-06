@@ -206,7 +206,7 @@ The eval and two independent code reviews caught real bugs during development, e
 - **Accounts are new and minimal** (see [ADR-0001](docs/adr/0001-accounts-and-uploaded-data.md)):
   - One owner per company; no teammates or roles yet, and no second sign-in factor beyond the email link.
   - Companies connect by uploading CSV exports; per-company Rho connections wait on Rho partner OAuth. With accounts on, the env Rho feed is off.
-  - The daily Autopilot and the Monday digest don't run per company yet, and app-initiated Slack and Jira are off with accounts on (they're the operator's tools).
+  - The daily Autopilot reviews every company with uploads (least recently reviewed first, within the cron's time limit), so each company's Inbox has fresh drafts in the morning. The Monday digest isn't per company yet, and app-initiated Slack and Jira are off with accounts on (they're the operator's tools).
   - The company name starts from the email domain; the owner can rename or delete the company at `/app/settings`.
   - A magic link only works in the browser that asked for it (PKCE).
 - **Single-company deployments** (no Supabase Auth) keep the shared password: with `APP_PASSWORD` set, the app and its APIs need it, and the app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.

@@ -42,6 +42,13 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
       expect((await store.companyFor(b.id))!.name).toBe(before.name);
     });
 
+    it("finds a company's name by its scope, for work done outside a request", async () => {
+      const store = await makeStore();
+      const c = await store.ensureCompanyFor(user());
+      expect(await store.nameForScope(c.scope)).toBe(c.name);
+      expect(await store.nameForScope(`org_${crypto.randomUUID()}`)).toBeNull();
+    });
+
     it("says the first user of a company owns it", async () => {
       const store = await makeStore();
       const u = user();

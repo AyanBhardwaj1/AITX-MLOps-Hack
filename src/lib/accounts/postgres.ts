@@ -51,6 +51,11 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
       );
     },
 
+    async nameForScope(scope) {
+      const { rows } = await pool.query<{ name: string }>(`select name from public.organizations where slug = $1`, [scope]);
+      return rows[0]?.name ?? null;
+    },
+
     async deleteCompany(userId) {
       // Everything an organization holds references it with "on delete cascade".
       const { rowCount } = await pool.query(

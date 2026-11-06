@@ -22,6 +22,10 @@ export function createMemoryAccounts(): AccountsStore {
       const c = byUser.get(userId);
       if (c?.role === "owner") c.name = name;
     },
+    async nameForScope(scope) {
+      for (const c of byUser.values()) if (c.scope === scope) return c.name;
+      return null;
+    },
     async deleteCompany(userId) {
       const c = byUser.get(userId);
       if (c?.role !== "owner") return false;

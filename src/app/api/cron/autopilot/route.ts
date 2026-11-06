@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { checkBearer } from "@/lib/access";
-import { executeAutopilot } from "@/lib/server/autopilot-service";
+import { executeAutopilot, runCompanyAutopilots } from "@/lib/server/autopilot-service";
 import { accountsEnabled, env } from "@/lib/server/env";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+/** Leaves headroom under maxDuration for the response after the last company. */
+const COMPANY_BUDGET_MS = 45_000;
 
 /**
  * Daily Autopilot run, triggered by Vercel Cron (see vercel.json). Vercel sends
@@ -15,11 +17,17 @@ export async function GET(request: Request) {
   if (!checkBearer(request.headers.get("authorization"), e.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // The env Rho feed is off once accounts are on; per-company schedules aren't built yet.
-  if (accountsEnabled() && e.AUTOPILOT_CRON_MODE === "sandbox") return NextResponse.json({ skipped: "AUTOPILOT_CRON_MODE=sandbox is off when accounts are on" });
-  const run = await executeAutopilot(e.AUTOPILOT_CRON_MODE, "cron");
+  const startedAt = Date.now();
+  // The env Rho feed is off once accounts are on; the companies' own data is reviewed below instead.
+  const skipShared = accountsEnabled() && e.AUTOPILOT_CRON_MODE === "sandbox";
+  const run = skipShared ? null : await executeAutopilot(e.AUTOPILOT_CRON_MODE, "cron");
+  const companies = accountsEnabled() ? await runCompanyAutopilots({ budgetMs: COMPANY_BUDGET_MS - (Date.now() - startedAt) }) : null;
   return NextResponse.json(
-    { status: run.status, runId: run.id, findings: run.findingsCount, drafted: run.tickets.length, persisted: run.persisted },
-    { status: run.status === "failed" ? 502 : 200 },
+    {
+      ...(run ? { status: run.status, runId: run.id, findings: run.findingsCount, drafted: run.tickets.length, persisted: run.persisted } : { skipped: "AUTOPILOT_CRON_MODE=sandbox is off when accounts are on" }),
+      // Counts only: which companies ran stays in the server logs.
+      ...(companies ? { companies: { ran: companies.ran.length, failed: companies.failed.length, skipped: companies.skipped } } : {}),
+    },
+    { status: run?.status === "failed" ? 502 : 200 },
   );
 }

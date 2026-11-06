@@ -26,6 +26,8 @@ export interface AccountsStore {
   /** The user's company, created with an owner membership on first use; atomic and idempotent. */
   ensureCompanyFor(user: { id: string; email: string | null }): Promise<Company>;
   renameCompany(userId: string, name: string): Promise<void>;
+  /** A company's name by its scope, or null (for work done outside a request, like the daily cron). */
+  nameForScope(scope: string): Promise<string | null>;
   /** Deletes the company the user owns, with everything in it; false when they own none. */
   deleteCompany(userId: string): Promise<boolean>;
 }

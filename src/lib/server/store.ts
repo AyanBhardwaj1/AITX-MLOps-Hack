@@ -1,7 +1,7 @@
 import "server-only";
 import { Pool } from "pg";
 import { createMemoryStore } from "../store/memory";
-import { createPostgresStore, findShareLinkByTokenHash } from "../store/postgres";
+import { createPostgresStore, findShareLinkByTokenHash, listUploadScopes } from "../store/postgres";
 import type { Store } from "../store/types";
 import { accountsEnabled, env } from "./env";
 
@@ -87,4 +87,15 @@ export async function pingDatabase(): Promise<"ok" | "unreachable" | "not_config
     console.error("[store] health ping failed", err);
     return "unreachable";
   }
+}
+
+/** Companies with uploaded data, least recently reviewed first (see listUploadScopes). */
+export async function listCompanyScopesWithUploads(limit: number): Promise<string[]> {
+  if (hasDatabase()) return listUploadScopes(getPool(), limit);
+  const found: { scope: string; lastRun: string }[] = [];
+  for (const [scope, store] of stores) {
+    if (!scope.startsWith("org_") || !(await store.loadUploads())) continue;
+    found.push({ scope, lastRun: (await store.listRuns(1))[0]?.startedAt ?? "" });
+  }
+  return found.sort((a, b) => a.lastRun.localeCompare(b.lastRun)).slice(0, limit).map((f) => f.scope);
 }

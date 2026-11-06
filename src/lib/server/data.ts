@@ -38,12 +38,8 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
     const demo = generateDemoCompany();
     return { accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, label: "demo", actedOn: demo.actedOn };
   }
-  if (mode === "company") {
-    // The signed-in user's own uploads; scopeFor() throws SignInRequired when nobody is.
-    const uploads = await getStore(await scopeFor("company")).loadUploads();
-    if (!uploads) throw new NoCompanyData();
-    return { ...uploadedDataset(uploads), label: "company" };
-  }
+  // The signed-in user's own uploads; scopeFor() throws SignInRequired when nobody is.
+  if (mode === "company") return loadCompanyDataset(await scopeFor("company"));
   await scopeFor("sandbox"); // refuses the env Rho feed once accounts are on
   const e = env();
   assertSafeToServe({ rhoBaseUrl: e.RHO_BASE_URL, appPassword: e.APP_PASSWORD });
@@ -54,6 +50,13 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
   const data: Dataset = { accounts, transactions, label: e.RHO_BASE_URL.includes("sandbox") ? "rho_sandbox" : "rho" };
   sandboxCache = { at: Date.now(), data };
   return data;
+}
+
+/** A company's stored uploads, by its scope. Callers resolve the scope (from the session, or the cron's list). */
+async function loadCompanyDataset(scope: string): Promise<Dataset> {
+  const uploads = await getStore(scope).loadUploads();
+  if (!uploads) throw new NoCompanyData();
+  return { ...uploadedDataset(uploads), label: "company" };
 }
 
 export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };
@@ -95,6 +98,20 @@ async function loadCorrections(mode: DataMode, { visitorFixes = false }: LoadOpt
  */
 export async function loadLabelledDataset(mode: DataMode, options: LoadOptions = {}): Promise<LabelledDataset> {
   const [dataset, corrections] = await Promise.all([loadDataset(mode), loadCorrections(mode, options)]);
+  return withLabels(dataset, corrections);
+}
+
+/**
+ * A company's data by scope, with its own fixes and labels, for work done outside any request (the
+ * daily cron). The scope comes from the server's own list of companies, never from a request.
+ */
+export async function loadCompanyLabelled(scope: string): Promise<LabelledDataset> {
+  const store = getStore(scope);
+  const [dataset, list] = await Promise.all([loadCompanyDataset(scope), store.listCorrections()]);
+  return withLabels(dataset, list.length ? new Map(list.map((c) => [c.vendorKey, c])) : undefined);
+}
+
+async function withLabels(dataset: Dataset, corrections: ReadonlyMap<string, VendorCorrection> | undefined): Promise<LabelledDataset> {
   const withCorrections: LabelledDataset = corrections ? { ...dataset, corrections } : dataset;
   if (!hasOpenAI()) return withCorrections;
   const unknown = unknownMerchants(analyze(dataset).txns);

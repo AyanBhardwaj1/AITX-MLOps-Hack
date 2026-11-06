@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { createPostgresAccounts } from "@/lib/accounts/postgres";
-import { createPostgresStore } from "@/lib/store/postgres";
+import { createPostgresStore, listUploadScopes } from "@/lib/store/postgres";
 import { runAccountsContract } from "../accounts-contract";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -28,5 +28,21 @@ describe("deleting a company in Postgres", () => {
       const { rows } = await pool.query(`select count(*)::int as n from public.${table} where ${column} = $1`, [company.orgId]);
       expect(rows[0].n, table).toBe(0);
     }
+  });
+});
+
+describe("companies the daily cron reviews", () => {
+  it("are the ones with uploads, never reviewed or least recently reviewed first", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const make = async () => accounts.ensureCompanyFor({ id: crypto.randomUUID(), email: null });
+    const [reviewed, fresh, empty] = [await make(), await make(), await make()];
+    const row = { id: "u_y", money_movement_id: null, account_id: "uploaded", account_name: "uploaded", account_type: "checking" as const, amount: { amount: -500, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "ZOOM", initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null };
+    for (const c of [reviewed, fresh]) await createPostgresStore(pool, c.scope).saveUploads(1, [row], 10);
+    await createPostgresStore(pool, reviewed.scope).recordRun({ trigger: "cron", status: "succeeded", startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), findingsCount: 0, memo: "", steps: [] });
+    const scopes = await listUploadScopes(pool, 10_000);
+    expect(scopes).not.toContain(empty.scope);
+    expect(scopes.indexOf(fresh.scope)).toBeGreaterThanOrEqual(0);
+    expect(scopes.indexOf(fresh.scope)).toBeLessThan(scopes.indexOf(reviewed.scope));
+    expect(scopes.every((s) => s.startsWith("org_"))).toBe(true);
   });
 });

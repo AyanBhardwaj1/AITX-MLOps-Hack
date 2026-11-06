@@ -71,6 +71,21 @@ export async function findShareLinkByTokenHash(pool: Pool, tokenHash: string): P
   return rows[0] ? { scope: rows[0].scope, link: toShareLink(rows[0]) } : null;
 }
 
+/**
+ * Companies (scopes "org_...") that have uploaded data, the ones whose Autopilot ran longest ago
+ * (or never) first, so a time-limited cron gets round to everyone over successive days.
+ */
+export async function listUploadScopes(pool: Pool, limit: number): Promise<string[]> {
+  const { rows } = await pool.query<{ slug: string }>(
+    `select o.slug from public.organizations o
+      where o.slug like 'org\\_%' and exists (select 1 from public.connections c where c.org_id = o.id and c.provider = 'csv')
+      order by (select max(r.started_at) from public.agent_runs r where r.org_id = o.id and r.agent = 'autopilot') asc nulls first, o.created_at
+      limit $1`,
+    [limit],
+  );
+  return rows.map((r) => r.slug);
+}
+
 /** The company's uploaded-exports connection (created on first upload when `create`). */
 async function csvConnection(db: Pool | PoolClient, org: string, create: boolean): Promise<string | null> {
   const found = await db.query<{ id: string }>(`select id from public.connections where org_id = $1 and provider = 'csv' order by created_at limit 1`, [org]);

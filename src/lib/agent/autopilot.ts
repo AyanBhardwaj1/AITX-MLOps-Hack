@@ -51,6 +51,8 @@ export interface AutopilotDeps {
     vendorLabels?: ReadonlyMap<string, VendorInfo>;
     corrections?: ReadonlyMap<string, VendorCorrection>;
   }>;
+  /** The company's name for the memo; by default it's named from the data's label. */
+  company?: string;
   /** Optional LLM memo writer. Without it, the template memo is used. */
   writeMemo?: (facts: MemoFacts) => Promise<{ text: string; model: string; inputTokens?: number; outputTokens?: number }>;
   /** Optional: people's decisions on findings (dismissed ones are skipped). Also persists new findings. */
@@ -199,7 +201,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
     });
 
     const facts = await step("plan", async () => {
-      const f = buildMemoFacts(a, label === "demo" ? "Taco Robotics, Inc. (demo data)" : "Your company");
+      const f = buildMemoFacts(a, deps.company ?? (label === "demo" ? "Taco Robotics, Inc. (demo data)" : "Your company"));
       return { value: f, detail: { monthlySavings: f.monthlySavingsText, newRunway: f.newRunwayText, added: f.addedMonthsText } };
     });
 

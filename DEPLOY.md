@@ -70,7 +70,7 @@ In **Supabase**:
 
 In **Vercel**: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (and `SIGNUPS` if you want `open`), then **Redeploy**: `NEXT_PUBLIC_*` values are built into the app, so a redeploy is required. The `service_role` key is never needed and must not be added.
 
-With accounts on: the env Rho feed (`sandbox` mode) is off, since companies connect by uploading exports until Rho partner sign-in exists; app-initiated Slack sends and Jira filing are off, because those webhooks belong to your team, not to the companies using the app; the Monday digest and daily Autopilot still run for `AUTOPILOT_CRON_MODE=demo` only.
+With accounts on: the env Rho feed (`sandbox` mode) is off, since companies connect by uploading exports until Rho partner sign-in exists; app-initiated Slack sends and Jira filing are off, because those webhooks belong to your team, not to the companies using the app; the daily Autopilot also reviews every company that has uploaded data (needs `CRON_SECRET`), least recently reviewed first within the cron's 60-second limit; the Monday digest still goes to your Slack for `AUTOPILOT_CRON_MODE=demo` only.
 
 ### Inviting founders
 
