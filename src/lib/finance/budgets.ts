@@ -146,7 +146,8 @@ function stillDueByDay(s: RecurringStream, seen: readonly IsoDate[], asOf: IsoDa
     const step = median(gaps);
     const intervalError = gaps.reduce((sum, g) => sum + Math.abs(g - step), 0);
     const dayError = recent.slice(1).reduce((sum, c) => sum + offBy(c, usual[0]!), 0);
-    if (intervalError < dayError) return stillDueByInterval(charges, asOf, month);
+    // Only a gap that looks monthly (same-day duplicates could make it 0, and stepping by 0 never ends).
+    if (step >= 20 && step <= 40 && intervalError < dayError) return stillDueByInterval(charges, asOf, month);
   }
   const every = s.cadence === "quarterly" ? 3 : s.cadence === "annual" ? 12 : 1;
   const here = monthIndex(month);

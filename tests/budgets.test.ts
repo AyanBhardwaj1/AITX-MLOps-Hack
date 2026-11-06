@@ -192,6 +192,12 @@ describe("budgets", () => {
       expect(budgetStatus(charges, asOf, [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(actual * 1_000_00);
     });
 
+    it("never loops on a history with same-day duplicates", () => {
+      const dates = ["2026-05-05", "2026-05-05", "2026-05-05", "2026-05-05", "2026-06-05", "2026-07-05", "2026-08-05"];
+      const { charges, stream: s } = history("software", dates, 100_00, "monthly");
+      expect(budgetStatus(charges, "2026-08-10", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(100_00);
+    });
+
     it("stops expecting a bill more than ten days past due that never came", () => {
       const { charges, stream: s } = history("software", ["2026-05-10", "2026-06-10", "2026-07-10", "2026-08-10", "2026-09-10", "2026-10-10"], 500_00, "monthly");
       expect(budgetStatus(charges, "2026-11-08", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(500_00);
