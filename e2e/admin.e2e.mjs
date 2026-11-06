@@ -24,7 +24,7 @@ await suite("admin", async ({ browser, step }) => {
     await operator.goto(`${APP}/app/settings`);
     await operator.getByRole("link", { name: "Early access" }).click();
     await operator.waitForURL(/\/admin$/);
-    const table = operator.getByRole("region", { name: "Latest signups" });
+    const table = operator.getByRole("region", { name: "Signups table" });
     await table.getByRole("row", { name: /waiting@initech\.example/ }).getByRole("button", { name: /Invite/ }).waitFor();
     await operator.getByLabel("Invite any email").fill("newcomer@hooli.example");
     await operator.getByRole("button", { name: "Invite", exact: true }).click();

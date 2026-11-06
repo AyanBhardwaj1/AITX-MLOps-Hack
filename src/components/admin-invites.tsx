@@ -69,7 +69,7 @@ export function AdminInvites({ entries }: { entries: ListedWaitlistEntry[] }) {
         {entries.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted">Nobody yet.</p>
         ) : (
-          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Latest signups">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Signups table">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted">
                 <tr>
