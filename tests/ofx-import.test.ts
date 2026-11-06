@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { importOfx, importStatement, looksLikeOfx } from "@/lib/csv/ofx";
+import { combineBalances, importOfx, importStatement, looksLikeOfx } from "@/lib/csv/ofx";
 import { toUploadRows } from "@/lib/uploads/rows";
 
 // OFX 1.x (SGML): a header block, then tags whose values aren't closed. Quicken (.qfx) and
@@ -147,5 +147,25 @@ describe("OFX, QFX and QBO statements", () => {
     const started = performance.now();
     expect(importOfx(big, { accountId: "a" }).transactions).toHaveLength(50_000);
     expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
+
+describe("balances in OFX downloads", () => {
+  it("reads each bank account's balance, never a card's", () => {
+    expect(importOfx(sgmlChecking, { accountId: "chase" }).balances).toEqual([{ key: "000123456789", cents: 152_345_67, asOf: "2026-10-31" }]);
+    expect(importOfx(xmlCard, { accountId: "amex" }).balances).toEqual([]);
+    expect(importStatement("Date,Description,Amount\n2026-10-01,Figma,-5\n", { accountId: "a" }).balances).toBeUndefined();
+  });
+
+  it("adds up the accounts, counting an account downloaded twice once (its latest balance)", () => {
+    const savings = sgmlChecking.replace("<ACCTID>000123456789<ACCTTYPE>CHECKING", "<ACCTID>555<ACCTTYPE>SAVINGS").replace("<BALAMT>152345.67<DTASOF>20261031", "<BALAMT>10000<DTASOF>20261030");
+    const older = sgmlChecking.replace("<BALAMT>152345.67<DTASOF>20261031", "<BALAMT>99<DTASOF>20260930");
+    const lists = [older, sgmlChecking, savings].map((t) => importOfx(t, { accountId: "x" }).balances);
+    // The suggestion is only as fresh as its oldest balance.
+    expect(combineBalances(lists)).toEqual({ cents: 162_345_67, asOf: "2026-10-30", accounts: 2 });
+    expect(combineBalances([[], undefined])).toBeNull();
+    // A balance without a date still counts; it just can't be dated.
+    const undated = sgmlChecking.replace("<DTASOF>20261031", "");
+    expect(combineBalances([importOfx(undated, { accountId: "x" }).balances])).toEqual({ cents: 152_345_67, asOf: null, accounts: 1 });
   });
 });

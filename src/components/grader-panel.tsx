@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
+import { combineBalances, importStatement, looksLikeOfx } from "@/lib/csv/ofx";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader";
 import { formatDollars } from "@/lib/money";
+import { CashFromFiles } from "./cash-from-files";
 import { GraderSignup } from "./grader-signup";
 
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
@@ -21,6 +23,7 @@ export function GraderPanel() {
   const id = useId();
   const [files, setFiles] = useState<GraderFile[]>([]);
   const [cash, setCash] = useState("");
+  const [fileCash, setFileCash] = useState<ReturnType<typeof combineBalances>>(null);
   const [result, setResult] = useState<GraderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +32,17 @@ export function GraderPanel() {
     const picked = [...list];
     const tooBig = picked.find((f) => f.size > MAX_FILE_BYTES);
     if (tooBig) return setError(`${tooBig.name} is over 20 MB. Export a shorter date range.`);
-    setFiles(await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() }))));
+    const read = await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));
+    setFiles(read);
+    // Bank downloads carry their balances; a file that can't be read says so when grading.
+    const balances = read.filter((f) => looksLikeOfx(f.text)).map((f) => {
+      try {
+        return importStatement(f.text, { accountId: f.name }).balances;
+      } catch {
+        return undefined;
+      }
+    });
+    setFileCash(combineBalances(balances));
     setResult(null);
     setError(null);
   }
@@ -49,6 +62,7 @@ export function GraderPanel() {
   async function trySample() {
     const sample = await sampleFiles();
     setFiles(sample.files);
+    setFileCash(null);
     setCash(sample.cashDollars);
     run(sample.files, sample.cashDollars);
   }
@@ -86,6 +100,7 @@ export function GraderPanel() {
           </label>
           <p className="text-xs text-muted">A CSV has no balance, so add up your bank accounts.</p>
           <input id={`${id}-cash`} name="cash" inputMode="decimal" placeholder="e.g. 950,000…" value={cash} onChange={(e) => setCash(e.target.value)} className={field} />
+          <CashFromFiles balances={fileCash} cash={cash} onUse={setCash} />
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="submit" disabled={files.length === 0} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50">

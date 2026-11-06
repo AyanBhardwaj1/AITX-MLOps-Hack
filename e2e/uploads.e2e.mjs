@@ -53,6 +53,16 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Upload and analyse" }).click();
     await p.getByText(/Saved 0 new transactions; 3 were already stored/).waitFor({ timeout: 20_000 });
   });
+  await step("a bank's OFX download offers its balance as today's cash", async () => {
+    await p.setInputFiles('input[type="file"]', FIXTURES + "first-bank-checking.ofx");
+    await p.getByText("2 transactions found.").waitFor();
+    await p.getByText(/Your bank download shows \$487,210\.55 on Oct 31, 2026\./).waitFor();
+    await p.getByRole("button", { name: "Use $487,210.55" }).click();
+    assert.equal(await p.getByLabel(/Today.s total cash/).inputValue(), "487210.55");
+    await p.getByRole("button", { name: "Use $487,210.55" }).waitFor({ state: "detached" });
+    await p.getByRole("button", { name: "Upload and analyse" }).click();
+    await p.getByText(/Saved 2 new transactions/).waitFor({ timeout: 20_000 });
+  });
   await step("today's cash updates without a file, and the activity log says who", async () => {
     await p.getByText("Update today's cash").click();
     await p.getByLabel(/Total cash across your bank accounts today/).fill("$612,345.50");

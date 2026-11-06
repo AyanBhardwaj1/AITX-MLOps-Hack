@@ -13,6 +13,38 @@ interface ImportOptions {
   flipSigns?: boolean;
 }
 
+/** A bank account's balance from its download. `key` is the account number: kept in the browser, never sent. */
+export interface OfxBalance {
+  key: string;
+  cents: number;
+  asOf: string | null;
+}
+
+export interface StatementImport extends CsvImport {
+  /** Bank (never card) balances, for OFX downloads only. */
+  balances?: OfxBalance[];
+}
+
+/**
+ * Today's cash suggested by the downloads: each bank account once (its latest balance), added up.
+ * Dated by the oldest balance used, or null when one isn't dated.
+ */
+export function combineBalances(lists: readonly (readonly OfxBalance[] | undefined)[]): { cents: number; asOf: string | null; accounts: number } | null {
+  const latest = new Map<string, OfxBalance>();
+  for (const b of lists.flatMap((l) => l ?? [])) {
+    const seen = latest.get(b.key);
+    if (!seen || (b.asOf ?? "") > (seen.asOf ?? "")) latest.set(b.key, b);
+  }
+  if (latest.size === 0) return null;
+  const all = [...latest.values()];
+  const dates = all.map((b) => b.asOf);
+  return {
+    cents: all.reduce((sum, b) => sum + b.cents, 0),
+    asOf: dates.includes(null) ? null : (dates as string[]).reduce((a, b) => (b < a ? b : a)),
+    accounts: all.length,
+  };
+}
+
 /** True for an OFX 1 header, an OFX 2 processing instruction, or a bare <OFX> document. */
 export function looksLikeOfx(text: string): boolean {
   const head = text.slice(0, 4096).replace(/^﻿/, "").trimStart();
@@ -20,7 +52,7 @@ export function looksLikeOfx(text: string): boolean {
 }
 
 /** Any bank export: OFX, QFX and QBO by their content, everything else as a CSV. */
-export function importStatement(text: string, options: ImportOptions): CsvImport {
+export function importStatement(text: string, options: ImportOptions): StatementImport {
   return looksLikeOfx(text) ? importOfx(text, options) : importCsv(text, options);
 }
 
@@ -29,6 +61,8 @@ const TRANSACTION = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
 const field = (tag: string) => new RegExp(`<${tag}>([^<]*)`, "i");
 const F = { curdef: field("CURDEF"), acctid: field("ACCTID"), posted: field("DTPOSTED"), amount: field("TRNAMT"), name: field("NAME"), memo: field("MEMO") };
 const TXN_CURRENCY = /<CURRENCY>[\s\S]*?<CURSYM>([^<]*)/i;
+const LEDGER = /<LEDGERBAL>([\s\S]*?)(?:<\/LEDGERBAL>|$)/i;
+const F_BAL = { amount: field("BALAMT"), asOf: field("DTASOF") };
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 const decode = (s: string) =>
@@ -57,7 +91,7 @@ function refuseOtherCurrency(code: string) {
 }
 
 /** Parses one OFX file. Throws on another currency or no statement; skips (and reports) unreadable transactions. */
-export function importOfx(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: ImportOptions): CsvImport {
+export function importOfx(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: ImportOptions): StatementImport & { balances: OfxBalance[] } {
   const statements = [...text.matchAll(STATEMENT)];
   if (statements.length === 0) throw new Error("This OFX file has no bank or card statement in it.");
   const lineAt = (index: number) => {
@@ -67,6 +101,7 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
   };
   const transactions: RhoTransaction[] = [];
   const skipped: number[] = [];
+  const balances: OfxBalance[] = [];
   for (const s of statements) {
     const body = s[2]!;
     const onCard = s[1]!.toUpperCase() === "CCSTMTRS";
@@ -75,6 +110,10 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
     const last4 = value(body, F.acctid).replace(/\s/g, "").slice(-4);
     const account = statements.length > 1 && last4 ? `${accountId} …${last4}` : accountId;
     const bodyStart = s.index! + s[0].indexOf(body);
+    // A bank account's balance is cash; a card's balance is what's owed, never cash.
+    const ledger = onCard ? null : LEDGER.exec(body.slice(body.lastIndexOf("</BANKTRANLIST>") + 1))?.[1];
+    const balance = ledger ? ofxAmount(value(ledger, F_BAL.amount)) : null;
+    if (balance !== null) balances.push({ key: value(body, F.acctid).replace(/\s/g, "") || account, cents: balance, asOf: ofxDate(value(ledger!, F_BAL.asOf)) });
     for (const t of body.matchAll(TRANSACTION)) {
       const block = t[1]!;
       const currency = TXN_CURRENCY.exec(block)?.[1];
@@ -107,5 +146,5 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
   }
   const mostlyPositive = transactions.length > 0 && transactions.filter((t) => t.amount.amount > 0).length / transactions.length > MOSTLY_POSITIVE_SHARE;
   const resolved = resolvePayoffs ? resolveCardPayoffs(transactions) : { transactions, cardSpendAsPayoffs: false };
-  return { layout: "ofx", transactions: resolved.transactions, skipped, cardSpendAsPayoffs: resolved.cardSpendAsPayoffs, mostlyPositive };
+  return { layout: "ofx", transactions: resolved.transactions, skipped, cardSpendAsPayoffs: resolved.cardSpendAsPayoffs, mostlyPositive, balances };
 }

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { importStatement } from "@/lib/csv/ofx";
+import { combineBalances, importStatement, type OfxBalance } from "@/lib/csv/ofx";
 import { formatDate } from "@/lib/format";
 import { formatDollars, parseDollarsToCents } from "@/lib/money";
+import { CashFromFiles } from "./cash-from-files";
 import { CashUpdate } from "./cash-update";
 import {
   fileAccountLabel,
@@ -41,7 +42,7 @@ interface Picked {
   /** The file lists charges as positive numbers; flip them so spending is negative. */
   flip: boolean;
   /** What a first read of the file found, shown before uploading. */
-  preview: { rows: number; mostlyPositive: boolean } | { error: string } | null;
+  preview: { rows: number; mostlyPositive: boolean; balances?: OfxBalance[] } | { error: string } | null;
 }
 
 /** Reads a file once on selection, so problems show before anything is sent. */
@@ -53,7 +54,7 @@ async function previewFile(file: File): Promise<Picked["preview"]> {
       accountId: "preview",
       resolvePayoffs: false,
     });
-    return { rows: r.transactions.length, mostlyPositive: r.mostlyPositive };
+    return { rows: r.transactions.length, mostlyPositive: r.mostlyPositive, balances: r.balances };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Couldn't read this file.",
@@ -146,6 +147,8 @@ export function UploadForm({
   const [cashDraft, setCashDraft] = useState<string | null>(null);
   const cash = cashDraft ?? (summary ? String(summary.cashCents / 100) : "");
   const setCash = (value: string) => setCashDraft(value);
+  // Bank downloads (OFX, QFX, QBO) carry each account's balance: offer their total as today's cash.
+  const fromFiles = combineBalances(files.map((p) => (p.preview && !("error" in p.preview) ? p.preview.balances : undefined)));
   const [state, setState] = useState<State>({ kind: "idle" });
   const [deleting, setDeleting] = useState(false);
   // Remounts the file input after an upload, so it shows nothing chosen and the same file can be picked again.
@@ -531,6 +534,7 @@ export function UploadForm({
             onChange={(e) => setCash(e.target.value)}
             className={field}
           />
+          <CashFromFiles balances={fromFiles} cash={cash} onUse={setCash} />
         </div>
         <div className="flex flex-wrap gap-2">
           <button
