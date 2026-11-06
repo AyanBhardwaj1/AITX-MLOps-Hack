@@ -208,10 +208,13 @@ function moneyInAnswer(a: Analysis): InstantAnswer {
     tools,
     text: [
       `**${formatDollars(m.monthlyCents)}** a month comes in (${burnBasis(m.months)}). By who sent it:`,
-      m.payers.map((p) => `- ${p.name}: ${formatDollars(p.monthlyCents)} (${pct(p.share)})${p.processor ? ", payouts from many customers" : ""}`).join("\n"),
+      [
+        ...m.payers.map((p) => `- ${p.name}: ${formatDollars(p.monthlyCents)} (${pct(p.share)})${p.processor ? ", payouts from many customers" : ""}`),
+        ...(m.othersMonthlyCents > 0 ? [`- Everyone else: ${formatDollars(m.othersMonthlyCents)}`] : []),
+      ].join("\n"),
       top
         ? `The biggest customer is **${top.name}** at ${pct(top.share)} of money in. If it stopped paying, runway would be **${months(top.runwayWithoutMonths)}** instead of ${months(a.snapshot.runwayMonths)}.`
-        : "All of it comes through payment processors, so no single customer stands out.",
+        : "None of it is from a single customer (it comes through payment processors, or as interest or transfers).",
     ].join("\n\n"),
   };
 }

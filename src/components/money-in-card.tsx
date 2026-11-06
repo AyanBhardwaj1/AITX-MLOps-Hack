@@ -44,6 +44,12 @@ export function MoneyInCard({ money, mode, runwayMonths }: { money: MoneyIn | nu
             </span>
           </li>
         ))}
+        {money.othersMonthlyCents > 0 && (
+          <li className="flex items-baseline justify-between gap-3 py-1.5 text-muted">
+            <span>Everyone else</span>
+            <span className="tabular shrink-0">{formatDollars(money.othersMonthlyCents)}</span>
+          </li>
+        )}
       </ul>
       <p className="mt-2 text-xs text-muted">
         Money in per month by who sent it, after transfers between your accounts; a refund from a vendor you pay counts against that vendor, not as a customer. A payment

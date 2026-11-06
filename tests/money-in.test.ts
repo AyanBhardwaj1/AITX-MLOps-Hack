@@ -76,3 +76,35 @@ describe("who pays you", () => {
     expect(m.topCustomer).toBeNull();
   });
 });
+
+describe("who pays you, review fixes", () => {
+  const base = months.flatMap((m) => [
+    txn(`p${m}`, `${m}-01`, -40_000_00, "Gusto", { category: "payroll", source: "catalog" }),
+    txn(`a${m}`, `${m}-10`, 30_000_00, "Acme Corp"),
+    txn(`s${m}`, `${m}-15`, 5_000_00, "Stripe payouts", { category: "revenue", source: "catalog" }),
+  ]);
+  const snap = (t: EnrichedTxn[]) => computeSnapshot({ cashCents: 600_000_00, txns: t, asOf: "2026-11-12" });
+
+  it("a credit sent to a customer doesn't hide them", () => {
+    const t = [...base, txn("credit", "2026-09-20", -100_00, "Acme Corp")];
+    expect(moneyIn(t, snap(t))!.topCustomer!.name).toBe("Acme Corp");
+  });
+
+  it("a deposit paid before the period and returned in it is a refund, not a customer", () => {
+    const t = [txn("dep", "2026-07-01", -30_000_00, "Wework Deposit"), ...base, txn("ret", "2026-09-20", 30_000_00, "Wework Deposit")];
+    expect(moneyIn(t, snap(t))!.payers.map((p) => p.name)).not.toContain("Wework Deposit");
+  });
+
+  it("interest and transfers in aren't customers", () => {
+    const t = [...base, ...months.map((m) => txn(`i${m}`, `${m}-28`, 60_000_00, "Interest Payment")), ...months.map((m) => txn(`x${m}`, `${m}-27`, 90_000_00, "Transfer From Savings"))];
+    expect(moneyIn(t, snap(t))!.topCustomer!.name).toBe("Acme Corp");
+  });
+
+  it("says 'from the days so far' before a whole month, and the rows add up to the total", () => {
+    const early = [txn("a", "2026-10-03", 1_000_00, "Acme Corp"), txn("b", "2026-10-20", -500_00, "Gusto", { category: "payroll", source: "catalog" })];
+    expect(moneyIn(early, computeSnapshot({ cashCents: 1, txns: early, asOf: "2026-11-12" }))!.months).toBe(0);
+    const many = [...base, ...Array.from({ length: 8 }, (_, i) => txn(`c${i}`, "2026-09-10", 3_000_00 * (i + 1), `Customer ${i}`))];
+    const m = moneyIn(many, snap(many))!;
+    expect(m.payers.reduce((s, p) => s + p.monthlyCents, 0) + m.othersMonthlyCents).toBe(m.monthlyCents);
+  });
+});
