@@ -1,4 +1,4 @@
-import { monthKey, shiftMonth } from "../dates";
+import { monthKey, openMonth, shiftMonth } from "../dates";
 import type { Cents, EnrichedTxn, IsoDate } from "../types";
 
 /** Compounding a short-lived spike for a year produces silly numbers; cap the projected rate. */
@@ -17,7 +17,8 @@ export interface AiSpendTrend {
 
 /** LLM/AI API spend over the last `months` complete months. Null if the company has none. */
 export function aiSpendTrend(txns: readonly EnrichedTxn[], asOf: IsoDate, months: number): AiSpendTrend | null {
-  const current = monthKey(asOf);
+  // An export ending on a month's last day has that month complete (as burn counts it).
+  const current = openMonth(asOf);
   const window = Array.from({ length: months }, (_, i) => shiftMonth(current, i - months));
   const totals = new Map(window.map((m) => [m, 0]));
   const latest = window.at(-1)!;

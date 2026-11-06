@@ -1,4 +1,4 @@
-import { monthKey, shiftMonth } from "../dates";
+import { monthKey, openMonth, shiftMonth } from "../dates";
 import type { Category, Cents, EnrichedTxn, IsoDate } from "../types";
 import { countsTowardBurn } from "./runway";
 
@@ -14,7 +14,8 @@ const WINDOW_MONTHS = 3;
 const DEFAULT_MAX_ROWS = 8;
 
 export function categorySpend(txns: readonly EnrichedTxn[], asOf: IsoDate, { months = WINDOW_MONTHS, maxRows = DEFAULT_MAX_ROWS } = {}): CategorySpendRow[] {
-  const current = monthKey(asOf);
+  // An export ending on a month's last day has that month complete (as burn counts it).
+  const current = openMonth(asOf);
   const recent = new Set(Array.from({ length: months }, (_, i) => shiftMonth(current, -1 - i)));
   const prior = new Set(Array.from({ length: months }, (_, i) => shiftMonth(current, -1 - months - i)));
   const totals = new Map<Category, { recent: number; prior: number }>();
