@@ -1,5 +1,5 @@
 import "server-only";
-import { dataFreshness, STALE_AFTER_DAYS } from "../freshness";
+import { cashFreshness, dataFreshness, STALE_AFTER_DAYS } from "../freshness";
 import { formatDate } from "../format";
 import { nextRunwayAlert } from "../insights/runway-alert";
 import { formatDollars } from "../money";
@@ -29,6 +29,7 @@ export async function sendRunwayAlert({
   store,
   load,
   cashEnteredAt,
+  rowsAddedAt,
   company,
   now,
   link,
@@ -38,6 +39,8 @@ export async function sendRunwayAlert({
   load: () => Promise<Analysis>;
   /** When today's cash was last entered (ISO); runway from a figure weeks old says nothing. */
   cashEnteredAt?: () => Promise<string | undefined>;
+  /** When an upload last added rows (ISO): judged as the upload reminder judges it. */
+  rowsAddedAt?: () => Promise<string | undefined>;
   company: string;
   now: Date;
   link?: string;
@@ -46,9 +49,13 @@ export async function sendRunwayAlert({
   const url = await store.getSlackWebhook();
   if (!url) return { status: "no_slack" };
   const analysis = await load();
-  if (dataFreshness(analysis.asOf, now).stale) return { status: "none" };
+  // Whole days, by the same rule as the upload reminder, so the two never both post.
+  if (dataFreshness(analysis.asOf, now, await rowsAddedAt?.()).stale) return { status: "none" };
   const entered = await cashEnteredAt?.();
-  if (entered !== undefined && !(Date.parse(entered) > now.getTime() - STALE_AFTER_DAYS * 86_400_000)) return { status: "none" };
+  if (entered !== undefined) {
+    const cash = cashFreshness(entered, now);
+    if (!cash || cash.daysOld >= STALE_AFTER_DAYS) return { status: "none" };
+  }
   const { runwayMonths, netBurnCents, zeroCashDate } = analysis.snapshot;
   const stored = await store.runwayAlertLevel();
   const next = nextRunwayAlert(runwayMonths, stored);

@@ -91,6 +91,17 @@ describe("runway alerts in Slack", () => {
     expect(fresh).toEqual({ status: "sent", below: 6 });
   });
 
+  it("judges stale data by whole days, as the upload reminder does, so the two never both post", async () => {
+    const post = vi.fn(async () => undefined);
+    // Cash entered 14 calendar days ago, 17 hours inside a 14×24-hour window: the reminder calls it old.
+    const edge = await sendRunwayAlert({ store: await connected(), load: async () => analysisWith(5.5), cashEnteredAt: async () => "2026-10-23T20:00:00.000Z", company: "Acme", now: NOW, post });
+    expect(edge).toEqual({ status: "none" });
+    // Rows that only look fresh because a scheduled payment's date arrived: last added Oct 1.
+    const scheduled = await sendRunwayAlert({ store: await connected(), load: async () => analysisWith(5.5), rowsAddedAt: async () => "2026-10-01T09:00:00Z", company: "Acme", now: NOW, post });
+    expect(scheduled).toEqual({ status: "none" });
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it("never prints a runway that reads as over the line it's under", () => {
     expect(runwayAlertText({ company: "A", runwayMonths: 2.96, below: 3, netBurnCents: 1, zeroCashDate: null })).toContain("*2.9 months*, under 3.");
     expect(runwayAlertText({ company: "A", runwayMonths: 11.97, below: 12, netBurnCents: 1, zeroCashDate: null })).toContain("*11.9 months*, under 12.");

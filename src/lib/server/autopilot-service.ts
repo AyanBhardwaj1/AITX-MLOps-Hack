@@ -82,7 +82,7 @@ export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): 
       console.error("[budget-alerts] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
     }
     try {
-      const alert = await sendRunwayAlert({ store, load: loadAnalysis, cashEnteredAt: async () => (await loadData()).cashEnteredAt, company: company ?? "your company", now: new Date(), link: appUrl("company") });
+      const alert = await sendRunwayAlert({ store, load: loadAnalysis, cashEnteredAt: async () => (await loadData()).cashEnteredAt, rowsAddedAt: async () => (await loadData()).rowsAddedAt, company: company ?? "your company", now: new Date(), link: appUrl("company") });
       if (alert.status === "sent") result.runwayAlerts += 1;
     } catch (err) {
       // The level was put back: tomorrow's run tries again.
