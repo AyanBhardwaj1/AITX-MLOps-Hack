@@ -155,8 +155,22 @@ export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no
   const user = await sessionUser();
   if (!user) throw new SignInRequired();
   const current = await getAccounts().companyFor(user.id);
-  if (current?.role === "owner" && (await getStore(current.scope).loadUploads())) return "has_data";
-  return getAccounts().acceptInvite(user, orgId);
+  if (current?.role === "owner" && (await holdsData(current.scope))) return "has_data";
+  const result = await getAccounts().acceptInvite(user, orgId);
+  // The old company is gone: drop anything an in-memory store still holds for it.
+  if (result === "joined" && current?.role === "owner") {
+    const old = getStore(current.scope);
+    await old.clearUploads().catch(() => undefined);
+    await old.setSlackWebhook(null).catch(() => undefined);
+  }
+  return result;
+}
+
+/** Anything a founder would lose: uploads, live share links, category fixes, a connected Slack. */
+async function holdsData(scope: string): Promise<boolean> {
+  const store = getStore(scope);
+  const [uploads, links, fixes, slack] = await Promise.all([store.loadUploads(), store.listShareLinks(), store.listCorrections(), store.getSlackWebhook()]);
+  return uploads !== null || links.some((l) => !l.revokedAt) || fixes.length > 0 || slack !== null;
 }
 
 /** "…abcd": enough to recognise which webhook is connected, never enough to use it. */

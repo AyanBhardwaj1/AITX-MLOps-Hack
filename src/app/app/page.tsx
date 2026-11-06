@@ -7,7 +7,7 @@ import { upcomingRenewals } from "@/lib/finance/renewals";
 import { detectChanges } from "@/lib/insights/changes";
 import { analyze } from "@/lib/pipeline";
 import { redirect } from "next/navigation";
-import { companyName, currentTeam, sessionUser } from "@/lib/server/company";
+import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
 import { dataFreshness } from "@/lib/freshness";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
@@ -149,6 +149,8 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
       storeOk,
       accounts: accountsEnabled(),
       signedIn: (await sessionUser()) !== null,
+      // Investor links and deleting data are the owner's on a company; elsewhere the old rules apply.
+      manage: mode === "company" ? (await currentCompany())?.role === "owner" : true,
     },
   };
 }

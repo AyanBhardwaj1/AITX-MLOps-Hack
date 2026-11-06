@@ -55,7 +55,13 @@ export function getStore(scope: string): Store {
 /** A share link by token hash across every organization: the link page has no session to scope by. */
 export async function findShareLinkAnywhere(tokenHash: string) {
   const found = hasDatabase() ? await findShareLinkByTokenHash(getPool(), tokenHash) : await findInMemory(tokenHash);
-  return found && servable(found.scope) ? found.link : null;
+  if (!found || !servable(found.scope)) return null;
+  // In memory a deleted company's store can linger; its links die with it (Postgres cascades).
+  if (!hasDatabase() && found.scope.startsWith("org_")) {
+    const { getAccounts } = await import("./company");
+    if ((await getAccounts().nameForScope(found.scope)) === null) return null;
+  }
+  return found.link;
 }
 
 async function findInMemory(tokenHash: string) {

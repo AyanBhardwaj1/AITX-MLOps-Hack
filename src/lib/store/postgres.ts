@@ -76,7 +76,7 @@ export async function listDigestScopes(pool: Pool, limit: number): Promise<strin
   const { rows } = await pool.query<{ slug: string }>(
     `select o.slug from public.organizations o join public.company_integrations i on i.org_id = o.id
       where o.slug like 'org\\_%' and i.slack_webhook_url is not null
-        and exists (select 1 from public.connections c where c.org_id = o.id and c.provider = 'csv')
+        and exists (select 1 from public.transactions t join public.connections c on c.id = t.connection_id where c.org_id = o.id and c.provider = 'csv')
       order by i.last_digest_at asc nulls first, o.created_at limit $1`,
     [limit],
   );
@@ -90,7 +90,7 @@ export async function listDigestScopes(pool: Pool, limit: number): Promise<strin
 export async function listUploadScopes(pool: Pool, limit: number): Promise<string[]> {
   const { rows } = await pool.query<{ slug: string }>(
     `select o.slug from public.organizations o
-      where o.slug like 'org\\_%' and exists (select 1 from public.connections c where c.org_id = o.id and c.provider = 'csv')
+      where o.slug like 'org\\_%' and exists (select 1 from public.transactions t join public.connections c on c.id = t.connection_id where c.org_id = o.id and c.provider = 'csv')
       order by (select max(r.started_at) from public.agent_runs r where r.org_id = o.id and r.agent = 'autopilot') asc nulls first, o.created_at
       limit $1`,
     [limit],

@@ -72,7 +72,8 @@ export default function SecurityPage() {
               </li>
               <li>Accounts are invite-only during early access, and that’s enforced on the server, not only on the sign-in form.</li>
               <li>
-                Only a company’s owner can invite or remove teammates, rename the company or delete it. A teammate joins only by signing in with the
+                Only a company’s owner can invite or remove teammates, rename or delete the company, delete its data, create or revoke
+                investor links, and choose its Slack channel; teammates can send the digest to that channel. A teammate joins only by signing in with the
                 exact email the owner invited, and loses access on their next request once removed.
               </li>
             </ul>

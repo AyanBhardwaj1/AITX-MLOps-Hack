@@ -137,8 +137,13 @@ describe("share links from before accounts", () => {
     const { findShareLinkAnywhere, getStore } = await import("@/lib/server/store");
     await getStore("rho_sandbox").createShareLink(link, 5, new Date());
     expect(await findShareLinkAnywhere(link.tokenHash)).toBeNull();
-    await getStore("org_123").createShareLink({ ...link, tokenHash: "e".repeat(64) }, 5, new Date());
+    const { getAccounts } = await import("@/lib/server/company");
+    const company = await getAccounts().ensureCompanyFor({ id: crypto.randomUUID(), email: null });
+    await getStore(company.scope).createShareLink({ ...link, tokenHash: "e".repeat(64) }, 5, new Date());
     expect(await findShareLinkAnywhere("e".repeat(64))).not.toBeNull();
+    // A link left in memory for a company that no longer exists is not served.
+    await getStore(`org_${crypto.randomUUID()}`).createShareLink({ ...link, tokenHash: "f".repeat(64) }, 5, new Date());
+    expect(await findShareLinkAnywhere("f".repeat(64))).toBeNull();
   });
 
   it("are still served on a single-company deployment", async () => {

@@ -13,7 +13,9 @@ const SHARED_LIMIT_TIMEOUT_MS = 1_500;
 export function createSharedRateLimiter({ name, limit, windowMs }: { name: string; limit: number; windowMs: number }) {
   const local = createRateLimiter({ limit, windowMs });
   return async function allow(key: string): Promise<boolean> {
-    if (!hasDatabase()) return local(key);
+    // This instance's count first: a flood is refused without touching the database.
+    if (!local(key)) return false;
+    if (!hasDatabase()) return true;
     try {
       // A slow database must not hold up sign-in: past this, this instance's limit decides.
       return await Promise.race([
@@ -22,7 +24,7 @@ export function createSharedRateLimiter({ name, limit, windowMs }: { name: strin
       ]);
     } catch (err) {
       console.error(`[rate-limit] shared limit "${name}" unavailable; using this instance's`, err instanceof Error ? err.message : "unknown error");
-      return local(key);
+      return true; // this instance's limit already allowed it
     }
   };
 }

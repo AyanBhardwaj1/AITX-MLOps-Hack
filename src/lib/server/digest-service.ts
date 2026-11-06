@@ -32,7 +32,7 @@ async function digestFrom({ store, dataset, analysis, company, link, uploaded }:
     exclude = new Set([...statuses].filter(([, s]) => s !== "open").map(([id]) => id));
   } catch (err) {
     // Without the store the digest still goes out; it just can't honour decisions this time.
-    console.error("[digest] couldn't read finding statuses", err);
+    console.error("[digest] couldn't read finding statuses", err instanceof Error ? err.message : "unknown error");
   }
   const savings = await savingsFromStore(store, dataset, analysis);
   const input = digestInputFromAnalysis(analysis, { company, exclude, appUrl: link, savings });

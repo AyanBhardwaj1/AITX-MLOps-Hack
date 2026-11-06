@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
+import { ownerCompany } from "@/lib/server/company";
 import { scopeFor } from "@/lib/server/scope";
 import { snapshotFor } from "@/lib/server/share";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   try {
     const result = await handleShare(body, {
-      storeFor: async (mode) => getStore(await scopeFor(mode)),
+      // A company's investor links are the owner's to create and revoke.
+      storeFor: async (mode) => getStore(mode === "company" ? (await ownerCompany()).scope : await scopeFor(mode)),
       snapshotFor: (mode, company) => snapshotFor(mode, company),
       canWrite: canWriteRealData,
       now: () => new Date(),

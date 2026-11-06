@@ -88,7 +88,7 @@ export interface DashboardData {
   aiSpend: AiSpendTrend | null;
   changes: Change[];
   savings: SavingsSummary;
-  capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean; accounts: boolean; signedIn: boolean };
+  capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean; accounts: boolean; signedIn: boolean; manage: boolean };
 }
 
 const KIND_LABEL: Record<Finding["kind"], string> = {
@@ -335,7 +335,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
         <InvestorUpdateCard mode={data.mode} />
         <div id="share-with-investors" className="scroll-mt-4">
-          <ShareLinksPanel mode={data.mode} />
+          <ShareLinksPanel mode={data.mode} canManage={data.capabilities.manage} />
         </div>
 
         <div className="mb-6 grid gap-6 md:grid-cols-2">

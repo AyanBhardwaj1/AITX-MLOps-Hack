@@ -150,3 +150,18 @@ describe("ownership under concurrent requests", () => {
     }
   });
 });
+
+describe("cron lists after rows are deleted", () => {
+  it("skip a company whose upload connection is empty", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const c = await accounts.ensureCompanyFor({ id: crypto.randomUUID(), email: null });
+    const store = createPostgresStore(pool, c.scope);
+    const row = { id: "u_e", money_movement_id: null, account_id: "chase", account_name: "chase", account_type: "checking" as const, amount: { amount: -500, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "ZOOM", initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null };
+    await store.saveUploads(1, [row], 10);
+    await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");
+    expect(await listUploadScopes(pool, 10_000)).toContain(c.scope);
+    await store.deleteUploadedAccount("chase");
+    expect(await listUploadScopes(pool, 10_000)).not.toContain(c.scope);
+    expect(await listDigestScopes(pool, 10_000)).not.toContain(c.scope);
+  });
+});

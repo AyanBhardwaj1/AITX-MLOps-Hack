@@ -170,4 +170,32 @@ describe("teammates", () => {
     as(heirId, "heir@acme.example");
     expect((await currentCompany())!.role).toBe("owner");
   });
+
+  it("members can't delete accounts' rows or touch investor links: those are the owner's", async () => {
+    const ownerId = crypto.randomUUID();
+    await ownerWithCompany(ownerId);
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: "member2@acme.example" }));
+    as(crypto.randomUUID(), "member2@acme.example");
+    const delAccount = (await import("@/app/api/uploads/account/route")).POST;
+    expect((await delAccount(post("/api/uploads/account", { account: "chase" }))).status).toBe(403);
+    const share = (await import("@/app/api/share/route")).POST;
+    expect((await share(post("/api/share", { mode: "company", action: "create", days: 7 }))).status).toBe(403);
+    expect((await share(post("/api/share", { mode: "company", action: "revoke", id: crypto.randomUUID() }))).status).toBe(403);
+  });
+
+  it("accepting an invite refuses while the old company still has any data, not just transactions", async () => {
+    const ownerId = crypto.randomUUID();
+    const owner = await ownerWithCompany(ownerId);
+    const otherId = crypto.randomUUID();
+    const theirs = await ownerWithCompany(otherId);
+    const { getStore } = await import("@/lib/server/store");
+    await getStore(theirs.scope).setCorrection({ vendorKey: "zoom", category: "other", job: null }, 10);
+    as(ownerId);
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: `${otherId}@acme.example` }));
+    as(otherId);
+    const accept = (await import("@/app/api/company/invites/accept/route")).POST;
+    expect((await accept(post("/api/company/invites/accept", { orgId: owner.orgId }))).status).toBe(409);
+  });
 });

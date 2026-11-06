@@ -27,7 +27,7 @@ export async function GET() {
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   try {
-    // Owner first: nobody else can make the server post anywhere.
+    // Owner first: only the owner chooses where the digest goes (teammates may send it there now).
     const company = await ownerCompany();
     const parsed = body.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Paste a Slack incoming webhook URL (https://hooks.slack.com/services/…)." }, { status: 400 });

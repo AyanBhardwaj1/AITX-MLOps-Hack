@@ -111,7 +111,7 @@ async function runAndPersist({ store, loadData, label: mode, trigger, company }:
     });
   } catch (err) {
     persisted = false;
-    console.error("[autopilot] couldn't persist the run", { mode, trigger, err });
+    console.error("[autopilot] couldn't persist the run", { mode, trigger, error: err instanceof Error ? err.message : "unknown error" });
   }
 
   const actionByFingerprint = new Map(saved.map((a) => [a.fingerprint, a]));
