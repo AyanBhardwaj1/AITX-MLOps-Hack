@@ -29,6 +29,15 @@ export async function uploadSample(page) {
 /** Runs named steps in order, stops at the first failure, prints PASS/FAIL lines, sets the exit code. */
 export async function suite(name, body) {
   const browser = await chromium.launch();
+  // Each browser context is a different visitor with its own address, as real users are; otherwise
+  // every suite shares one IP and trips the per-IP sign-in limit (5 a minute) meant for abuse.
+  const newContext = browser.newContext.bind(browser);
+  let visitor = 0;
+  browser.newContext = (opts = {}) => {
+    visitor += 1;
+    const ip = `198.51.100.${(process.pid + visitor) % 250 + 1}`;
+    return newContext({ ...opts, extraHTTPHeaders: { ...(opts.extraHTTPHeaders ?? {}), "x-forwarded-for": ip } });
+  };
   const results = [];
   const step = async (title, fn) => {
     try {

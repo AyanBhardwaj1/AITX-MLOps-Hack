@@ -6,9 +6,12 @@ import { APP, FIXTURES, signIn, suite } from "./helpers.mjs";
 await suite("uploads", async ({ browser, step }) => {
   const p = await (await browser.newContext({ acceptDownloads: true })).newPage();
   p.on("dialog", (d) => d.accept());
-  await signIn(p, "founder-a@acme.example");
-  await p.waitForURL(/\/app/);
-  await p.goto(`${APP}/app/upload`);
+  // Its own founder: the sign-in link limit (3 per inbox per 10 minutes) is per address.
+  await step("a founder signs in", async () => {
+    await signIn(p, "uploader@umbrella.example");
+    await p.waitForURL(/\/app/);
+    await p.goto(`${APP}/app/upload`);
+  });
   await step("four bank layouts read with the right signs, previewed before upload", async () => {
     await p.setInputFiles('input[type="file"]', ["amex-gold-oct.csv", "capital-one-spark.csv", "wells-checking.csv"].map((f) => FIXTURES + f));
     await p.getByText("3 transactions found.").first().waitFor();
