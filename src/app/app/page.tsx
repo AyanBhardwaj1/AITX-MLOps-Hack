@@ -27,6 +27,7 @@ import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingDecision, FindingStatus } from "@/lib/store/types";
 import { burnBridge } from "@/lib/finance/burn-bridge";
 import { peopleSpend } from "@/lib/finance/people-spend";
+import { committedSpend } from "@/lib/finance/committed";
 
 export const dynamic = "force-dynamic";
 
@@ -187,6 +188,8 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     burnBridge: burnBridge(a.txns, a.asOf),
     people: peopleSpend(a.txns, a.snapshot),
+    // From today (data can stop a while back): what the schedules say is still to go out.
+    committed: committedSpend(a.streams, { from: new Date().toISOString().slice(0, 10), days: 30, cashCents: a.snapshot.cashCents }),
     capabilities: {
       copilot: hasOpenAI(),
       jira: canFileJiraFromApp(),

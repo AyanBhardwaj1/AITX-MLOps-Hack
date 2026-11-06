@@ -31,6 +31,9 @@ demo, the free grader and the public site work exactly as before.
   budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
   connected, the daily job posts there the day a budget goes over (once per budget per month;
   changing the amount re-arms it).
+- **Already scheduled: next 30 days.** Every recurring charge expected over the next 30 days
+  (payroll, rent, subscriptions) from its billing day and usual amount, the total, and the cash
+  left after them.
 - **Upload reminder in Slack.** When a company's data is two weeks old (when the alerts go
   quiet), the daily job reminds its Slack once for that export to upload a fresh one.
 - **Add to your home screen.** A web app manifest lets a phone install Runway; it opens on the

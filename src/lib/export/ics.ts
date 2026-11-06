@@ -1,4 +1,4 @@
-import { addDays, addMonths, shiftMonth } from "../dates";
+import { chargeDates } from "../finance/schedule";
 import { formatMoney } from "../format";
 import type { Renewal } from "../finance/renewals";
 
@@ -50,53 +50,12 @@ function fold(line: string): string {
 const day = (iso: string) => iso.replaceAll("-", "");
 const nextDay = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
 const stamp = (d: Date) => `${d.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
-/** How each cadence steps: whole months (kept on the same day, clamped) or days. */
-const STEP: Record<Renewal["cadence"], { months?: number; days?: number }> = {
-  annual: { months: 12 },
-  quarterly: { months: 3 },
-  monthly: { months: 1 },
-  semimonthly: { months: 1 },
-  biweekly: { days: 14 },
-  weekly: { days: 7 },
-};
-
-/** Every expected date of a renewal from `from` to `until`, stepping on from its next expected date. */
-function datesWithin(r: Renewal, from: string, until: string): string[] {
-  // Twice a month: the expected day and the one half a month from it, each month, clamped only
-  // within that month (a February 28th doesn't drag March's 30th back to the 28th).
-  if (r.cadence === "semimonthly") {
-    const day = Number(r.dueDate.slice(8, 10));
-    const days = [day, day <= 15 ? day + 15 : day - 15];
-    const out: string[] = [];
-    for (let k = 0; k < 400; k++) {
-      const month = shiftMonth(r.dueDate.slice(0, 7), k);
-      const [y, m] = month.split("-").map(Number) as [number, number];
-      const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-      if (`${month}-01` > until) break;
-      for (const d of days) {
-        const date = `${month}-${String(Math.min(d, last)).padStart(2, "0")}`;
-        if (date >= from && date <= until && date >= r.dueDate) out.push(date);
-      }
-    }
-    return [...new Set(out)].sort();
-  }
-  const step = STEP[r.cadence];
-  const out: string[] = [];
-  // Counted from the first date each time, so a 31st stays the 31st where the month has one.
-  for (let k = 0; k < 400; k++) {
-    const d = step.months ? addMonths(r.dueDate, k * step.months) : addDays(r.dueDate, k * step.days!);
-    if (d > until) break;
-    if (d >= from) out.push(d);
-  }
-  return out;
-}
-
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x";
 
 export function renewalsCalendar({ renewals, company, now, link }: { renewals: readonly Renewal[]; company: string; now: Date; link?: string }): string {
   const today = now.toISOString().slice(0, 10);
   const until = new Date(Date.parse(`${today}T00:00:00Z`) + HORIZON_DAYS * DAY_MS).toISOString().slice(0, 10);
-  const due = renewals.filter((r) => r.decide).flatMap((r) => datesWithin(r, today, until).map((dueDate) => ({ ...r, dueDate })));
+  const due = renewals.filter((r) => r.decide).flatMap((r) => chargeDates(r, today, until).map((dueDate) => ({ ...r, dueDate })));
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

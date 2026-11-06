@@ -33,6 +33,7 @@ Runway reads a company's bank feed (read-only), works out burn, runway and the z
   - A 1,000-path Monte Carlo follows the last six months' burn trend (when it is statistically real) and the noise around it, giving a P10–P90 runway range and zero-cash dates. How it was chosen and how well it holds: [forecast-trend.md](sleep-research/runs/forecast-trend.md).
   - It sits alongside an "if you act" line that follows your what-if selection.
   - A stress line shows what happens if revenue falls 30%.
+- **Already scheduled.** Every recurring charge expected in the next 30 days (payroll, rent, subscriptions) on its billing day, the total and the cash left after them; a floor, since one-off and usage spend aren't included.
 - **Spend by person.** Card spend per cardholder per month over the same months as burn (after refunds), their share of gross burn and their biggest vendors.
 - **Why burn moved.** Last complete month against the one before, vendor by vendor plus the change in money in, adding up exactly to the change in net burn; each vendor links to its transactions.
 - **Renewals calendar.** Every subscription charge due in the next 60 days, with annual, quarterly or $5k+ renewals flagged as decisions to make *before* they renew. The next year of those decisions downloads as a calendar file (.ics) for Google Calendar, Outlook or Apple Calendar: one event on each expected date, a reminder two weeks before, and stable event IDs so importing a fresh copy updates rather than duplicates.

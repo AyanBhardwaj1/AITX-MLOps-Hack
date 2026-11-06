@@ -28,6 +28,8 @@ import { ForecastChart } from "./forecast-chart";
 import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { BurnBridgeCard } from "./burn-bridge-card";
 import { PeopleSpendCard } from "./people-spend-card";
+import { CommittedCard } from "./committed-card";
+import type { CommittedSpend } from "@/lib/finance/committed";
 import type { PeopleSpend } from "@/lib/finance/people-spend";
 import type { BurnBridge } from "@/lib/finance/burn-bridge";
 import { RunwayChart } from "./runway-chart";
@@ -105,6 +107,8 @@ export interface DashboardData {
   burnBridge: BurnBridge | null;
   /** Card spend per cardholder over burn's months (null: no row names a cardholder). */
   people: PeopleSpend | null;
+  /** Recurring charges scheduled over the next 30 days. */
+  committed: CommittedSpend;
   savings: SavingsSummary;
   capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean; accounts: boolean; signedIn: boolean; manage: boolean };
 }
@@ -383,6 +387,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           <ShareLinksPanel mode={data.mode} canManage={data.capabilities.manage} />
         </div>
 
+        <CommittedCard committed={data.committed} />
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <RenewalsCard renewals={data.renewals} calendarHref={`/api/export?mode=${data.mode}&kind=calendar`} />
           <AiSpendCard trend={data.aiSpend} grossBurnCents={data.snapshot.grossBurnCents} />
