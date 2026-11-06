@@ -3,6 +3,9 @@ import { companyNameFromEmail, MAX_TEAM_SIZE, NotInvitedError, normalizeEmail, t
 
 type Row = { id: string; slug: string; name: string; role: string };
 
+/** Rolls back a transfer whose target stopped being a member. */
+class TransferRefused extends Error {}
+
 /**
  * Companies on the existing organizations/memberships tables. The server connects with a
  * privileged role, so every query here is keyed by the user id the proxy verified.
@@ -144,11 +147,17 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
     async transferOwnership(ownerId, memberUserId) {
       const org = await ownedOrg(pool, ownerId);
       if (!org) return false;
+      // Re-checked inside the transaction, row by row: the caller must still be the owner and the
+      // target still a member, or nothing changes (two transfers at once can't make two owners).
       return inTransaction(`team:${org}`, async (c) => {
+        const demoted = await c.query(`update public.memberships set role = 'member' where org_id = $1 and user_id = $2 and role = 'owner'`, [org, ownerId]);
+        if (demoted.rowCount !== 1) return false;
         const promoted = await c.query(`update public.memberships set role = 'owner' where org_id = $1 and user_id = $2 and role = 'member'`, [org, memberUserId]);
-        if (!promoted.rowCount) return false;
-        await c.query(`update public.memberships set role = 'member' where org_id = $1 and user_id = $2`, [org, ownerId]);
+        if (promoted.rowCount !== 1) throw new TransferRefused();
         return true;
+      }).catch((err) => {
+        if (err instanceof TransferRefused) return false;
+        throw err;
       });
     },
 
@@ -180,6 +189,9 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
       return inTransaction(`company:${id}`, async (c) => {
         const invite = (await c.query<{ id: string }>(`select id from public.company_invites where org_id = $1 and email = $2 for update`, [orgId, normalized])).rows[0];
         if (!invite) return "no_invite";
+        // Lock the user's memberships first: a transfer promoting them waits, or has already
+        // committed and is seen here (and then refused as "has_team").
+        await c.query(`select org_id from public.memberships where user_id = $1 for update`, [id]);
         const owned = await c.query<{ org_id: string; others: number }>(
           `select m.org_id, (select count(*)::int from public.memberships x where x.org_id = m.org_id and x.user_id <> $1) as others
              from public.memberships m where m.user_id = $1 and m.role = 'owner'`,

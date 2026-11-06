@@ -87,6 +87,8 @@ await check("Database: migrations applied and read/write works", async () => {
     // One column from each migration that added something the app reads, newest last.
     const required: [string, string][] = [
       ["agent_runs", "findings_count"],
+      ["vendor_corrections", "vendor_key"],
+      ["share_links", "token_hash"],
       ["waitlist", "invited_at"],
       ["memberships", "email"],
       ["company_invites", "email"],

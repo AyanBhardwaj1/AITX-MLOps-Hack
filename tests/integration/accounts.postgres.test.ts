@@ -114,3 +114,39 @@ describe("Monday digest order", () => {
     expect(scopes.indexOf(waiting.scope)).toBeLessThan(scopes.indexOf(sent.scope));
   });
 });
+
+describe("ownership under concurrent requests", () => {
+  const owners = async (orgId: string) => Number((await pool.query(`select count(*)::int as n from public.memberships where org_id = $1 and role = 'owner'`, [orgId])).rows[0].n);
+
+  it("two transfers at once leave exactly one owner", async () => {
+    const accounts = createPostgresAccounts(pool);
+    for (let round = 0; round < 20; round++) {
+      const a = { id: crypto.randomUUID(), email: `a${round}-${crypto.randomUUID().slice(0, 6)}@race.example` };
+      const company = await accounts.ensureCompanyFor(a);
+      const [b, c] = [0, 1].map(() => ({ id: crypto.randomUUID(), email: `m-${crypto.randomUUID().slice(0, 8)}@race.example` }));
+      for (const m of [b!, c!]) {
+        await accounts.invite(a.id, m.email);
+        await accounts.ensureCompanyFor(m);
+      }
+      const results = await Promise.all([accounts.transferOwnership(a.id, b!.id), accounts.transferOwnership(a.id, c!.id)]);
+      expect(results.filter(Boolean)).toHaveLength(1);
+      expect(await owners(company.orgId)).toBe(1);
+    }
+  });
+
+  it("a transfer racing the new owner's accepting another invite never leaves the company without an owner", async () => {
+    const accounts = createPostgresAccounts(pool);
+    for (let round = 0; round < 20; round++) {
+      const a = { id: crypto.randomUUID(), email: `a-${crypto.randomUUID().slice(0, 8)}@race.example` };
+      const company = await accounts.ensureCompanyFor(a);
+      const b = { id: crypto.randomUUID(), email: `b-${crypto.randomUUID().slice(0, 8)}@race.example` };
+      await accounts.invite(a.id, b.email);
+      await accounts.ensureCompanyFor(b);
+      const other = { id: crypto.randomUUID(), email: `o-${crypto.randomUUID().slice(0, 8)}@race.example` };
+      const elsewhere = await accounts.ensureCompanyFor(other);
+      await accounts.invite(other.id, b.email);
+      await Promise.all([accounts.transferOwnership(a.id, b.id), accounts.acceptInvite(b, elsewhere.orgId)]);
+      expect(await owners(company.orgId)).toBe(1);
+    }
+  });
+});

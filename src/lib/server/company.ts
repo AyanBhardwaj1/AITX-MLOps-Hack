@@ -176,11 +176,18 @@ export async function ownerCompany(): Promise<Company> {
   return (await ownedCompany()).company;
 }
 
-/** The signed-in member leaves their company; false for the owner (who deletes the company instead). */
-export async function leaveCurrentCompany(): Promise<boolean> {
+/**
+ * The signed-in member leaves their company. "owner" for the owner (who deletes the company or hands
+ * it on instead); "gone" when they'd already been removed, which counts as done.
+ */
+export async function leaveCurrentCompany(): Promise<"left" | "owner" | "gone"> {
   const user = await sessionUser();
   if (!user) throw new SignInRequired();
-  return getAccounts().leaveCompany(user.id);
+  const accounts = getAccounts();
+  const company = await accounts.companyFor(user.id);
+  if (!company) return "gone";
+  if (company.role === "owner") return "owner";
+  return (await accounts.leaveCompany(user.id)) ? "left" : "gone";
 }
 
 /** The signed-in owner makes a member the owner; they stay on as a member. */

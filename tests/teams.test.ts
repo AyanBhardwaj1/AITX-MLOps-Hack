@@ -147,6 +147,8 @@ describe("teammates", () => {
     const leave = (await import("@/app/api/company/team/leave/route")).POST;
     expect((await leave()).status).toBe(200);
     await expect(scopeFor("company")).rejects.toMatchObject({ name: "NotInvited" });
+    // Leaving again (e.g. after being removed while the page was open) is simply done.
+    expect((await leave()).status).toBe(200);
     as(ownerId);
     expect((await leave()).status).toBe(409);
   });
