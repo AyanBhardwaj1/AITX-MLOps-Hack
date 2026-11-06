@@ -537,11 +537,28 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
         else
           await c.query(
             `insert into public.company_budgets (org_id, category, monthly_minor) values ($1, $2, $3)
-             on conflict (org_id, category) do update set monthly_minor = excluded.monthly_minor, updated_at = now()`,
+             on conflict (org_id, category) do update set monthly_minor = excluded.monthly_minor, updated_at = now(),
+               -- A new amount re-arms the month's alert; saving the same one doesn't.
+               alerted_month = case when company_budgets.monthly_minor = excluded.monthly_minor then company_budgets.alerted_month end`,
             [org, category, monthlyCents],
           );
         return rows[0] ? Number(rows[0].monthly_minor) : null;
       });
+    },
+
+    async claimBudgetAlert(category, month) {
+      const org = await orgId();
+      // One statement: of two overlapping runs, only one sees the row still unclaimed.
+      const { rowCount } = await pool.query(
+        `update public.company_budgets set alerted_month = $3 where org_id = $1 and category = $2 and alerted_month is distinct from $3`,
+        [org, category, month],
+      );
+      return rowCount === 1;
+    },
+
+    async releaseBudgetAlert(category, month) {
+      const org = await orgId();
+      await pool.query(`update public.company_budgets set alerted_month = null where org_id = $1 and category = $2 and alerted_month = $3`, [org, category, month]);
     },
 
     async recordActivity({ actorEmail, kind, detail }) {

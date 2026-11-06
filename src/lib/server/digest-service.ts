@@ -20,7 +20,7 @@ export interface DigestPreview extends Digest {
 
 
 /** The product itself (the site root is the public landing page), on the digest's data source. */
-function appUrl(mode: DataMode): string | undefined {
+export function appUrl(mode: DataMode): string | undefined {
   const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   return host ? `https://${host}/app${mode === "demo" ? "" : `?mode=${mode}`}` : undefined;
 }

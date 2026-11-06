@@ -234,7 +234,13 @@ do $$ begin
     raise exception 'FAIL: a zero budget accepted';
   exception when check_violation then null;
   end;
+  begin
+    update public.company_budgets set alerted_month = '2026-13' where org_id = '00000000-0000-0000-0000-00000000000a' and category = 'software';
+    raise exception 'FAIL: a budget alert month that isn''t one accepted';
+  exception when check_violation then null;
+  end;
 end $$;
+update public.company_budgets set alerted_month = '2026-11' where org_id = '00000000-0000-0000-0000-00000000000a' and category = 'software';
 set role anon;
 do $$ begin
   begin

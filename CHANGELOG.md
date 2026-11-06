@@ -27,7 +27,9 @@ demo, the free grader and the public site work exactly as before.
   where it's heading (recurring bills still due plus one-off spend at its pace) and last month, and
   the Monday digest names any budget that's over or heading over. The card also says what runway
   the budgets would buy if spending came down to them. Copilot answers "Are we on
-  budget this month?" from the same numbers. The demo has a sample set.
+  budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
+  connected, the daily job posts there the day a budget goes over (once per budget per month;
+  changing the amount re-arms it).
 - **Plans you can send.** The "default alive" planner keeps its settings in the address, so a
   plan (hires, a raise, growth, cuts) can be bookmarked or sent to a cofounder with "Copy link to
   this plan".
@@ -57,7 +59,7 @@ demo, the free grader and the public site work exactly as before.
   (`invite` or `open`), `OPERATOR_EMAILS` (who gets `/admin` to invite founders from the
   waitlist with a button instead of SQL; operators need no invite themselves). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
 - New migrations (run `npm run db:migrate`): accounts, teams, decision actor, rate limits, company
-  Slack, digest order, company activity, activity cash, company budgets.
+  Slack, digest order, company activity, activity cash, company budgets, budget alerts.
 - `npm run verify:live` now checks the Supabase Auth settings (email sign-in on, sign-ups allowed,
   Confirm email on) and that every migration is applied.
 - `npm run test:e2e` runs browser suites for sign-in, isolation, settings, teams and uploads against

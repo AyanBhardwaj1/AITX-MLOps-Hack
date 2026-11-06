@@ -66,6 +66,38 @@ describe("the daily Autopilot for every company", () => {
     expect(result.skipped).toBe(waiting);
   });
 
+  it("tells a company's own Slack when a budget goes over this month, once", async () => {
+    // The sample's data runs to Oct 26; the job runs that day.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-26T13:00:00Z") });
+    const posts: { url: string; text: string }[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      posts.push({ url, text: JSON.parse(String(init.body)).text });
+      return new Response("ok");
+    });
+    try {
+      const { getStore } = await import("@/lib/server/store");
+      const { runCompanyAutopilots } = await import("@/lib/server/autopilot-service");
+      const scope = `org_${crypto.randomUUID()}`;
+      const store = getStore(scope);
+      await store.saveUploads(500_000_00, sampleRows(), 100_000);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/alerts");
+      await store.setBudget("software", 1_00);
+      await store.setBudget("payroll", 999_999_999_00);
+      const first = await runCompanyAutopilots({ budgetMs: 30_000 });
+      expect(first.budgetAlerts).toBeGreaterThanOrEqual(1);
+      const mine = posts.filter((p) => p.url.endsWith("/T1/B1/alerts"));
+      expect(mine).toHaveLength(1);
+      expect(mine[0]!.text).toContain("*Software* is over budget");
+      expect(mine[0]!.text).toContain("in October.");
+      expect(mine[0]!.text).not.toContain("Payroll");
+      await runCompanyAutopilots({ budgetMs: 30_000 });
+      expect(posts.filter((p) => p.url.endsWith("/T1/B1/alerts"))).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("runs from the daily cron when accounts are on", async () => {
     const { getStore } = await import("@/lib/server/store");
     const scope = `org_${crypto.randomUUID()}`;

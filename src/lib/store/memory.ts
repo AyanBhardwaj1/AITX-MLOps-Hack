@@ -24,6 +24,8 @@ export function createMemoryStore(): Store {
   let lastDigestAt: string | null = null;
   const activity: ActivityEntry[] = [];
   const budgets = new Map<Category, Cents>();
+  /** The month each budget's alert last went out for; cleared when the amount changes. */
+  const alertedMonths = new Map<Category, string>();
   const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
@@ -157,7 +159,16 @@ export function createMemoryStore(): Store {
       const previous = budgets.get(category) ?? null;
       if (monthlyCents === null) budgets.delete(category);
       else budgets.set(category, monthlyCents);
+      if (previous !== monthlyCents) alertedMonths.delete(category);
       return previous;
+    },
+    async claimBudgetAlert(category, month) {
+      if (!budgets.has(category) || alertedMonths.get(category) === month) return false;
+      alertedMonths.set(category, month);
+      return true;
+    },
+    async releaseBudgetAlert(category, month) {
+      if (alertedMonths.get(category) === month) alertedMonths.delete(category);
     },
     async recordActivity({ actorEmail, kind, detail }) {
       activity.unshift({ at: new Date().toISOString(), actorEmail, kind, detail: detail.slice(0, 300) });

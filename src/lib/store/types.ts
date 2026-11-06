@@ -127,6 +127,13 @@ export interface Store {
   listBudgets(): Promise<Budget[]>;
   /** Sets (or, with null, removes) one category's monthly budget; returns the amount it replaced. */
   setBudget(category: Category, monthlyCents: Cents | null): Promise<Cents | null>;
+  /**
+   * Claims the one "over budget" alert a category's budget gets in a month (YYYY-MM): true for
+   * exactly one caller, false once claimed or with no budget. A new amount re-arms it.
+   */
+  claimBudgetAlert(category: Category, month: string): Promise<boolean>;
+  /** Gives a claim back after the post failed, so the next run tries again. */
+  releaseBudgetAlert(category: Category, month: string): Promise<void>;
   /** Appends to the company's activity log (server-written text only). */
   recordActivity(entry: { actorEmail: string | null; kind: ActivityKind; detail: string }): Promise<void>;
   /** The latest activity, newest first. */

@@ -7,6 +7,9 @@ import { writeMemoWithLLM } from "./llm";
 import { scopeFor } from "./scope";
 import { getStore, listCompanyScopesWithUploads } from "./store";
 import { companyName, getAccounts } from "./company";
+import { analyze } from "../pipeline";
+import { sendBudgetAlerts } from "./budget-alerts";
+import { appUrl } from "./digest-service";
 
 export interface PublicRun extends Omit<AutopilotRun, "memoFacts" | "findings" | "tickets"> {
   id: string | null;
@@ -34,6 +37,8 @@ export interface CompanyRunsResult {
   failed: string[];
   /** Companies left for the next run because the time budget ran out. */
   skipped: number;
+  /** Companies told in their own Slack that a budget went over this month. */
+  budgetAlerts: number;
 }
 
 /**
@@ -44,19 +49,31 @@ export interface CompanyRunsResult {
 export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): Promise<CompanyRunsResult> {
   const deadline = Date.now() + budgetMs;
   const scopes = await listCompanyScopesWithUploads(MAX_COMPANIES_PER_RUN);
-  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0 };
+  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0, budgetAlerts: 0 };
   for (const [i, scope] of scopes.entries()) {
     if (Date.now() >= deadline) {
       result.skipped = scopes.length - i;
       break;
     }
+    const store = getStore(scope);
+    // Read once: the review and the budget check look at the same data.
+    let data: Promise<LabelledDataset> | undefined;
+    const loadData = () => (data ??= loadCompanyLabelled(scope));
+    let company: string | undefined;
     try {
-      const company = (await getAccounts().nameForScope(scope)) ?? undefined;
-      const run = await runAndPersist({ store: getStore(scope), loadData: () => loadCompanyLabelled(scope), label: scope, trigger: "cron", company });
+      company = (await getAccounts().nameForScope(scope)) ?? undefined;
+      const run = await runAndPersist({ store, loadData, label: scope, trigger: "cron", company });
       (run.status === "failed" || !run.persisted ? result.failed : result.ran).push(scope);
     } catch (err) {
       console.error("[autopilot] company run failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
       result.failed.push(scope);
+    }
+    try {
+      const alert = await sendBudgetAlerts({ store, load: async () => analyze(await loadData()), company: company ?? "your company", now: new Date(), link: appUrl("company") });
+      if (alert.status === "sent") result.budgetAlerts += 1;
+    } catch (err) {
+      // Claims were given back: tomorrow's run tries again.
+      console.error("[budget-alerts] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
     }
   }
   return result;

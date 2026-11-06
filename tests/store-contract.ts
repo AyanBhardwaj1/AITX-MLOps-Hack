@@ -260,6 +260,35 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.listBudgets()).toEqual([{ category: "software", monthlyCents: 6_000_00 }]);
     });
 
+    it("lets one alert per budget per month through, and lets a refused one try again", async () => {
+      const store = await makeStore();
+      // No budget, nothing to alert on.
+      expect(await store.claimBudgetAlert("software", "2026-11")).toBe(false);
+      await store.setBudget("software", 5_000_00);
+      await store.setBudget("travel", 1_000_00);
+      // Two overlapping runs: exactly one wins.
+      const both = await Promise.all([store.claimBudgetAlert("software", "2026-11"), store.claimBudgetAlert("software", "2026-11")]);
+      expect(both.filter(Boolean)).toHaveLength(1);
+      expect(await store.claimBudgetAlert("software", "2026-11")).toBe(false);
+      // Each category, and each month, has its own alert.
+      expect(await store.claimBudgetAlert("travel", "2026-11")).toBe(true);
+      expect(await store.claimBudgetAlert("software", "2026-12")).toBe(true);
+      // Slack refused it: released, so the next run tries again. Releasing another month changes nothing.
+      await store.releaseBudgetAlert("software", "2026-11");
+      expect(await store.claimBudgetAlert("software", "2026-12")).toBe(false);
+      await store.releaseBudgetAlert("software", "2026-12");
+      expect(await store.claimBudgetAlert("software", "2026-12")).toBe(true);
+      // Keeping the same amount keeps the alert sent; a new amount re-arms it.
+      await store.setBudget("software", 5_000_00);
+      expect(await store.claimBudgetAlert("software", "2026-12")).toBe(false);
+      await store.setBudget("software", 7_000_00);
+      expect(await store.claimBudgetAlert("software", "2026-12")).toBe(true);
+      expect(await store.listBudgets()).toEqual([
+        { category: "software", monthlyCents: 7_000_00 },
+        { category: "travel", monthlyCents: 1_000_00 },
+      ]);
+    });
+
     it("keeps the company's own Slack webhook, and forgets it on request", async () => {
       const store = await makeStore();
       expect(await store.getSlackWebhook()).toBeNull();

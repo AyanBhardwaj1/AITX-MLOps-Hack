@@ -247,7 +247,7 @@ export function BudgetsCard({ budgets, mode }: { budgets: BudgetsData; mode: Dat
           {formatDate(monthStart)} to {formatDate(budgets.asOf)}. &ldquo;Heading for&rdquo; adds recurring bills still due this month and the rest at its
           pace so far, from day 7. Spend is charges before refunds, as in &ldquo;Where the money goes&rdquo;.
           {budgets.sample && " The demo company's budgets are a fixed sample."}
-          {budgets.editable && " Anyone on the team can change them; the Monday digest flags any heading over."}
+          {budgets.editable && " Anyone on the team can change them. With Slack connected, the day one goes over your channel hears about it, and the Monday digest flags any heading over."}
         </p>
       </div>
       {budgets.rows.length === 0 ? (
