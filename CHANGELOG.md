@@ -17,7 +17,8 @@ demo, the free grader and the public site work exactly as before.
   Amounts in other currencies are refused rather than guessed. Re-uploading an overlapping export
   adds nothing twice. No data yet? "Fill in a sample export" shows how it works.
 - **Update today's cash without a file.** Cash moves daily and exports don't; anyone on the team can
-  type the new balance on the upload page and the runway uses it at once.
+  type the new balance on the upload page and the runway uses it at once. The page shows when cash was
+  last entered, and the dashboard asks for a fresh figure once it's a week old.
 - **Transactions page.** Search every transaction by vendor, the bank's description or cardholder;
   filter by category, month and money in or out, with totals for the whole match. Works on the
   demo too.

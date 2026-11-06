@@ -27,6 +27,8 @@ export interface Dataset {
   label: string;
   /** Earlier decisions that ship with the data (the demo company's history). */
   actedOn?: AcceptedFinding[];
+  /** A company's uploads: when today's cash was last entered or confirmed (ISO). */
+  cashEnteredAt?: string;
 }
 
 const SANDBOX_CACHE_MS = 5 * 60_000;
@@ -56,7 +58,7 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
 async function loadCompanyDataset(scope: string): Promise<Dataset> {
   const uploads = await getStore(scope).loadUploads();
   if (!uploads) throw new NoCompanyData();
-  return { ...uploadedDataset(uploads), label: "company" };
+  return { ...uploadedDataset(uploads), cashEnteredAt: uploads.cashEnteredAt, label: "company" };
 }
 
 export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };

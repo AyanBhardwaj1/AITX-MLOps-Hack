@@ -54,6 +54,8 @@ export interface DashboardData {
   companyName: string;
   /** How old a company's uploaded data is (company mode only). */
   freshness?: { daysOld: number; stale: boolean };
+  /** A company's cash figure: entered by hand, so it ages on its own. */
+  cashFreshness?: { daysOld: number; stale: boolean; enteredOn: string };
   /** A signed-in company's first steps (company mode only). */
   gettingStarted?: { steps: GettingStartedStep[]; remaining: number };
   asOf: string;
@@ -286,6 +288,15 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               Upload a fresh export
             </Link>{" "}
             and update today&apos;s cash.
+          </p>
+        )}
+        {data.cashFreshness?.stale && !data.freshness?.stale && (
+          <p role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
+            Runway uses the cash entered on {formatDate(data.cashFreshness.enteredOn)}, {data.cashFreshness.daysOld} days ago.{" "}
+            <Link href="/app/upload" className="font-medium underline">
+              Update today&apos;s cash
+            </Link>{" "}
+            to keep it accurate; no file needed.
           </p>
         )}
         {data.gettingStarted && <GettingStartedCard {...data.gettingStarted} />}

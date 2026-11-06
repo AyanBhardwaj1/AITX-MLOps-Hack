@@ -19,6 +19,8 @@ export interface UploadSummary {
   from: string | null;
   to: string | null;
   cashCents: number;
+  /** The UTC day the cash was last entered or confirmed. */
+  cashEnteredOn: string;
   /** What's stored per account, so a wrong upload can be taken out on its own. */
   accounts: {
     account: string;
@@ -287,6 +289,9 @@ export function UploadForm({
               <dt className="text-xs text-muted">Cash entered</dt>
               <dd className="tabular font-medium">
                 {formatDollars(summary.cashCents)}
+                <span className="block text-xs font-normal text-muted">
+                  on {formatDate(summary.cashEnteredOn)}
+                </span>
               </dd>
             </div>
           </dl>

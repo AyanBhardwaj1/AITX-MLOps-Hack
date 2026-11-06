@@ -26,6 +26,7 @@ async function summaryFor(scope: string): Promise<UploadSummary | null> {
     from: dates[0] ?? null,
     to: dates.at(-1) ?? null,
     cashCents: stored.cashCents,
+    cashEnteredOn: stored.cashEnteredAt.slice(0, 10),
     accounts: [...byAccount].map(([account, a]) => ({ account, ...a })).sort((x, y) => y.rows - x.rows),
   };
 }

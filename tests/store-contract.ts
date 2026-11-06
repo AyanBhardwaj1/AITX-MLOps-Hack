@@ -217,10 +217,18 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
         amount: { amount: -100, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "VENDOR",
         initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null,
       };
+      const before = Date.now() - 5_000;
       await store.saveUploads(100_000_00, [row], 10);
+      const firstAt = Date.parse((await store.loadUploads())!.cashEnteredAt);
+      expect(firstAt).toBeGreaterThanOrEqual(before);
+      await new Promise((r) => setTimeout(r, 20));
       expect(await store.setUploadCash(75_000_00)).toBe("saved");
-      // The same figure again changes nothing (and so logs nothing).
+      const secondAt = Date.parse((await store.loadUploads())!.cashEnteredAt);
+      expect(secondAt).toBeGreaterThan(firstAt);
+      await new Promise((r) => setTimeout(r, 20));
+      // The same figure again logs nothing, but still confirms the cash is current.
       expect(await store.setUploadCash(75_000_00)).toBe("unchanged");
+      expect(Date.parse((await store.loadUploads())!.cashEnteredAt)).toBeGreaterThan(secondAt);
       const loaded = await store.loadUploads();
       expect(loaded!.cashCents).toBe(75_000_00);
       expect(loaded!.rows).toHaveLength(1);

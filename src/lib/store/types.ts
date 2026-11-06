@@ -120,7 +120,7 @@ export interface Store {
   /** Sets today's cash without adding rows; "no_uploads" when nothing has been uploaded to attach it to. */
   setUploadCash(cashCents: number): Promise<"saved" | "unchanged" | "no_uploads">;
   /** Everything uploaded for this scope, or null when nothing has been. */
-  loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
+  loadUploads(): Promise<{ cashCents: number; /** When the cash was last entered or confirmed (ISO). */ cashEnteredAt: string; rows: RhoTransaction[] } | null>;
   /** Appends to the company's activity log (server-written text only). */
   recordActivity(entry: { actorEmail: string | null; kind: ActivityKind; detail: string }): Promise<void>;
   /** The latest activity, newest first. */

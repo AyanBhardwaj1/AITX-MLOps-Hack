@@ -485,12 +485,13 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
             where a.connection_id = $1 and a.provider_account_id = $2
               and exists (select 1 from public.transactions t where t.connection_id = $1 and t.removed_at is null)
             for update
-         ), changed as (
+         ), confirmed as (
+           -- The same figure still confirms the cash is current, so the time moves either way.
            update public.accounts a set balance_minor = $3, synced_at = now()
-             from target where a.ctid = target.at and target.balance_minor <> $3
+             from target where a.ctid = target.at
            returning 1
          )
-         select exists (select 1 from changed) as changed from target`,
+         select target.balance_minor <> $3 as changed from target where exists (select 1 from confirmed)`,
         [connectionId, CASH_ACCOUNT_ID, cashCents],
       );
       if (!rows[0]) return "no_uploads";
@@ -501,13 +502,13 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const org = await orgId();
       const connectionId = await csvConnection(pool, org, false);
       if (!connectionId) return null;
-      const cash = await pool.query<{ balance_minor: string }>(`select balance_minor from public.accounts where connection_id = $1 and provider_account_id = $2`, [connectionId, CASH_ACCOUNT_ID]);
+      const cash = await pool.query<{ balance_minor: string; synced_at: Date }>(`select balance_minor, synced_at from public.accounts where connection_id = $1 and provider_account_id = $2`, [connectionId, CASH_ACCOUNT_ID]);
       const { rows } = await pool.query<{ raw: RhoTransaction }>(
         `select raw from public.transactions where connection_id = $1 and removed_at is null order by posted_on, id`,
         [connectionId],
       );
       if (!cash.rows[0] || rows.length === 0) return null;
-      return { cashCents: Number(cash.rows[0].balance_minor), rows: rows.map((r) => r.raw) };
+      return { cashCents: Number(cash.rows[0].balance_minor), cashEnteredAt: cash.rows[0].synced_at.toISOString(), rows: rows.map((r) => r.raw) };
     },
 
     async recordActivity({ actorEmail, kind, detail }) {

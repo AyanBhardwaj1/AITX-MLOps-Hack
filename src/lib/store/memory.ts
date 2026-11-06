@@ -19,6 +19,7 @@ export function createMemoryStore(): Store {
   const shareLinks: (StoredShareLink & { tokenHash: string })[] = [];
   const uploads = new Map<string, RhoTransaction>();
   let uploadCash: number | null = null;
+  let cashEnteredAt = new Date(0).toISOString();
   let slackWebhook: string | null = null;
   let lastDigestAt: string | null = null;
   const activity: ActivityEntry[] = [];
@@ -130,17 +131,20 @@ export function createMemoryStore(): Store {
       if (uploads.size + fresh.length > maxTotal) return "limit";
       for (const r of fresh) uploads.set(r.id, structuredClone(r));
       uploadCash = cashCents;
+      cashEnteredAt = new Date().toISOString();
       return { inserted: fresh.length, duplicates: rows.length - fresh.length };
     },
     async setUploadCash(cashCents) {
       if (uploads.size === 0 || uploadCash === null) return "no_uploads";
+      // Entering the same figure still confirms it's current.
+      cashEnteredAt = new Date().toISOString();
       if (uploadCash === cashCents) return "unchanged";
       uploadCash = cashCents;
       return "saved";
     },
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
-      return { cashCents: uploadCash, rows: [...uploads.values()].map((r) => structuredClone(r)) };
+      return { cashCents: uploadCash, cashEnteredAt, rows: [...uploads.values()].map((r) => structuredClone(r)) };
     },
     async recordActivity({ actorEmail, kind, detail }) {
       activity.unshift({ at: new Date().toISOString(), actorEmail, kind, detail: detail.slice(0, 300) });
