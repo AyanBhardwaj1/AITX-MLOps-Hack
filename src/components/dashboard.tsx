@@ -297,8 +297,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         )}
         {data.laggingAccounts && data.laggingAccounts.length > 0 && (
           <p role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
-            {data.laggingAccounts.map((l) => `${l.name} ends ${formatDate(l.lastDate)} (${l.daysBehind} days behind)`).join("; ")}, so{" "}
-            {data.laggingAccounts.length === 1 ? "its" : "their"} spending since is missing from burn and runway reads longer than it is.{" "}
+            {data.laggingAccounts.map((l) => `${l.name} ends ${formatDate(l.lastDate)} (${l.daysBehind} days behind)`).join("; ")}. If{" "}
+            {data.laggingAccounts.length === 1 ? "it's" : "they're"} still open, the spending since is missing from burn and runway reads longer than it is.{" "}
             <Link href="/app/upload" className="font-medium underline">
               Upload a newer export
             </Link>

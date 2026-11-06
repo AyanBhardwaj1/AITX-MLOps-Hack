@@ -55,7 +55,8 @@ export type SaveDraft = (draft: ActionDraft) => Promise<{ id: string; status: st
 /** Budgets for the chat: the list, the analysis they're measured on (the visitor's own fixes on the demo), and what to say when there are none. */
 export interface CopilotBudgets {
   list: readonly Budget[];
-  analysis?: Analysis;
+  /** Loaded only if the model asks about budgets (the demo's costs a second analysis). */
+  analysis?: () => Promise<Analysis>;
   emptyNote?: string;
 }
 
@@ -115,7 +116,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
       get_budgets: tool({
         description: "This month's budgets per category: monthlyCents, monthToDateCents, projectedCents (heading for), lastMonthCents and status (under, over_pace, over).",
         inputSchema: budgetsInput,
-        execute: async () => getBudgets(budgets.analysis ?? a, budgets.list, budgets.emptyNote),
+        execute: async () => getBudgets(budgets.analysis ? await budgets.analysis() : a, budgets.list, budgets.emptyNote),
       }),
       get_recent_changes: tool({
         description: "What changed recently: burn spikes, large one-off payments, subscription price changes, new vendors, renewals due within 14 days, and low-runway warnings.",

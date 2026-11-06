@@ -14,6 +14,9 @@ describe("activity list", () => {
     expect(html).not.toContain("Uploaded 20 transactions");
     const exact = renderToStaticMarkup(createElement(ActivityList, { entries: Array.from({ length: 20 }, (_, i) => entry(i)), limit: 20, moreHref: "/app/settings?activity=all" }));
     expect(exact).not.toContain("Show more");
+    // The full view says where it stops.
+    const full = renderToStaticMarkup(createElement(ActivityList, { entries: Array.from({ length: 201 }, (_, i) => entry(i)), limit: 200, moreHref: null }));
+    expect(full).toContain("Showing the latest 200.");
   });
 
   it("keeps a right-to-left name from reordering the line", () => {

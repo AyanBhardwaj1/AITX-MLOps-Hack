@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   const mode = parsed.data.mode;
   const budgets: CopilotBudgets =
     mode === "demo"
-      ? { list: DEMO_BUDGETS, analysis: (await loadAnalysis("demo", { visitorFixes: true })).analysis }
+      ? { list: DEMO_BUDGETS, analysis: async () => (await loadAnalysis("demo", { visitorFixes: true })).analysis }
       : mode === "company"
         ? {
             list: await store.listBudgets().catch((err) => {

@@ -33,11 +33,14 @@ export function ActivityList({ entries, limit = entries.length, moreHref = null 
           ))}
         </ol>
       )}
-      {hasMore && moreHref && (
-        <a href={moreHref} className="mt-2 inline-block text-sm font-medium text-brand hover:underline">
-          Show more
-        </a>
-      )}
+      {hasMore &&
+        (moreHref ? (
+          <a href={moreHref} className="mt-2 inline-block text-sm font-medium text-brand hover:underline">
+            Show more
+          </a>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Showing the latest {limit.toLocaleString("en-US")}.</p>
+        ))}
     </section>
   );
 }

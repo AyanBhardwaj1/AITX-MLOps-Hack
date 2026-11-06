@@ -339,7 +339,7 @@ export function UploadForm({
                       {a.daysBehind ? (
                         <span className="block text-xs text-warn">
                           Ends {formatDate(a.to)}, {a.daysBehind} days behind
-                          the rest: upload a newer export
+                          the rest: if it&apos;s still open, upload a newer export
                         </span>
                       ) : null}
                     </td>

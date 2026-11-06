@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { analyze } from "@/lib/pipeline";
 import type { RhoAccount, RhoTransaction } from "@/lib/rho/schema";
+import type { EnrichedTxn } from "@/lib/types";
 
 /** Two years of a busy company: ~18k rows, with thousands of near-daily card charges at one merchant. */
 function bigCompany(): { accounts: RhoAccount[]; transactions: RhoTransaction[] } {
@@ -34,5 +35,29 @@ describe("a large company", () => {
     expect(a.streams.length).toBeGreaterThan(0);
     // ~160 ms locally; the old code took ~1.2 s locally (~2 s+ on a slower CI runner).
     expect(ms).toBeLessThan(1500);
+  });
+
+  it("works out budgets quickly on a company with hundreds of recurring bills", async () => {
+    const { budgetStatus } = await import("@/lib/finance/budgets");
+    const { detectStreams } = await import("@/lib/detect/recurring");
+    const txns: EnrichedTxn[] = [];
+    const push = (day: string, key: string, cents: number, category: EnrichedTxn["vendor"]["category"]) =>
+      txns.push({ id: `b${txns.length}`, accountId: "a", postedAt: day, amountCents: -cents, description: key, type: "card", status: "posted", vendor: { key, name: key, category, job: null, source: "catalog" } } as EnrichedTxn);
+    for (let m = 0; m < 24; m++) {
+      const month = `${2024 + Math.floor((m + 11) / 12)}-${String(((m + 11) % 12) + 1).padStart(2, "0")}`;
+      for (let v = 0; v < 150; v++) push(`${month}-${String((v % 27) + 1).padStart(2, "0")}`, `saas_${v}`, 1_000 + v, "software");
+      for (let p = 0; p < 30; p++) for (const d of ["01", "15"]) push(`${month}-${d}`, `payroll_${p}`, 40_000_00, "payroll");
+    }
+    txns.sort((x, y) => (x.postedAt < y.postedAt ? -1 : 1));
+    const asOf = "2026-10-20";
+    const streams = detectStreams(txns, asOf);
+    expect(streams.length).toBeGreaterThan(150);
+    const budgets = [{ category: "software" as const, monthlyCents: 1 }, { category: "payroll" as const, monthlyCents: 1 }];
+    budgetStatus(txns, asOf, budgets, streams); // warm up
+    const t = performance.now();
+    budgetStatus(txns, asOf, budgets, streams);
+    const ms = performance.now() - t;
+    // ~tens of ms locally.
+    expect(ms).toBeLessThan(500);
   });
 });

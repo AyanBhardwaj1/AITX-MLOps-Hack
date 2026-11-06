@@ -1,4 +1,5 @@
 import { importCsv, resolveCardPayoffs } from "./csv/import";
+import { fileAccountLabel } from "./uploads/rows";
 import { forecastCash } from "./finance/forecast";
 import { monthlyHistory } from "./finance/history";
 import { laggingAccounts } from "./freshness";
@@ -51,8 +52,8 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   let skipped = 0;
   let duplicateFiles = 0;
   let duplicateRows = 0;
-  /** Each file's latest date and row count, to spot one that stops well before the others. */
-  const byFile = new Map<string, { lastDate: string; rows: number }>();
+  /** Each read file's row keys, to tell which account's export stops early (see below). */
+  const fileKeys: { label: string; keys: string[] }[] = [];
   files.forEach((f, i) => {
     if (seenTexts.has(f.text)) {
       duplicateFiles += 1;
@@ -74,8 +75,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
         raw.push(t);
       }
       for (const k of fileRows) seenRows.add(k);
-      const dates = r.transactions.map((t) => (t.posted_at ?? t.initiated_at).slice(0, 10)).sort();
-      if (dates.length) byFile.set(f.name, { lastDate: dates.at(-1)!, rows: dates.length });
+      fileKeys.push({ label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {
@@ -109,8 +109,20 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   if (duplicateRows && inverted.length === 0) notes.push(`${duplicateRows} row${duplicateRows === 1 ? "" : "s"} repeated across overlapping exports ${duplicateRows === 1 ? "was" : "were"} counted once.`);
   if (skipped) notes.push(`${skipped} row${skipped === 1 ? "" : "s"} couldn't be read and ${skipped === 1 ? "was" : "were"} skipped.`);
   if (inverted.length === 0) {
-    for (const l of laggingAccounts(byFile))
-      notes.push(`${l.account} ends ${l.lastDate}, ${l.daysBehind} days before the newest export, so its spending since then is missing and runway reads longer than it is. Export it again up to today.`);
+    // Files grouped by the account their name points to (six monthly statements are one account),
+    // each counting only rows no other file has: an older export overlapping a newer one, in either
+    // order, says nothing.
+    const holders = new Map<string, number>();
+    for (const f of fileKeys) for (const k of new Set(f.keys)) holders.set(k, (holders.get(k) ?? 0) + 1);
+    const byAccount = new Map<string, string[]>();
+    for (const f of fileKeys) {
+      const own = [...new Set(f.keys)].filter((k) => holders.get(k) === 1).map((k) => k.slice(0, 10));
+      if (own.length) byAccount.set(f.label, [...(byAccount.get(f.label) ?? []), ...own]);
+    }
+    for (const l of laggingAccounts(byAccount))
+      notes.push(
+        `The ${l.account} export ends ${l.lastDate}, ${l.daysBehind} days before the newest one. If that account is still open, its spending since then is missing and runway reads longer than it is: export it again up to today.`,
+      );
   }
   if (months < 4) notes.push(`Only ${months} month${months === 1 ? "" : "s"} of history: burn and recurring charges are more reliable with 6–12 months.`);
 

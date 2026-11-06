@@ -28,8 +28,20 @@ export async function POST(request: Request) {
     const { mode, question } = parsed.data;
     const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     // Read only for the budget question: the demo's sample, or the signed-in company's own.
+    // A storage hiccup means no budgets in the answer, not a failed answer.
     const budgets =
-      question !== "budgets" || mode === "sandbox" ? [] : mode === "demo" ? DEMO_BUDGETS : await getStore(await scopeFor(mode)).listBudgets();
+      question !== "budgets"
+        ? []
+        : mode === "sandbox"
+          ? null
+          : mode === "demo"
+            ? DEMO_BUDGETS
+            : await getStore(await scopeFor(mode))
+                .listBudgets()
+                .catch((err) => {
+                  console.error("[copilot/instant] budgets unavailable", err instanceof Error ? err.message : "unknown error");
+                  return [];
+                });
     return NextResponse.json(instantAnswer(analysis, question, new Set(parsed.data.dismissed), budgets));
   } catch (err) {
     const known = accessErrorResponse(err);

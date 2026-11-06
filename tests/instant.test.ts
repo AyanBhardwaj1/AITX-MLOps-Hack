@@ -64,5 +64,6 @@ describe("instant answers (no LLM)", () => {
     expect(ans.text).toContain(`${formatMoney(over.monthToDateCents)} so far of ${formatMoney(over.monthlyCents)}`);
     expect(ans.text.indexOf("Over budget")).toBeLessThan(ans.text.indexOf("Heading over"));
     expect(instantAnswer(a, "budgets").text).toMatch(/No budgets are set/);
+    expect(instantAnswer(a, "budgets", new Set(), null).text).toMatch(/sandbox has none/);
   });
 });

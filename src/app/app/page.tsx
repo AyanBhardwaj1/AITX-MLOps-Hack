@@ -72,10 +72,11 @@ async function companyProgress(mode: DataMode, decidedFindings: number): Promise
 
 /** Uploaded accounts whose exports stop well before the others (their spending since is missing). */
 function laggingFor(dataset: { accounts: { id: string; account_name?: string | null }[] }, a: Analysis): DashboardData["laggingAccounts"] {
-  const latest = new Map<string, { lastDate: string; rows: number }>();
+  const latest = new Map<string, string[]>();
   for (const t of a.txns) {
-    const seen = latest.get(t.accountId) ?? { lastDate: "", rows: 0 };
-    latest.set(t.accountId, { lastDate: seen.lastDate < t.postedAt ? t.postedAt : seen.lastDate, rows: seen.rows + 1 });
+    const dates = latest.get(t.accountId);
+    if (dates) dates.push(t.postedAt);
+    else latest.set(t.accountId, [t.postedAt]);
   }
   const names = new Map(dataset.accounts.map((acc) => [acc.id, acc.account_name || acc.id]));
   return laggingAccounts(latest).map((l) => ({ name: names.get(l.account) ?? l.account, lastDate: l.lastDate, daysBehind: l.daysBehind }));

@@ -22,7 +22,13 @@ async function summaryFor(scope: string): Promise<UploadSummary | null> {
     if (!a) byAccount.set(r.account_id, { rows: 1, from: d, to: d, card: r.account_type === "credit" });
     else byAccount.set(r.account_id, { rows: a.rows + 1, from: d < a.from ? d : a.from, to: d > a.to ? d : a.to, card: a.card && r.account_type === "credit" });
   }
-  const behind = new Map(laggingAccounts(new Map([...byAccount].map(([account, a]) => [account, { lastDate: a.to, rows: a.rows }]))).map((l) => [l.account, l.daysBehind]));
+  const datesByAccount = new Map<string, string[]>();
+  for (const r of stored.rows) {
+    const list = datesByAccount.get(r.account_id);
+    if (list) list.push(day(r));
+    else datesByAccount.set(r.account_id, [day(r)]);
+  }
+  const behind = new Map(laggingAccounts(datesByAccount).map((l) => [l.account, l.daysBehind]));
   return {
     transactions: stored.rows.length,
     from: dates[0] ?? null,

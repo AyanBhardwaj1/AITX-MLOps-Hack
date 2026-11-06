@@ -55,6 +55,78 @@ const monthAt = (index: number) => `${Math.floor(index / 12)}-${String((index % 
 /** The usual day in a month, clamped to its length (a bill "on the 31st" is on the 30th in November). */
 const dueIn = (month: string, day: number) => `${month}-${String(Math.min(day, daysInMonth(month))).padStart(2, "0")}`;
 
+/** The fewest recent charges worth fitting a day of the month to. */
+const FIT_CHARGES = 12;
+
+/** Day number since 1970 (UTC) for a calendar date; month is 0-based and may run past either end. */
+const epochDay = (year: number, month0: number, day: number) => Date.UTC(year, month0, day) / DAY_MS;
+const lengthOf = (year: number, month0: number) => new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+
+/**
+ * How far a charge is from a due date on each day of the month (in its month or either side of
+ * it), counting a weekend due date paid on the business day before or after as on time: otherwise
+ * "the last day, paid Monday the 2nd" fits "the 1st" better than the truth. All 31 days at once, in
+ * integer days, because fitting tries every day (and every pair) for every recurring bill.
+ */
+function distancesByDay(c: IsoDate): number[] {
+  const y = Number(c.slice(0, 4));
+  const m = Number(c.slice(5, 7)) - 1;
+  const at = epochDay(y, m, Number(c.slice(8, 10)));
+  const out = new Array<number>(32).fill(Number.POSITIVE_INFINITY);
+  for (let k = -1; k <= 1; k++) {
+    const len = lengthOf(y, m + k);
+    for (let day = 1; day <= 31; day++) {
+      const due = epochDay(y, m + k, Math.min(day, len));
+      const wd = (((due + 4) % 7) + 7) % 7; // 0 = Sunday
+      const best = wd === 6 ? Math.min(Math.abs(at - due), Math.abs(at - due + 1), Math.abs(at - due - 2)) : wd === 0 ? Math.min(Math.abs(at - due), Math.abs(at - due + 2), Math.abs(at - due - 1)) : Math.abs(at - due);
+      if (best < out[day]!) out[day] = best;
+    }
+  }
+  return out;
+}
+const offBy = (c: IsoDate, day: number) => distancesByDay(c)[day]!;
+
+/**
+ * The usual day(s) of the month: the day (or, for semimonthly, the pair of days 10 to 20 apart)
+ * closest to the recent charges, measured around the month boundary. A median of days would put
+ * "the 1st, paid early on the 30th" in the middle of the month.
+ */
+function usualDays(charges: readonly IsoDate[], semimonthly: boolean): number[] {
+  const recent = charges.slice(-FIT_CHARGES);
+  if (semimonthly && recent.length < 2) {
+    // Too few paydays to fit a pair: the other one is half a month away.
+    const d = Number(recent.at(-1)!.slice(8, 10));
+    return d <= 15 ? [d, Math.min(31, d + 15)] : [d - 15, d];
+  }
+  const table = recent.map(distancesByDay);
+  let best: number[] = [Number(recent.at(-1)!.slice(8, 10))];
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (let a = 1; a <= 31; a++) {
+    for (let b = semimonthly ? a + 10 : a; b <= (semimonthly ? Math.min(31, a + 20) : a); b++) {
+      let cost = 0;
+      for (const row of table) cost += Math.min(row[a]!, row[b]!);
+      if (cost < bestCost) [best, bestCost] = [semimonthly ? [a, b] : [a], cost];
+    }
+  }
+  return best;
+}
+
+/**
+ * A "monthly" bill on a fixed interval (every 28 or 30 days) drifts through the month, so pinning it
+ * to one day is wrong: its charges still to come are steps of its usual gap from the last one.
+ */
+function stillDueByInterval(charges: readonly IsoDate[], asOf: IsoDate, month: string): number {
+  const gaps = charges.slice(-7).slice(1).map((c, i) => gapDays(charges.slice(-7)[i]!, c));
+  const step = median(gaps);
+  const monthEnd = dueIn(month, 31);
+  let count = 0;
+  for (let next = addDays(charges.at(-1)!, step); next <= monthEnd; next = addDays(next, step)) {
+    if (next < `${month}-01` && gapDays(next, asOf) > LATE_DAYS) continue;
+    if (next > asOf || gapDays(next, asOf) <= LATE_DAYS) count += 1;
+  }
+  return count;
+}
+
 /**
  * Bills on a day of the month (monthly, semimonthly, quarterly, annual): their charges still to
  * post this month. Each past charge is matched to the due date it paid (so November's rent paid
@@ -65,14 +137,17 @@ const dueIn = (month: string, day: number) => `${month}-${String(Math.min(day, d
 function stillDueByDay(s: RecurringStream, seen: readonly IsoDate[], asOf: IsoDate, month: string): number {
   // The stream's own last charge is a charge too, even when its rows aren't at hand.
   const charges = seen.length ? seen : [s.lastDate];
-  const days = charges.map((d) => Number(d.slice(8, 10)));
-  let usual: number[];
-  if (s.cadence === "semimonthly") {
-    // Paydays alternate, so every other charge shares a day: (1st, 15th), (15th, last)...
-    const a = median(days.filter((_, i) => i % 2 === 0));
-    const b = days.length > 1 ? median(days.filter((_, i) => i % 2 === 1)) : a + 15;
-    usual = [...new Set([a, b])];
-  } else usual = [median(days)];
+  const usual = usualDays(charges, s.cadence === "semimonthly");
+  // A bill on a fixed interval (every 28 or 30 days) drifts through the month: when its recent gaps
+  // explain the charges better than a day of the month does, step by the gap instead.
+  const recent = charges.slice(-7);
+  if (s.cadence === "monthly" && recent.length >= 5) {
+    const gaps = recent.slice(1).map((c, i) => gapDays(recent[i]!, c));
+    const step = median(gaps);
+    const intervalError = gaps.reduce((sum, g) => sum + Math.abs(g - step), 0);
+    const dayError = recent.slice(1).reduce((sum, c) => sum + offBy(c, usual[0]!), 0);
+    if (intervalError < dayError) return stillDueByInterval(charges, asOf, month);
+  }
   const every = s.cadence === "quarterly" ? 3 : s.cadence === "annual" ? 12 : 1;
   const here = monthIndex(month);
   const due = (index: number) => usual.map((d) => dueIn(monthAt(index), d));
@@ -158,8 +233,10 @@ export function budgetStatus(txns: readonly EnrichedTxn[], asOf: IsoDate, budget
   }
   const postedOn = new Map(txns.map((t) => [t.id, t.postedAt]));
   const due = new Map<Category, number>();
+  const budgeted = new Set(budgets.map((b) => b.category));
   for (const s of streams) {
-    if (!s.active) continue;
+    // Only the categories asked about: fitting each stream's days isn't free on a big company.
+    if (!s.active || !budgeted.has(s.category)) continue;
     const charges = s.txnIds.map((id) => postedOn.get(id)).filter((d): d is string => d !== undefined && d <= asOf).sort();
     const seen = charges.filter((d) => monthKey(d) === month).length;
     const n = stillDue(s, charges, asOf, month, seen);

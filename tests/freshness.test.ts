@@ -21,20 +21,32 @@ describe("data freshness", () => {
 });
 
 describe("accounts that fall behind", () => {
-  it("names accounts whose exports end two weeks or more before the newest one", async () => {
+  /** `rows` dates `every` days apart, ending on `last`. */
+  const dates = (last: string, rows: number, every = 1) =>
+    Array.from({ length: rows }, (_, i) => new Date(Date.parse(`${last}T00:00:00Z`) - (rows - 1 - i) * every * 86_400_000).toISOString().slice(0, 10));
+
+  it("names an active account whose export ends two weeks or more before the newest one", async () => {
     const { laggingAccounts } = await import("@/lib/freshness");
-    const busy = (lastDate: string) => ({ lastDate, rows: 120 });
-    const latest = new Map([
-      ["chase", busy("2026-10-24")],
-      ["amex gold", busy("2026-09-30")],
-      ["brex", busy("2026-10-15")],
+    const byAccount = new Map([
+      ["chase", dates("2026-10-24", 120)],
+      ["amex gold", dates("2026-09-30", 120)],
+      ["brex", dates("2026-10-15", 120)],
     ]);
-    expect(laggingAccounts(latest)).toEqual([{ account: "amex gold", lastDate: "2026-09-30", daysBehind: 24 }]);
-    expect(laggingAccounts(new Map([["chase", busy("2026-10-24")]]))).toEqual([]);
+    expect(laggingAccounts(byAccount)).toEqual([{ account: "amex gold", lastDate: "2026-09-30", daysBehind: 24 }]);
+    expect(laggingAccounts(new Map([["chase", dates("2026-10-24", 120)]]))).toEqual([]);
     // The cash entered by hand isn't an export.
-    expect(laggingAccounts(new Map([["chase", busy("2026-10-24")], ["cash_entered", busy("2026-01-01")]]))).toEqual([]);
-    // A savings account that moves twice a year is quiet, not behind.
-    expect(laggingAccounts(new Map([["chase", busy("2026-10-24")], ["savings", { lastDate: "2026-03-01", rows: 2 }]]))).toEqual([]);
+    expect(laggingAccounts(new Map([["chase", dates("2026-10-24", 120)], ["cash_entered", dates("2026-01-01", 120)]]))).toEqual([]);
+  });
+
+  it("judges each account by its own rhythm, and leaves alone ones that look closed", async () => {
+    const { laggingAccounts } = await import("@/lib/freshness");
+    const main = dates("2026-11-20", 300);
+    // Monthly interest on a treasury account: 20 days since the last is normal for it.
+    expect(laggingAccounts(new Map([["checking", main], ["treasury", dates("2026-10-31", 12, 30)]]))).toEqual([]);
+    // Quiet: too few rows to say.
+    expect(laggingAccounts(new Map([["checking", main], ["savings", dates("2026-03-01", 2, 90)]]))).toEqual([]);
+    // Over 90 days behind is more likely a closed account than a late export.
+    expect(laggingAccounts(new Map([["checking", main], ["svb (closed)", dates("2025-03-14", 400)]]))).toEqual([]);
   });
 
   it("raises no false alarm on the demo company, whose savings account is quiet", async () => {
@@ -43,11 +55,8 @@ describe("accounts that fall behind", () => {
     const { generateDemoCompany } = await import("@/lib/seed/demo-company");
     const demo = generateDemoCompany();
     const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });
-    const byAccount = new Map<string, { lastDate: string; rows: number }>();
-    for (const t of a.txns) {
-      const s = byAccount.get(t.accountId) ?? { lastDate: "", rows: 0 };
-      byAccount.set(t.accountId, { lastDate: s.lastDate < t.postedAt ? t.postedAt : s.lastDate, rows: s.rows + 1 });
-    }
+    const byAccount = new Map<string, string[]>();
+    for (const t of a.txns) byAccount.set(t.accountId, [...(byAccount.get(t.accountId) ?? []), t.postedAt]);
     expect(laggingAccounts(byAccount)).toEqual([]);
   });
 });

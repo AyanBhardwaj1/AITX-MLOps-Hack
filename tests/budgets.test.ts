@@ -164,6 +164,34 @@ describe("budgets", () => {
       expect(budgetStatus(charges, "2026-12-10", [{ category: "insurance", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(3_000_00);
     });
 
+    it("finds the usual day across the month boundary: last-day bills paid late on the 2nd", () => {
+      // Due on the last day; when that's a weekend it posts the next Monday (Jan 31 2026 is a Saturday).
+      const dates = ["2025-05-31", "2025-06-30", "2025-07-31", "2025-09-02", "2025-09-30", "2025-10-31", "2025-12-01", "2025-12-31", "2026-02-02", "2026-03-02"];
+      const { charges, stream: s } = history("rent", dates, 10_000_00, "monthly");
+      const [jan] = budgetStatus(charges.filter((c) => c.postedAt <= "2026-01-10"), "2026-01-10", [{ category: "rent", monthlyCents: 10_500_00 }], [s]);
+      // January's own rent posts Feb 2, so January gets none.
+      expect(jan!.projectedCents).toBe(0);
+    });
+
+    it("keeps semimonthly paydays straight after one missed payday", () => {
+      const dates = ["2025-09-01", "2025-09-15", "2025-10-01", "2025-10-15", "2025-11-14", "2025-12-01", "2025-12-15", "2026-01-01", "2026-01-15", "2026-02-02", "2026-02-13"];
+      const { charges, stream: s } = history("payroll", dates, 1_000_00, "semimonthly");
+      const [mar] = budgetStatus(charges, "2026-02-20", [{ category: "payroll", monthlyCents: 1 }], [s]);
+      // February: 2nd and 13th are in; nothing more until March.
+      expect(mar!.projectedCents).toBe(2_000_00);
+    });
+
+    it("steps a bill on a fixed 28-day interval instead of pinning it to a day of the month", () => {
+      const start = Date.UTC(2025, 9, 3);
+      const dates = Array.from({ length: 13 }, (_, i) => new Date(start + i * 28 * 86_400_000).toISOString().slice(0, 10));
+      const asOf = dates.at(-1)!;
+      const { charges, stream: s } = history("software", dates, 1_000_00, "monthly");
+      const month = asOf.slice(0, 7);
+      const next = new Date(Date.parse(`${asOf}T00:00:00Z`) + 28 * 86_400_000).toISOString().slice(0, 10);
+      const actual = dates.filter((d) => d.startsWith(month)).length + (next.startsWith(month) ? 1 : 0);
+      expect(budgetStatus(charges, asOf, [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(actual * 1_000_00);
+    });
+
     it("stops expecting a bill more than ten days past due that never came", () => {
       const { charges, stream: s } = history("software", ["2026-05-10", "2026-06-10", "2026-07-10", "2026-08-10", "2026-09-10", "2026-10-10"], 500_00, "monthly");
       expect(budgetStatus(charges, "2026-11-08", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(500_00);

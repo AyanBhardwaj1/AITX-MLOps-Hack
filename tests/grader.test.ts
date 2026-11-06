@@ -93,9 +93,18 @@ describe("gradeCsvFiles", () => {
     const cutoff = new Date(Date.parse(`${latest}T00:00:00Z`) - 30 * 86_400_000).toISOString().slice(0, 10);
     const early = card.filter((t) => dateOf(t) <= cutoff);
     const g = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }, { name: "amex.csv", text: mercuryCsv(early) }], cash);
-    expect(g.notes.some((n) => /^amex\.csv ends .*days before the newest export/.test(n))).toBe(true);
+    expect(g.notes.some((n) => /^The amex export ends .*days before the newest one/.test(n))).toBe(true);
     // Both up to date: nothing to say.
     const full = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }, { name: "amex.csv", text: mercuryCsv(card) }], cash);
-    expect(full.notes.some((n) => /days before the newest export/.test(n))).toBe(false);
+    expect(full.notes.some((n) => /days before the newest one/.test(n))).toBe(false);
+    // Monthly statements of one account are one account, not five lagging files.
+    const byMonth = new Map<string, RhoTransaction[]>();
+    for (const t of checking) byMonth.set(dateOf(t).slice(0, 7), [...(byMonth.get(dateOf(t).slice(0, 7)) ?? []), t]);
+    const statements = [...byMonth].slice(-6).map(([m, rows]) => ({ name: `checking-${m}.csv`, text: mercuryCsv(rows) }));
+    expect(gradeCsvFiles(statements, cash).notes.some((n) => /days before the newest one/.test(n))).toBe(false);
+    // An older export overlapping a newer one of the same account adds nothing, so says nothing.
+    const older = checking.filter((t) => dateOf(t) <= cutoff);
+    const overlap = gradeCsvFiles([{ name: "old.csv", text: mercuryCsv(older) }, { name: "new.csv", text: mercuryCsv(checking) }], cash);
+    expect(overlap.notes.some((n) => /days before the newest one/.test(n))).toBe(false);
   });
 });
