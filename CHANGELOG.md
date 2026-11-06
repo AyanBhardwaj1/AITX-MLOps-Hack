@@ -119,6 +119,15 @@ demo, the free grader and the public site work exactly as before.
 - **Billing dates.** A late or early posting doesn't skip or shift a cycle, quarterly bills stay
   in their months, and month-end bills stay on the month's end.
 - A test runs 32 generated companies and checks the cards against each other to the cent.
+- **The default-alive planner matches the headline.** For a short export it starts from the same
+  months as burn; with cash below zero it runs out today (or never, when making money); month
+  labels follow complete months; and a copied plan link keeps a typed growth rate (7.46%) instead
+  of the measured one it rounds to.
+- **Calendar and grader.** Renewals for two people whose names aren't in the Latin alphabet stay
+  separate events. The grader's cash box reads dollars only (not 0x10 or 1e3). A shared grader
+  link previews as the Runway Grader.
+- **Accessibility.** The browser tests run axe on the landing page, grader, privacy page and demo
+  and fail on any serious issue; the site logo link's name now matches its text.
 - **Bank files read as written.** A quote inside a field (DELL 27" MONITOR) no longer swallows
   every row after it; a quote that never closes is refused with its line. ".50", "12." and a
   Unicode minus read as amounts, rows over $100 billion are refused, and skipped rows are named by
