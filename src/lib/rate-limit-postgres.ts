@@ -1,15 +1,22 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import type { Pool } from "pg";
 
 /** Old windows are cleared now and then by the requests themselves (about 1 in this many). */
 const CLEANUP_EVERY = 100;
 
 /**
- * A fixed-window limit shared by every server instance: one atomic upsert per request. The key is
- * hashed with the limiter's name, so no email or IP is stored.
+ * Keys are HMACs under a secret only the server has (derived from DATABASE_URL, which holds the
+ * database password), so a leaked table can't be reversed by hashing every IPv4 address or a
+ * known email.
+ */
+const hmacKey = () => createHash("sha256").update(`runway-rate-limit:${process.env.DATABASE_URL ?? ""}`).digest();
+
+/**
+ * A fixed-window limit shared by every server instance: one atomic upsert per request. No email or
+ * IP is stored, only a keyed hash.
  */
 export async function allowInPostgres(pool: Pool, name: string, key: string, limit: number, windowMs: number, now = Date.now()): Promise<boolean> {
-  const keyHash = createHash("sha256").update(`${name}:${key}`).digest("hex");
+  const keyHash = createHmac("sha256", hmacKey()).update(`${name}:${key}`).digest("hex");
   const windowStart = new Date(Math.floor(now / windowMs) * windowMs);
   const { rows } = await pool.query<{ count: number }>(
     `insert into public.rate_limits (key_hash, window_start, count) values ($1, $2, 1)

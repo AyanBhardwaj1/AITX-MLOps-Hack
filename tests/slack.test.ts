@@ -40,3 +40,19 @@ describe("Slack webhook", () => {
     await expect(postToSlack(URL_OK, "hi", fetchImpl)).rejects.toThrow(/403/);
   });
 });
+
+describe("Slack webhook URLs (review round 7)", () => {
+  it("refuses an explicit port, and normalises what it accepts", async () => {
+    const { isSlackWebhookUrl, normalizeSlackWebhookUrl } = await import("@/lib/slack");
+    expect(isSlackWebhookUrl("https://hooks.slack.com:8443/services/T/B/x")).toBe(false);
+    expect(isSlackWebhookUrl("https://hooks.slack.com:443/services/T/B/x")).toBe(true);
+    expect(normalizeSlackWebhookUrl("HTTPS://HOOKS.SLACK.COM:443/services/T/B/x")).toBe("https://hooks.slack.com/services/T/B/x");
+  });
+
+  it("never follows a redirect with the digest", async () => {
+    const { postToSlack } = await import("@/lib/slack");
+    let init: RequestInit | undefined;
+    await postToSlack("https://hooks.slack.com/services/T/B/x", "hi", (async (_u: string, i: RequestInit) => ((init = i), new Response("ok"))) as typeof fetch);
+    expect(init?.redirect).toBe("error");
+  });
+});

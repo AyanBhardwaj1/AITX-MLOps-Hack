@@ -4,7 +4,7 @@ import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { companySlackStatus, ownerCompany } from "@/lib/server/company";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { getStore } from "@/lib/server/store";
-import { isSlackWebhookUrl, postToSlack } from "@/lib/slack";
+import { isSlackWebhookUrl, normalizeSlackWebhookUrl, postToSlack } from "@/lib/slack";
 
 export const runtime = "nodejs";
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const company = await ownerCompany();
     const parsed = body.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Paste a Slack incoming webhook URL (https://hooks.slack.com/services/…)." }, { status: 400 });
-    const { url } = parsed.data;
+    const url = parsed.data.url ? normalizeSlackWebhookUrl(parsed.data.url) : null;
     if (url) {
       try {
         await postToSlack(url, `Runway is connected. ${company.name}'s Monday digest will arrive in this channel.`);

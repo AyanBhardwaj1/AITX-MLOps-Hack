@@ -5,6 +5,8 @@ import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { companySlackStatus } from "@/lib/server/company";
+import { scopeFor } from "@/lib/server/scope";
+import { createSharedRateLimiter } from "@/lib/server/shared-rate-limit";
 import { buildDigestFor, sendCompanyDigestNow, sendDigest } from "@/lib/server/digest-service";
 import { accountsEnabled, canSendSlackFromApp, hasSlack } from "@/lib/server/env";
 
@@ -56,8 +58,14 @@ export async function POST(request: Request) {
   }
 }
 
+/** One "send now" per company every ten minutes, whoever asks, across every server instance. */
+const allowCompanySend = createSharedRateLimiter({ name: "digest-now", limit: 1, windowMs: 10 * 60_000 });
+
 async function sendToCompanySlack(): Promise<NextResponse> {
   try {
+    if (!(await allowCompanySend(await scopeFor("company")))) {
+      return NextResponse.json({ error: "Your digest was sent to Slack a few minutes ago. Try again later." }, { status: 429 });
+    }
     const digest = await sendCompanyDigestNow();
     if (!digest) return NextResponse.json({ error: "Connect your company's Slack in settings first." }, { status: 409 });
     return NextResponse.json({ sent: true });

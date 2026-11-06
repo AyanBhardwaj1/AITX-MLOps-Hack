@@ -122,6 +122,9 @@ export interface Store {
   /** The company's own Slack incoming webhook for its digest (a secret: never sent to a browser). */
   getSlackWebhook(): Promise<string | null>;
   setSlackWebhook(url: string | null): Promise<void>;
+  /** Records that the Monday digest went out now (the companies that waited longest go first). */
+  markDigestSent(): Promise<void>;
+  lastDigestSentAt(): Promise<string | null>;
   /** Deletes the uploaded rows of one account (never the entered cash); returns how many went. */
   deleteUploadedAccount(account: string): Promise<number>;
   /** Deletes every uploaded transaction and the entered cash, and everything derived from them (findings, drafts, runs, fixes, share links). */

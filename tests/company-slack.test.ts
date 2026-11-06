@@ -113,4 +113,41 @@ describe("a company's own Slack digest", () => {
     const digest = await import("@/app/api/digest/route");
     expect((await digest.POST(post("/api/digest", { mode: "company" }))).status).toBe(409);
   });
+
+  it("sends 'now' at most once every ten minutes per company", async () => {
+    await companyWithData(crypto.randomUUID(), "Acme Robotics");
+    const slack = await import("@/app/api/company/slack/route");
+    await slack.POST(post("/api/company/slack", { url: HOOK_A }));
+    const digest = await import("@/app/api/digest/route");
+    expect((await digest.POST(post("/api/digest", { mode: "company" }))).status).toBe(200);
+    expect((await digest.POST(post("/api/digest", { mode: "company" }))).status).toBe(429);
+  });
+
+  it("stores the webhook normalised", async () => {
+    const c = await companyWithData(crypto.randomUUID(), "Acme Robotics");
+    const slack = await import("@/app/api/company/slack/route");
+    expect((await slack.POST(post("/api/company/slack", { url: HOOK_A.replace("https://hooks.slack.com", "HTTPS://HOOKS.SLACK.COM") }))).status).toBe(200);
+    const { getStore } = await import("@/lib/server/store");
+    expect(await getStore(c.scope).getSlackWebhook()).toBe(HOOK_A);
+  });
+
+  it("disconnects a webhook Slack says is gone, and still sends to the others", async () => {
+    await companyWithData(crypto.randomUUID(), "Acme Robotics");
+    const slack = await import("@/app/api/company/slack/route");
+    await slack.POST(post("/api/company/slack", { url: HOOK_A }));
+    const gone = await companyWithData(crypto.randomUUID(), "Globex");
+    await slack.POST(post("/api/company/slack", { url: HOOK_B }));
+    sent = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      if (String(url) === HOOK_B) return new Response("no_service", { status: 404 });
+      sent.push({ url: String(url), text: JSON.parse(String(init.body)).text });
+      return new Response("ok");
+    });
+    const cron = await import("@/app/api/cron/digest/route");
+    const body = await (await cron.GET(new Request("http://localhost/api/cron/digest", { headers: { authorization: "Bearer cron-secret-for-tests-000" } }))).json();
+    expect(sent.some((x) => x.url === HOOK_A)).toBe(true);
+    expect(body.companies.disconnected).toBeGreaterThanOrEqual(1);
+    const { getStore } = await import("@/lib/server/store");
+    expect(await getStore(gone.scope).getSlackWebhook()).toBeNull();
+  });
 });

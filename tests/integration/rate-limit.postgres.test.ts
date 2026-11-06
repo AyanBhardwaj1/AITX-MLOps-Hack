@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { allowInPostgres } from "@/lib/rate-limit-postgres";
@@ -28,9 +29,11 @@ describe("rate limits shared through Postgres", () => {
     expect(results.filter(Boolean)).toHaveLength(5);
   });
 
-  it("stores no email or IP, only a hash", async () => {
+  it("stores no email or IP, only a keyed hash that can't be recomputed without the server's secret", async () => {
     await allowInPostgres(pool, "login", "victim@acme.example", 3, 60_000, Date.now());
     const { rows } = await pool.query(`select key_hash from public.rate_limits`);
     expect(rows.some((r) => String(r.key_hash).includes("victim"))).toBe(false);
+    const plain = createHash("sha256").update("login:victim@acme.example").digest("hex");
+    expect(rows.some((r) => r.key_hash === plain)).toBe(false);
   });
 });

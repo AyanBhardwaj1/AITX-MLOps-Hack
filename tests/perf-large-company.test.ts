@@ -32,6 +32,7 @@ describe("a large company", () => {
     const a = analyze(data);
     const ms = performance.now() - t;
     expect(a.streams.length).toBeGreaterThan(0);
-    expect(ms).toBeLessThan(800);
+    // ~160 ms locally; the old code took ~1.2 s locally (~2 s+ on a slower CI runner).
+    expect(ms).toBeLessThan(1500);
   });
 });

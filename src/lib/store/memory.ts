@@ -20,6 +20,7 @@ export function createMemoryStore(): Store {
   const uploads = new Map<string, RhoTransaction>();
   let uploadCash: number | null = null;
   let slackWebhook: string | null = null;
+  let lastDigestAt: string | null = null;
   const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
@@ -139,6 +140,12 @@ export function createMemoryStore(): Store {
     },
     async setSlackWebhook(url) {
       slackWebhook = url;
+    },
+    async markDigestSent() {
+      lastDigestAt = new Date().toISOString();
+    },
+    async lastDigestSentAt() {
+      return lastDigestAt;
     },
     async deleteUploadedAccount(account) {
       if (account === CASH_ACCOUNT_ID) return 0;

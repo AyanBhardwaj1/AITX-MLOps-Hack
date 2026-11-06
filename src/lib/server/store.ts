@@ -103,9 +103,10 @@ export async function listCompanyScopesWithUploads(limit: number): Promise<strin
 /** Companies with their own Slack webhook and uploaded data. */
 export async function listCompanyScopesWithSlack(limit: number): Promise<string[]> {
   if (hasDatabase()) return listDigestScopes(getPool(), limit);
-  const found: string[] = [];
+  const found: { scope: string; last: string }[] = [];
   for (const [scope, store] of stores) {
-    if (scope.startsWith("org_") && (await store.getSlackWebhook()) && (await store.loadUploads())) found.push(scope);
+    if (scope.startsWith("org_") && (await store.getSlackWebhook()) && (await store.loadUploads())) found.push({ scope, last: (await store.lastDigestSentAt()) ?? "" });
   }
-  return found.slice(0, limit);
+  // Longest waiting (never sent) first, as in Postgres.
+  return found.sort((a, b) => a.last.localeCompare(b.last)).slice(0, limit).map((f) => f.scope);
 }

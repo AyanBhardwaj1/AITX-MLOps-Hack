@@ -77,7 +77,7 @@ export async function listDigestScopes(pool: Pool, limit: number): Promise<strin
     `select o.slug from public.organizations o join public.company_integrations i on i.org_id = o.id
       where o.slug like 'org\\_%' and i.slack_webhook_url is not null
         and exists (select 1 from public.connections c where c.org_id = o.id and c.provider = 'csv')
-      order by o.created_at limit $1`,
+      order by i.last_digest_at asc nulls first, o.created_at limit $1`,
     [limit],
   );
   return rows.map((r) => r.slug);
@@ -500,6 +500,17 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
          on conflict (org_id) do update set slack_webhook_url = excluded.slack_webhook_url, updated_at = now()`,
         [org, url],
       );
+    },
+
+    async markDigestSent() {
+      const org = await orgId();
+      await pool.query(`update public.company_integrations set last_digest_at = now() where org_id = $1`, [org]);
+    },
+
+    async lastDigestSentAt() {
+      const org = await orgId();
+      const { rows } = await pool.query<{ at: Date | null }>(`select last_digest_at as at from public.company_integrations where org_id = $1`, [org]);
+      return rows[0]?.at?.toISOString() ?? null;
     },
 
     async deleteUploadedAccount(account) {

@@ -1,7 +1,7 @@
 import "server-only";
 import { buildDigest, digestInputFromAnalysis, type Digest } from "../insights/digest";
 import type { Change } from "../insights/changes";
-import { postToSlack } from "../slack";
+import { postToSlack, SlackError } from "../slack";
 import { analyze, type Analysis } from "../pipeline";
 import type { Store } from "../store/types";
 import { loadAnalysis, loadCompanyLabelled, type DataMode, type Dataset } from "./data";
@@ -67,34 +67,61 @@ export async function sendCompanyDigestNow(): Promise<DigestPreview | null> {
 /** Most companies one Monday run looks at; digests are quick, the webhook call is the slow part. */
 const MAX_DIGEST_COMPANIES = 500;
 
+/** Digests in flight at once: the Slack call is the slow part, so a few overlap. */
+const DIGEST_CONCURRENCY = 4;
+
+export interface CompanyDigestsResult {
+  sent: number;
+  failed: number;
+  /** Webhooks Slack says no longer exist (404/410): disconnected, so they stop failing every week. */
+  disconnected: number;
+  /** Companies left for next time because the time budget ran out (they go first then). */
+  skipped: number;
+}
+
 /**
  * The Monday digest for every company that connected its own Slack, each from its own data to its
- * own webhook. Scopes come from the server's list, never a request; stops starting new ones when the
- * time budget is spent.
+ * own webhook. Scopes come from the server's list (longest waiting first), never a request; a few
+ * run at once, and no new one starts once the time budget is spent.
  */
-export async function sendCompanyDigests({ budgetMs }: { budgetMs: number }): Promise<{ sent: number; failed: number; skipped: number }> {
+export async function sendCompanyDigests({ budgetMs }: { budgetMs: number }): Promise<CompanyDigestsResult> {
   const deadline = Date.now() + budgetMs;
-  const scopes = await listCompanyScopesWithSlack(MAX_DIGEST_COMPANIES);
-  const result = { sent: 0, failed: 0, skipped: 0 };
-  for (const [i, scope] of scopes.entries()) {
-    if (Date.now() >= deadline) {
-      result.skipped = scopes.length - i;
-      break;
+  const queue = await listCompanyScopesWithSlack(MAX_DIGEST_COMPANIES);
+  const result: CompanyDigestsResult = { sent: 0, failed: 0, disconnected: 0, skipped: 0 };
+  const worker = async () => {
+    for (let scope = queue.shift(); scope !== undefined; scope = queue.shift()) {
+      if (Date.now() >= deadline) {
+        result.skipped += 1 + queue.length;
+        queue.length = 0;
+        return;
+      }
+      await sendOneCompanyDigest(scope, result);
     }
-    try {
-      const store = getStore(scope);
-      const url = await store.getSlackWebhook();
-      if (!url) continue;
-      const dataset = await loadCompanyLabelled(scope);
-      const analysis = analyze(dataset);
-      const company = (await getAccounts().nameForScope(scope)) ?? "Your company";
-      const digest = await digestFrom({ store, dataset, analysis, company, link: appUrl("company") });
-      await postToSlack(url, digest.slack);
-      result.sent += 1;
-    } catch (err) {
-      console.error("[digest] company digest failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
-      result.failed += 1;
-    }
-  }
+  };
+  await Promise.all(Array.from({ length: DIGEST_CONCURRENCY }, worker));
   return result;
+}
+
+async function sendOneCompanyDigest(scope: string, result: CompanyDigestsResult): Promise<void> {
+  const store = getStore(scope);
+  try {
+    const url = await store.getSlackWebhook();
+    if (!url) return;
+    const dataset = await loadCompanyLabelled(scope);
+    const analysis = analyze(dataset);
+    const company = (await getAccounts().nameForScope(scope)) ?? "Your company";
+    const digest = await digestFrom({ store, dataset, analysis, company, link: appUrl("company") });
+    await postToSlack(url, digest.slack);
+    await store.markDigestSent();
+    result.sent += 1;
+  } catch (err) {
+    if (err instanceof SlackError && (err.status === 404 || err.status === 410)) {
+      // Removed on Slack's side: disconnect, so the owner sees it in settings and it stops failing.
+      await store.setSlackWebhook(null).catch(() => undefined);
+      result.disconnected += 1;
+      return;
+    }
+    console.error("[digest] company digest failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
+    result.failed += 1;
+  }
 }

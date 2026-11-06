@@ -212,7 +212,7 @@ The eval and two independent code reviews caught real bugs during development, e
   - A magic link only works in the browser that asked for it (PKCE).
 - **Single-company deployments** (no Supabase Auth) keep the shared password: with `APP_PASSWORD` set, the app and its APIs need it, and the app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
 - **Basic abuse protection is in place:**
-  - Sign-in links and early-access signups are rate-limited through Postgres when `DATABASE_URL` is set, so the limits hold across server instances (keys are stored as SHA-256 hashes, never the email or IP). Agent and upload routes are limited per IP per server instance.
+  - Sign-in links and early-access signups are rate-limited through Postgres when `DATABASE_URL` is set, so the limits hold across server instances (keys are stored as HMACs under a server-only secret, never the email or IP). Agent and upload routes are limited per IP per server instance.
   - Copilot accepts only user/assistant text, capped in size, so clients can't inject system prompts or forge tool results.
   - Output tokens are capped.
   - Also set a monthly spend limit on the OpenAI project.

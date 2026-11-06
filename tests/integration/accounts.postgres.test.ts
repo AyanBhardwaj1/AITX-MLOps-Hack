@@ -97,3 +97,20 @@ describe("companies the Monday digest goes to", () => {
     expect(await listDigestScopes(pool, 10_000)).not.toContain(both.scope);
   });
 });
+
+describe("Monday digest order", () => {
+  it("serves companies that waited longest (never sent first)", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const make = async () => accounts.ensureCompanyFor({ id: crypto.randomUUID(), email: null });
+    const [sent, waiting] = [await make(), await make()];
+    const row = { id: "u_o", money_movement_id: null, account_id: "uploaded", account_name: "uploaded", account_type: "checking" as const, amount: { amount: -500, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "ZOOM", initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null };
+    for (const c of [sent, waiting]) {
+      const store = createPostgresStore(pool, c.scope);
+      await store.saveUploads(1, [row], 10);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");
+    }
+    await createPostgresStore(pool, sent.scope).markDigestSent();
+    const scopes = await listDigestScopes(pool, 10_000);
+    expect(scopes.indexOf(waiting.scope)).toBeLessThan(scopes.indexOf(sent.scope));
+  });
+});

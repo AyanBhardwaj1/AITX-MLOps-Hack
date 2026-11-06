@@ -6,9 +6,23 @@ const SLACK_TIMEOUT_MS = 10_000;
 export function isSlackWebhookUrl(value: string): boolean {
   try {
     const u = new URL(value);
-    return u.protocol === "https:" && u.hostname === "hooks.slack.com" && !u.username && !u.password && u.pathname.startsWith("/services/");
+    // An explicit port other than 443 is refused (the URL parser drops ":443" itself).
+    return u.protocol === "https:" && u.hostname === "hooks.slack.com" && u.port === "" && !u.username && !u.password && u.pathname.startsWith("/services/");
   } catch {
     return false;
+  }
+}
+
+/** The canonical form to store (lower-case host, no default port), so the database check always agrees. */
+export function normalizeSlackWebhookUrl(value: string): string {
+  return new URL(value).href;
+}
+
+/** Slack refused a post; `status` 404/410 means the webhook was removed on Slack's side. */
+export class SlackError extends Error {
+  constructor(readonly status: number, detail: string) {
+    super(`Slack returned ${status}: ${detail}`);
+    this.name = "SlackError";
   }
 }
 
@@ -19,6 +33,8 @@ export async function postToSlack(webhookUrl: string, text: string, fetchImpl: t
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, mrkdwn: true }),
     signal: AbortSignal.timeout(SLACK_TIMEOUT_MS),
+    // Never carry the digest anywhere a redirect points.
+    redirect: "error",
   });
-  if (!res.ok) throw new Error(`Slack returned ${res.status}: ${(await res.text()).slice(0, 100)}`);
+  if (!res.ok) throw new SlackError(res.status, (await res.text()).slice(0, 100));
 }
