@@ -97,7 +97,7 @@ function zombies(streams: readonly RecurringStream[], txns: readonly EnrichedTxn
       id: `zombie:${holder.toLowerCase().replaceAll(" ", "_")}`,
       kind: "zombie",
       title: `${subs.length} subscription${subs.length > 1 ? "s" : ""} on ${holder}'s idle card`,
-      detail: `${holder}'s card has had no spending except ${names} for ${idleDays} days (last purchase ${lastSpend}). If ${holder} has left, these are orphaned: ${formatCents(savings)}/month.`,
+      detail: `${holder}'s card has had no spending except ${names} for ${idleDays} days (last purchase ${formatDate(lastSpend)}). If ${holder} has left, these are orphaned: ${formatCents(savings)}/month.`,
       // A vendor with two workspaces on the card is still one vendor to cancel.
       vendorKeys: [...new Set(subs.map((s) => s.vendorKey))],
       monthlySavingsCents: savings,

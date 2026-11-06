@@ -102,6 +102,7 @@ describe("detectFindings", () => {
     expect(zombies[0]!.vendorKeys.sort()).toEqual(["figma", "miro"]);
     expect(zombies[0]!.monthlySavingsCents).toBe(12_500);
     expect(zombies[0]!.detail).toContain("Priya Shah");
+    expect(zombies[0]!.detail).toMatch(/last purchase [A-Z][a-z]{2} \d{1,2}, \d{4}\)/);
   });
 
   it("flags the same charge posted twice within three days as a refund opportunity", () => {
