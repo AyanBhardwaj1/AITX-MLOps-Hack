@@ -2,8 +2,9 @@ import type { Cents, EnrichedTxn } from "../types";
 import { countsTowardBurn, inBurnPeriod, type Snapshot } from "./runway";
 
 /**
- * Spend Runway couldn't put in a category, over the months burn averages: it still counts in
- * burn, but not in "Where the money goes", budgets or the 1099 list until someone sets a category.
+ * Spend Runway couldn't put in a category, over the months burn averages: it's all filed under
+ * "Other", so it can't be told apart in "Where the money goes", budgeted by what it really is, or
+ * put on the 1099 list until someone sets a category.
  * What a person chose as "other", and Runway's own placeholders (card spend whose line items
  * weren't uploaded), aren't counted. Pure.
  */
@@ -25,7 +26,8 @@ export function uncategorisedSpend(txns: readonly EnrichedTxn[], snapshot: Snaps
   const byVendor = new Map<string, { name: string; cents: number }>();
   for (const t of txns) {
     if (t.vendor.category !== "other" || t.vendor.source === "user" || t.vendor.source === "catalog") continue;
-    if (!countsTowardBurn(t) || !inBurnPeriod(snapshot, t)) continue;
+    // Charges, as "where the money goes" counts them: one refund doesn't hide a vendor's regular spend.
+    if (t.amountCents >= 0 || !countsTowardBurn(t) || !inBurnPeriod(snapshot, t)) continue;
     const v = byVendor.get(t.vendor.key) ?? { name: t.vendor.name, cents: 0 };
     v.cents -= t.amountCents;
     byVendor.set(t.vendor.key, v);

@@ -20,8 +20,8 @@ export function UncategorisedCard({ spend, mode, burnMonths }: { spend: Uncatego
         </span>
       </div>
       <p className="mt-1 text-sm text-muted">
-        Runway couldn&apos;t tell what {spend.vendorCount === 1 ? "this vendor is" : `these ${spend.vendorCount} vendors are`}. It still counts in burn, but not in
-        where the money goes, budgets or the 1099 list until you set a category. One fix covers every charge from that vendor.
+        Runway couldn&apos;t tell what {spend.vendorCount === 1 ? "this vendor is" : `these ${spend.vendorCount} vendors are`}, so it&apos;s all filed under Other: it
+        counts in burn, but where the money goes, budgets and the 1099 list can&apos;t place it. One fix covers every charge from that vendor.
       </p>
       <ul className="mt-3 divide-y divide-line text-sm">
         {spend.vendors.map((v) => (
@@ -35,7 +35,7 @@ export function UncategorisedCard({ spend, mode, burnMonths }: { spend: Uncatego
               <Link
                 href={`/app/transactions?mode=${mode}&vendor=${encodeURIComponent(v.key)}`}
                 className="ml-3 text-xs font-medium text-brand hover:underline"
-                aria-label={`Set a category for ${v.name}`}
+                aria-label={`Set category for ${v.name}`}
               >
                 Set category
               </Link>

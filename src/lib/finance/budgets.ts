@@ -1,9 +1,8 @@
-import { addDays, daysBetween, monthKey, shiftMonth } from "../dates";
+import { addDays, daysBetween, monthKey, openMonth, shiftMonth } from "../dates";
 import { CADENCE_DAYS } from "../detect/recurring";
 import { MAX_CASH_CENTS } from "../money";
 import { CATEGORIES, type Category, type Cents, type EnrichedTxn, type IsoDate, type RecurringStream } from "../types";
 import { countsTowardBurn, inBurnPeriod, simulateSavings, type Snapshot } from "./runway";
-import { categorySpend } from "./category-spend";
 
 /** Categories that are money in or moving between accounts: nothing to budget. */
 const NOT_SPENDING: ReadonlySet<Category> = new Set(["revenue", "transfer"]);
@@ -296,16 +295,31 @@ export function runwayWithinBudgets(
 }
 
 const SUGGESTION_STEP_CENTS = 100_00;
+const SUGGESTION_MONTHS = 3;
+
+export interface BudgetSuggestions {
+  /** Full months averaged (1-3). */
+  months: number;
+  byCategory: Partial<Record<Category, Cents>>;
+}
 
 /**
- * A starting point for each spending category's budget: its average spend over the last 3
- * complete months (charges before refunds, as budgets count), rounded up to the next $100.
+ * A starting point for each spending category's budget: its average spend (charges before refunds,
+ * as budgets count) over the last 3 complete months the data fully covers, rounded up to the next
+ * $100. Null before the data has a full month.
  */
-export function suggestBudgets(txns: readonly EnrichedTxn[], asOf: IsoDate): Partial<Record<Category, Cents>> {
-  const out: Partial<Record<Category, Cents>> = {};
-  for (const row of categorySpend(txns, asOf, { maxRows: CATEGORIES.length })) {
-    if (row.category === "rest" || !BUDGET_CATEGORIES.includes(row.category) || row.recentCents <= 0) continue;
-    out[row.category] = Math.ceil(row.recentCents / SUGGESTION_STEP_CENTS) * SUGGESTION_STEP_CENTS;
+export function suggestBudgets(txns: readonly EnrichedTxn[], asOf: IsoDate): BudgetSuggestions | null {
+  const first = txns.reduce<IsoDate | null>((min, t) => (min === null || t.postedAt < min ? t.postedAt : min), null);
+  const open = openMonth(asOf);
+  const window = Array.from({ length: SUGGESTION_MONTHS }, (_, i) => shiftMonth(open, -1 - i)).filter((m) => first !== null && `${m}-01` >= first);
+  if (window.length === 0) return null;
+  const months = new Set(window);
+  const totals = new Map<Category, number>();
+  for (const t of txns) {
+    if (t.amountCents >= 0 || !countsTowardBurn(t) || !months.has(monthKey(t.postedAt)) || !BUDGET_CATEGORIES.includes(t.vendor.category)) continue;
+    totals.set(t.vendor.category, (totals.get(t.vendor.category) ?? 0) - t.amountCents);
   }
-  return out;
+  const byCategory: Partial<Record<Category, Cents>> = {};
+  for (const [category, cents] of totals) byCategory[category] = Math.ceil(cents / window.length / SUGGESTION_STEP_CENTS) * SUGGESTION_STEP_CENTS;
+  return { months: window.length, byCategory };
 }

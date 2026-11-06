@@ -62,7 +62,15 @@ describe("the card", () => {
     expect(html).toContain("Needs a category");
     expect(html).toContain('href="/app/transactions?mode=company&amp;vendor=jane_doe_design"');
     expect(html).toContain("these 2 vendors are");
+    expect(html).toContain('aria-label="Set category for Jane Doe Design"');
     const tiny = { monthlyCents: 1_00, shareOfGross: 0.001, vendorCount: 1, vendors: [{ key: "x", name: "X", monthlyCents: 1_00 }] };
     expect(renderToStaticMarkup(createElement(UncategorisedCard, { spend: tiny, mode: "company", burnMonths: 3 }))).toBe("");
+  });
+});
+
+describe("one refund doesn't hide a vendor", () => {
+  it("counts charges, as where the money goes does", () => {
+    const t = [...base, txn("r", "2026-09-20", 5_000_00, "Kwik Mart")];
+    expect(uncategorisedSpend(t, snap(t))!.vendors.find((v) => v.name === "Kwik Mart")!.monthlyCents).toBe(600_00);
   });
 });

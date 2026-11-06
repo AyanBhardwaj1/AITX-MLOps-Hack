@@ -109,7 +109,7 @@ async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["b
     editable: mode === "company",
     sample: mode === "demo",
     asOf: a.asOf,
-    suggestions: suggestBudgets(a.txns, a.asOf),
+    suggestions: suggestBudgets(a.txns, a.asOf) ?? undefined,
   };
 }
 

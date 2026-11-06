@@ -32,7 +32,7 @@ await suite("settings", async ({ browser, step }) => {
     // A suggested budget fills the amount from the last 3 full months, rounded up to $100.
     const budgets = p.getByRole("region", { name: "Budgets" });
     await budgets.getByLabel("Category").selectOption("software");
-    await budgets.getByRole("button", { name: /^Use \$[\d,]+$/ }).click();
+    await budgets.getByRole("button", { name: /^Use \$[\d,]+ as the Software budget$/ }).click();
     assert.match(await budgets.getByLabel("Per month ($)").inputValue(), /^\d+00$/);
     await p.goto(`${APP}/app/settings`);
     const activity = p.getByRole("region", { name: "Recent activity" });
