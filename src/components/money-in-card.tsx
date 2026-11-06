@@ -36,7 +36,7 @@ export function MoneyInCard({ money, mode, runwayMonths }: { money: MoneyIn | nu
               <Link href={`/app/transactions?mode=${mode}&vendor=${encodeURIComponent(p.key)}&direction=in`} className="hover:text-brand hover:underline">
                 {p.name}
               </Link>
-              {p.processor && <span className="ml-1.5 rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">payouts: many customers</span>}
+              {p.processor && <span className="ml-1.5 rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">many customers</span>}
             </span>
             <span className="tabular shrink-0">
               <span className="mr-3 text-xs text-muted">{pct(p.share)}</span>

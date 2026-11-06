@@ -132,7 +132,7 @@ const KIND_LABEL: Record<Finding["kind"], string> = {
 const SECTIONS = [
   ["section-spending", "Spending"],
   ["section-plans", "Plans"],
-  ["share-with-investors", "Investors"],
+  ["section-investors", "Investors"],
   ["section-bills", "Bills & taxes"],
   ["waste-found", "Waste found"],
   ["section-copilot", "Copilot"],
@@ -319,8 +319,8 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </div>
         </section>
 
-        <nav aria-label="Dashboard sections" className="mb-4 overflow-x-auto print:hidden">
-          <ul className="flex gap-2 whitespace-nowrap text-sm">
+        <nav aria-label="Dashboard sections" className="mb-4 print:hidden">
+          <ul className="flex flex-wrap gap-2 text-sm">
             {SECTIONS.map(([id, label]) => (
               <li key={id}>
                 <a href={`#${id}`} className="inline-block rounded-full border border-line bg-panel px-3 py-1 text-muted transition-colors hover:border-brand hover:text-ink">
@@ -415,6 +415,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           initial={data.scenario}
         />
 
+        <div id="section-investors" className="scroll-mt-4" />
         <InvestorUpdateCard mode={data.mode} />
         <div id="share-with-investors" className="scroll-mt-4">
           <ShareLinksPanel mode={data.mode} canManage={data.capabilities.manage} />

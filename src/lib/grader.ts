@@ -53,6 +53,16 @@ const HISTORY_MONTHS = 12;
  * monthly statements of "checking"). A bank's default name ("activity.csv", "transactions.csv")
  * says nothing about the account, so it never groups files on its own.
  */
+/**
+ * The account a file's name points to. Banks' default names carry the account's last four digits
+ * ("Chase1234_Activity2026….CSV"), which upload labels drop; here they tell two cards apart.
+ */
+function graderAccountLabel(name: string): string {
+  const label = fileAccountLabel(name);
+  const lastFour = /^([a-z]+)(\d{4})(?=[^\d]|$)/i.exec(name);
+  return label === DEFAULT_ACCOUNT_LABEL && lastFour ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
+}
+
 /** Shared rows that make two files one account (or half the smaller file, for short ones). */
 const SAME_ACCOUNT_ROWS = 5;
 
@@ -72,6 +82,10 @@ function accountGroups(files: readonly { name: string; label: string; keys: stri
   for (const [pair, count] of shared) {
     const [a, b] = pair.split("|").map(Number) as [number, number];
     const smaller = Math.min(new Set(files[a]!.keys).size, new Set(files[b]!.keys).size);
+    // Files whose names carry different account digits are different accounts, however alike.
+    const digits = (label: string) => /\b\d{4}$/.exec(label)?.[0];
+    const [da, db] = [digits(files[a]!.label), digits(files[b]!.label)];
+    if (da && db && da !== db) continue;
     if (count >= Math.min(SAME_ACCOUNT_ROWS, Math.ceil(smaller / 2))) join(a, b);
   }
   const firstWithLabel = new Map<string, number>();
@@ -127,7 +141,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
       // Card payoffs are decided over all files together below, never per file.
       const r = importStatement(f.text, { accountId: `upload_${i + 1}`, resolvePayoffs: false });
       read.push(r.transactions);
-      fileKeys.push({ name: f.name, label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
+      fileKeys.push({ name: f.name, label: graderAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {

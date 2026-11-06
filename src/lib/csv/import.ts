@@ -41,7 +41,9 @@ const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT\W+THANK 
  */
 const PAYMENT_FROM = /\bPAYMENT\W+FROM\b/i;
 const FROM_OWN_ACCOUNT =
-  /\bFROM\W+(?:(?:BUSINESS|OPERATING|PRIMARY)\s+)?(?:(?:CHECKING|CHK|SAVINGS|SAV|ACCOUNT|ACCT|DDA|MERCURY|RHO|BREX|SVB|CHASE|CITI|PNC|TD BANK|US BANK|WELLS FARGO|BANK OF AMERICA|BOFA|CAPITAL ONE|FIRST REPUBLIC|SILICON VALLEY BANK)\b|[X*]{2,}|\d{4}\b)/i;
+  /\bFROM\W+(?:(?:BUSINESS|OPERATING|PRIMARY)\s+)?(?:(?:CHECKING|CHECK|CHK|SAVINGS|SAV|ACCOUNT|ACCT|DDA|BANK)\b|[X*]+\d*\b|\d{4,}\b)/i;
+/** Days between a payoff leaving checking and arriving on the card. */
+const PAYOFF_LEG_DAYS = 10;
 /** Moving money between the company's own accounts: never burn. */
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
 /** Mercury statuses for money that never moved. */
@@ -335,7 +337,17 @@ function rowToTransaction(cells: readonly string[], m: Mapping, accountId: strin
  * incoming leg of a payoff); otherwise they are the only trace of that card's spend.
  * Decide this over everything uploaded together, never file by file, or card spend gets counted twice.
  */
-export function resolveCardPayoffs(transactions: readonly RhoTransaction[]): { transactions: RhoTransaction[]; cardSpendAsPayoffs: boolean } {
+export function resolveCardPayoffs(input: readonly RhoTransaction[]): { transactions: RhoTransaction[]; cardSpendAsPayoffs: boolean } {
+  // "PAYMENT FROM <a name>" coming in reads as a customer; it's a card's leg of a payoff when
+  // another account shows the same amount going out to a card within a few days.
+  const out = input.filter((t) => t.transaction_type === "credit_repayment" && t.amount.amount < 0);
+  const day = (t: RhoTransaction) => Date.parse(t.initiated_at.slice(0, 10));
+  const isLeg = (t: RhoTransaction) =>
+    (t.transaction_type === "ach_credit" || t.transaction_type === "card_credit") &&
+    PAYMENT_FROM.test(t.counterparty_name) &&
+    CARD_PAYOFF_PATTERN.test(t.counterparty_name) &&
+    out.some((o) => o.account_id !== t.account_id && o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
+  const transactions = input.map((t) => (isLeg(t) ? { ...t, transaction_type: "credit_repayment" } : t));
   const payoffs = transactions.filter((t) => t.transaction_type === "credit_repayment");
   // Only the incoming leg proves the card account was uploaded: a named row may be a debit-card purchase.
   const cardRowsPresent = payoffs.some((t) => t.amount.amount > 0);
@@ -352,7 +364,7 @@ function assertUsd(header: readonly string[], data: readonly string[][]) {
   const cols = header.map(norm);
   const named = cols.map((c) => /\b(amount|debit|credit|gross|net|withdrawals?|deposits?)\s*\(([a-z]{3})\)$/.exec(c)?.[2]).find((code) => code && code !== "usd");
   // The amount's own currency: "Original Currency" (a foreign purchase's, beside a USD amount) isn't it.
-  const col = cols.findIndex((c) => /^(?:transaction )?(?:currency|ccy)(?: code)?$/.test(c));
+  const col = cols.findIndex((c) => /^(?:transaction |settlement )?(?:currency|ccy)(?: code)?$/.test(c));
   const other = col >= 0 ? data.map((r) => (r[col] ?? "").trim().toUpperCase()).find((v) => v && v !== "USD") : undefined;
   if (named || other) throw new Error(`Runway works in US dollars; this file has ${(named ?? other)!.toUpperCase()} amounts.`);
 }

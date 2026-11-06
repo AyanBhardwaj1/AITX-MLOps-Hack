@@ -90,7 +90,8 @@ describe("import hunt, second review", () => {
     for (const d of ["ONLINE PAYMENT FROM SAVANNAH COFFEE CO", "ONLINE PAYMENT FROM 3M COMPANY", "ONLINE PAYMENT FROM CHECKMATE INC", "ONLINE PAYMENT FROM ACCOUNTABLE HQ", "ONLINE PAYMENT FROM BANKSY LTD"]) {
       expect(importCsv(csv([`2026-10-02,${d},8000.00`]), { accountId: "chk", resolvePayoffs: false }).transactions[0]!.transaction_type, d).toBe("ach_credit");
     }
-    for (const d of ["E-PAYMENT FROM BUSINESS CHECKING", "AUTOPAY PAYMENT FROM MERCURY", "ONLINE PAYMENT FROM CHASE CHECKING", "ONLINE PAYMENT FROM WELLS FARGO"]) {
+    // Naming the bank alone ("FROM MERCURY") needs the matching payment out: see the next review's test.
+    for (const d of ["E-PAYMENT FROM BUSINESS CHECKING", "ONLINE PAYMENT FROM OPERATING ACCOUNT"]) {
       expect(importCsv(csv([`2026-10-02,${d},9120.00`]), { accountId: "card", resolvePayoffs: false }).transactions[0]!.transaction_type, d).toBe("credit_repayment");
     }
   });
@@ -107,5 +108,41 @@ describe("import hunt, second review", () => {
       100_000_00,
     );
     expect(g.transactions).toBe(22);
+  });
+});
+
+describe("import hunt, third review", () => {
+  const chk = (rows: string[]) => importCsv(csv(rows), { accountId: "chk", resolvePayoffs: false }).transactions;
+  const card = (rows: string[]) => importCsv(csv(rows), { accountId: "card", resolvePayoffs: false }).transactions;
+
+  it("customers named like banks are money in; own-account legs and legs matching a payoff are payoffs", () => {
+    for (const d of ["ONLINE PAYMENT FROM CHASE MEDICAL GROUP", "ONLINE PAYMENT FROM MERCURY SYSTEMS", "ONLINE PAYMENT FROM CITI TRENDS", "ONLINE PAYMENT FROM BREX INC"]) {
+      const r = resolveCardPayoffs(chk([`2026-10-02,${d},8000.00`, "2026-10-03,AMEX AUTOPAY,-9120.00"]));
+      expect(r.transactions.find((t) => t.counterparty_name === d)!.transaction_type, d).toBe("ach_credit");
+      expect(r.cardSpendAsPayoffs, d).toBe(true);
+    }
+    for (const d of ["E-PAYMENT FROM BANK OF THE WEST", "ONLINE PAYMENT FROM CHECK ACCT", "ONLINE PAYMENT FROM X1234", "ONLINE PAYMENT FROM 000123456789"]) {
+      expect(card([`2026-10-02,${d},9120.00`])[0]!.transaction_type, d).toBe("credit_repayment");
+    }
+    // A leg naming the bank: a payoff when checking shows the payment going out.
+    const r = resolveCardPayoffs([...chk(["2026-10-01,AMEX AUTOPAY,-9120.00"]), ...card(["2026-10-02,AUTOPAY PAYMENT FROM MERCURY,9120.00", "2026-10-03,FIGMA,-15.00"])]);
+    expect(r.transactions.find((t) => t.counterparty_name === "AUTOPAY PAYMENT FROM MERCURY")!.transaction_type).toBe("credit_repayment");
+    expect(r.cardSpendAsPayoffs).toBe(false);
+  });
+
+  it("a 'Settlement Currency' column naming another currency is refused", () => {
+    expect(() => importCsv("Date,Description,Amount,Settlement Currency\n2026-10-01,TESCO,-100.00,GBP", { accountId: "a" })).toThrow(/US dollars/);
+  });
+
+  it("two Chase cards' default file names keep the same seat charge twice in the grader", () => {
+    const seat = ["2026-08-05,SLACK,-87.50", "2026-09-05,SLACK,-87.50", "2026-10-05,SLACK,-87.50"];
+    const g = gradeCsvFiles(
+      [
+        { name: "Chase1234_Activity20261001_20261031_20261101.CSV", text: csv([...seat, "2026-08-01,GUSTO PAYROLL,-5000.00", "2026-10-31,FIGMA,-1.00"]) },
+        { name: "Chase5678_Activity20261001_20261031_20261101.CSV", text: csv([...seat, "2026-08-09,UBER,-20.00"]) },
+      ],
+      100_000_00,
+    );
+    expect(g.transactions).toBe(9);
   });
 });

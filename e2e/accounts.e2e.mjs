@@ -21,7 +21,7 @@ await suite("accounts", async ({ browser, step }) => {
     await a.setViewportSize({ width: 1280, height: 720 });
     // Who pays you: the demo's money comes through Stripe, which is many customers, not one.
     const payers = a.getByRole("region", { name: "Who pays you" });
-    await payers.getByText("payouts: many customers").waitFor();
+    await payers.getByText("many customers", { exact: true }).waitFor();
     assert.equal(await payers.getByText(/If it stopped paying/).count(), 0);
     // 1099s: the demo's law firm and landlord, paid by bank; the CSV lists them.
     const prep = a.getByRole("region", { name: /^1099s for \d{4}$/ });
