@@ -212,7 +212,7 @@ The eval and two independent code reviews caught real bugs during development, e
 
 - **Accounts are new and minimal** (see [ADR-0001](docs/adr/0001-accounts-and-uploaded-data.md)):
   - Teams are simple: the owner invites up to 9 teammates by email from `/app/settings`, can hand ownership to one of them, and is the only one who renames or deletes the company, deletes uploaded data (all of it or one account's), creates or revokes investor links, chooses the Slack channel, or manages the team; members see and work on the same data (uploading, deciding findings, approving drafts, sending the digest to the chosen channel) and can leave. There's no invite email yet (the owner tells them to sign in). Someone who already has a company sees the invite in settings and can join once their own company holds no data. There's no second sign-in factor beyond the email link.
-  - Companies connect by uploading CSV exports; per-company Rho connections wait on Rho partner OAuth. With accounts on, the env Rho feed is off.
+  - Companies connect by uploading CSV exports or OFX/QFX/QBO downloads; per-company Rho connections wait on Rho partner OAuth. With accounts on, the env Rho feed is off.
   - The daily Autopilot reviews every company with uploads (least recently reviewed first, within the cron's time limit), so each company's Inbox has fresh drafts in the morning. Each company can connect its own Slack in settings for its Monday digest (and "Send to Slack now"); the operator's Slack and Jira are never used for a company's data.
   - The company name starts from the email domain; the owner can rename or delete the company at `/app/settings`.
   - A magic link only works in the browser that asked for it (PKCE).
@@ -239,9 +239,11 @@ The eval and two independent code reviews caught real bugs during development, e
 - **SaaS waste is one lever, not the biggest.** On the demo cohort, fixing all detected waste adds about 0.4 months of runway, while delaying one $15k/month hire by 3 months adds about 0.56 (`scripts/runway-levers.ts`; one company shape, illustrative).
 - **Not built yet** (ranked in [the product research](reports/Runway%20product%20go%20to%20market.md)):
   - Rho partner OAuth (needs Rho's partner approval) and a Mercury connector.
-  - Batching low-value Inbox items (ranking by first-year value is built); categorization corrections that stick.
+  - Batching low-value Inbox items (ranking by first-year value is built).
   - Stripe MRR for the revenue side of the default-alive test.
   - Email delivery for the digest; a multi-client view for fractional CFOs.
+- **The OFX reader is built from the OFX 1.x/2.x spec and tested on hand-written files, not yet on real bank downloads.** It reads bank, credit-card and credit-line statements; investment statements are ignored. A download's balance is offered as cash only from a bank account's closing balance (LEDGERBAL). Amounts it can't read unambiguously ("1,500", "12 50") are skipped and reported, never guessed.
+- **Slack alerts are daily, not instant.** A budget going over or runway crossing a line is noticed by the daily job (13:00 UTC), and only from data and cash entered in the last two weeks.
 - **The Rho field mapping is unverified.** It was built from Rho's public docs and earlier hackathon clients, and needs re-checking against the live sandbox and production API.
 
 ## Who builds it
