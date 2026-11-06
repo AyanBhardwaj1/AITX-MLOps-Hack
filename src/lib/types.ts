@@ -53,12 +53,24 @@ export interface VendorInfo {
   job: string | null;
   /** "user": a person corrected it, which overrides every other source. */
   source: "catalog" | "llm" | "fallback" | "user";
-  /** A known (catalog) vendor a person has recategorised: still that company (for the 1099 and processor rules). */
-  catalog?: true;
+  /** A known (catalog) vendor a person has recategorised: the catalog's own category for it. */
+  catalogCategory?: Category;
 }
 
-/** Whether a vendor is a known company from the catalog, whatever category a person gave it. */
-export const isCatalogVendor = (v: Pick<VendorInfo, "source" | "catalog">) => v.source === "catalog" || v.catalog === true;
+/** The catalog's category for a known vendor, whatever category a person gave it; undefined if not a known company. */
+const catalogCategoryOf = (v: Pick<VendorInfo, "source" | "category" | "catalogCategory">) => (v.source === "catalog" ? v.category : v.catalogCategory);
+
+/**
+ * A known company in the role the catalog gives it: true for a catalog vendor, or one a person's fix
+ * left in its catalog category. A fix to another category is the person's call (a wrong match).
+ */
+export const isKnownCompany = (v: Pick<VendorInfo, "source" | "category" | "catalogCategory">) => {
+  const own = catalogCategoryOf(v);
+  return own !== undefined && own === v.category;
+};
+
+/** A payment processor's payouts (Stripe): a known company the catalog itself calls revenue. */
+export const isPaymentProcessor = (v: Pick<VendorInfo, "source" | "category" | "catalogCategory">) => v.category === "revenue" && catalogCategoryOf(v) === "revenue";
 
 export interface EnrichedTxn extends Txn {
   vendor: VendorInfo;

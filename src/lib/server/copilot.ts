@@ -26,6 +26,7 @@ import {
   runScenario,
   scenarioInput,
   draftAction,
+  sameFinding,
   draftActionInput,
   forecastInput,
   getAiSpend,
@@ -76,7 +77,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 /** Persists a draft and returns what the model should see (never sends anything). */
 export type SaveDraft = (draft: ActionDraft) => Promise<{ id: string; status: string }>;
 
-/** Budgets for the chat: the list, the analysis they're measured on (the visitor's own fixes on the demo), and what to say when there are none. */
+/** Budgets for the chat: the list, optionally a different analysis to measure them on, and what to say when there are none. */
 export interface CopilotBudgets {
   list: readonly Budget[];
   /** Loaded only if the model asks about budgets (the demo's costs a second analysis). */
@@ -217,6 +218,12 @@ export function createCopilot(
         description: "Draft (never send) a cancellation email, downgrade request, card-limit checklist or Jira ticket for a finding.",
         inputSchema: draftActionInput,
         execute: async (input) => {
+          // A finding the visitor sees only through their own fixes (or sees differently) isn't the
+          // shared one the Inbox holds: say so rather than draft something else.
+          const seen = a.findings.find((f) => f.id === input.findingId);
+          const shared = draftable.findings.find((f) => f.id === input.findingId);
+          if (seen && (!shared || sameFinding(seen) !== sameFinding(shared)))
+            return { error: "This finding comes from your own category fixes. On the shared demo it's a preview, so it can't be drafted to the Inbox." };
           const draft = draftAction(draftable, input, dismissed);
           if ("error" in draft) return draft;
           const saved = await saveDraft(draft);

@@ -30,3 +30,17 @@ it("answers with the visitor's fixes and drafts only for shared findings", async
   expect(view.findings.map((f) => f.id)).toContain("duplicate_tools:async_video");
   expect(drafts.findings.map((f) => f.id).sort()).toEqual(shared.findings.map((f) => f.id).sort());
 });
+
+it("won't draft a finding the visitor sees only through their own fixes, and says why", async () => {
+  const { encodeDemoCorrections } = await import("@/lib/vendors/demo-cookie");
+  const { copilotAnalyses, createCopilot } = await import("@/lib/server/copilot");
+  visitorCookie = encodeDemoCorrections([{ vendorKey: "slack", category: "software", job: "async_video" }]);
+  const { view, drafts } = await copilotAnalyses("demo");
+  const saved: string[] = [];
+  const agent = createCopilot(view, async (d) => (saved.push(d.findingId), { id: "x", status: "draft" }), new Set(), { list: [] }, drafts) as unknown as {
+    tools: { draft_action: { execute: (input: unknown, opts: unknown) => Promise<{ error?: string }> } };
+  };
+  const r = await agent.tools.draft_action.execute({ findingId: "duplicate_tools:async_video", kind: "jira_ticket" }, { toolCallId: "1", messages: [] });
+  expect(r.error).toMatch(/your own category fixes/);
+  expect(saved).toEqual([]);
+});

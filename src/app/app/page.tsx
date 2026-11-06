@@ -14,6 +14,7 @@ import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, suggestBudgets, t
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
 import { loadAnalysis, parseMode, storedFindings, type DataMode } from "@/lib/server/data";
+import { sameFinding } from "@/lib/agent/tools";
 import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { KNOWN_JOBS } from "@/lib/vendors/catalog";
@@ -111,10 +112,6 @@ async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["b
     suggestions: suggestBudgets(a.txns, a.asOf) ?? undefined,
   };
 }
-
-/** What makes two versions of a finding the same one to act on. */
-const sameFinding = (f: { title: string; vendorKeys: readonly string[]; monthlySavingsCents: number; oneTimeCents: number }) =>
-  JSON.stringify([f.title, f.vendorKeys, f.monthlySavingsCents, f.oneTimeCents]);
 
 async function buildData(mode: DataMode): Promise<DashboardData> {
   const { dataset, analysis: a } = await loadAnalysis(mode, { visitorFixes: true });

@@ -14,10 +14,22 @@ const run = (list: VendorCorrection[]) => {
 };
 
 describe("fixes to known vendors", () => {
-  it("keep a known company off the 1099 list, even when saved unchanged or moved to contractors", () => {
+  it("keep a known company off the 1099 list when saved unchanged; a person's move to contractors lists it", () => {
     const base = run([]).prep!.rows.map((r) => r.key).sort();
     expect(run([{ vendorKey: "pilot", category: "legal_accounting", job: null }]).prep!.rows.map((r) => r.key).sort()).toEqual(base);
-    expect(run([{ vendorKey: "gusto", category: "contractors", job: null }]).prep!.rows.some((r) => r.key === "gusto")).toBe(false);
+    // A wrong catalog match (a contractor named like a known company) can still be put on the list.
+    expect(run([{ vendorKey: "pilot", category: "contractors", job: null }]).prep!.rows.some((r) => r.key === "pilot")).toBe(true);
+  });
+  it("treat a known non-processor marked revenue as a customer, not a payment processor", () => {
+    const inflows = Array.from({ length: 10 }, (_, i) => ({
+      id: `sf_in_${i}`, money_movement_id: null, account_id: d.accounts[0]!.id, account_name: "checking", account_type: "checking" as const,
+      amount: { amount: 90_000_00, currency: "USD" }, status: "settled" as const, transaction_type: "ach_credit", counterparty_name: "ACH DEPOSIT SALESFORCE",
+      initiated_at: `2026-${String(i + 1).padStart(2, "0")}-15T12:00:00Z`, posted_at: `2026-${String(i + 1).padStart(2, "0")}-15T12:00:00Z`, card_id: null, card_name: null, user_full_name: null,
+    }));
+    const a = analyze({ ...d, transactions: [...d.transactions, ...inflows], corrections: new Map([["salesforce", { vendorKey: "salesforce", category: "revenue" as const, job: null }]]) });
+    const m = moneyIn(a.txns, a.snapshot)!;
+    expect(m.payers.find((p) => p.key === "salesforce")?.processor).toBe(false);
+    expect(m.topCustomer?.key).toBe("salesforce");
   });
   it("keep a payment processor's payouts as many customers", () => {
     const { a } = run([{ vendorKey: "stripe", category: "revenue", job: null }]);
