@@ -62,10 +62,11 @@ function target14(a: Analysis, dismissed: ReadonlySet<string>): InstantAnswer {
   return { question: INSTANT_QUESTIONS.target_14, tools: ["plan_to_target", "get_financial_snapshot"], text: lines.join("\n\n") };
 }
 
-function payTwice(a: Analysis): InstantAnswer {
+function payTwice(a: Analysis, dismissed: ReadonlySet<string>): InstantAnswer {
   const overlaps = listFindings(a, { kind: "duplicate_tools" });
   const doubles = listFindings(a, { kind: "duplicate_charge" });
-  const all = [...overlaps, ...doubles];
+  // What the team dismissed isn't waste to them.
+  const all = [...overlaps, ...doubles].filter((f) => !dismissed.has(f.id));
   if (all.length === 0) {
     return { question: INSTANT_QUESTIONS.pay_twice, tools: ["list_findings"], text: "Nothing: no overlapping tools or double charges found." };
   }

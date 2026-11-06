@@ -329,6 +329,19 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       ]);
     });
 
+    it("claims the week's digest once, and gives it back when the post fails", async () => {
+      const store = await makeStore();
+      await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/cccccccccccc");
+      const before = await store.lastDigestSentAt();
+      expect(await store.claimDigest()).toBe(true);
+      // A repeated or retried cron run the same week sends nothing.
+      expect(await store.claimDigest()).toBe(false);
+      // The post failed: give it back, and the next run sends.
+      await store.releaseDigest(before);
+      expect(await store.lastDigestSentAt()).toBe(before);
+      expect(await store.claimDigest()).toBe(true);
+    });
+
     it("claims a budget alert only for the amount the run read, and a new channel re-arms budget alerts", async () => {
       const store = await makeStore();
       await store.setBudget("software", 1_000_00);

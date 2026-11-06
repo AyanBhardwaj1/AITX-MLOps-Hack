@@ -215,6 +215,12 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       await transition("finding", "findings", "fingerprint", fingerprint, () => true, status, { note, actor });
     },
 
+    async findingStatus(fingerprint) {
+      const org = await orgId();
+      const { rows } = await pool.query<{ status: FindingStatus }>(`select status from public.findings where org_id = $1 and fingerprint = $2`, [org, fingerprint]);
+      return rows[0]?.status ?? null;
+    },
+
     async findingDecisions() {
       const org = await orgId();
       const { rows } = await pool.query<{ fingerprint: string; actor: string | null; actor_email: string | null; at: Date }>(
@@ -637,6 +643,22 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
     async markDigestSent() {
       const org = await orgId();
       await pool.query(`update public.company_integrations set last_digest_at = now() where org_id = $1`, [org]);
+    },
+
+    async claimDigest() {
+      const org = await orgId();
+      // One statement: of two overlapping runs, only one finds the week's digest unsent.
+      const { rowCount } = await pool.query(
+        `update public.company_integrations set last_digest_at = now()
+          where org_id = $1 and (last_digest_at is null or last_digest_at < now() - interval '6 days')`,
+        [org],
+      );
+      return rowCount === 1;
+    },
+
+    async releaseDigest(previous) {
+      const org = await orgId();
+      await pool.query(`update public.company_integrations set last_digest_at = $2 where org_id = $1`, [org, previous]);
     },
 
     async lastDigestSentAt() {

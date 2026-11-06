@@ -126,8 +126,15 @@ async function sendOneCompanyDigest(scope: string, result: CompanyDigestsResult)
     const analysis = analyze(dataset);
     const company = (await getAccounts().nameForScope(scope)) ?? "Your company";
     const digest = await digestFrom({ store, dataset, analysis, company, link: appUrl("company"), uploaded: true });
-    await postToSlack(url, digest.slack);
-    await store.markDigestSent();
+    // Once a week: a repeated or retried cron run finds it claimed and posts nothing.
+    const previous = await store.lastDigestSentAt();
+    if (!(await store.claimDigest())) return;
+    try {
+      await postToSlack(url, digest.slack);
+    } catch (err) {
+      await store.releaseDigest(previous).catch(() => undefined);
+      throw err;
+    }
     result.sent += 1;
   } catch (err) {
     if (err instanceof SlackError && (err.status === 404 || err.status === 410)) {

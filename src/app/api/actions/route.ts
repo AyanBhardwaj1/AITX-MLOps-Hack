@@ -28,6 +28,9 @@ export async function GET(request: Request) {
   }
 }
 
+/** Actions searched for the one being decided (the Inbox lists far fewer). */
+const MAX_LOOKUP = 500;
+
 const decideBody = z.object({
   mode: dataModeSchema,
   id: z.string().uuid(),
@@ -43,7 +46,18 @@ export async function POST(request: Request) {
   const parsed = decideBody.safeParse(await readJsonCapped(request));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
-    const store = getStore(await scopeFor(parseMode(parsed.data.mode)));
+    const mode = parseMode(parsed.data.mode);
+    const store = getStore(await scopeFor(mode));
+    const current = (await store.listActions(MAX_LOOKUP)).find((a) => a.id === parsed.data.id);
+    if (!current) return NextResponse.json({ error: "Action not found" }, { status: 404 });
+    if (current.status !== "draft") return NextResponse.json({ error: `Action is already ${current.status}` }, { status: 409 });
+    // Waste the team dismissed is never acted on, whatever drafts are left over.
+    if (parsed.data.decision === "approved" && current.findingFingerprint && (await store.findingStatus(current.findingFingerprint)) === "dismissed") {
+      return NextResponse.json({ error: "Its finding was dismissed, so this draft can't be approved." }, { status: 409 });
+    }
+    // The public demo's Inbox is shared by every visitor: a decision shows for whoever made it but
+    // isn't saved, so the next visitor still sees the drafts (and nothing is ever filed).
+    if (mode === "demo") return NextResponse.json({ action: { ...current, status: parsed.data.decision } });
     const action = await store.decideAction(parsed.data.id, parsed.data.decision);
     if (action.status === "approved" && action.kind === "jira_ticket" && canFileJiraFromApp()) {
       try {

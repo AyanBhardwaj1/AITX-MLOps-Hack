@@ -153,9 +153,10 @@ export interface ActionDraft {
   body: string;
 }
 /** Drafts are built from templates over typed findings, so injected text can't change what gets sent. */
-export function draftAction(a: Analysis, input: z.infer<typeof draftActionInput>): ActionDraft | { error: string } {
+export function draftAction(a: Analysis, input: z.infer<typeof draftActionInput>, dismissed: ReadonlySet<string> = new Set()): ActionDraft | { error: string } {
   const f = a.findings.find((x) => x.id === input.findingId);
   if (!f) return { error: `No finding with id ${input.findingId}` };
+  if (dismissed.has(f.id)) return { error: `The team dismissed finding ${f.id}, so there's nothing to draft for it.` };
   const vendors = f.vendorKeys.join(", ");
   const bodies: Record<ActionDraft["kind"], string> = {
     cancel_email: `Hi,\n\nPlease cancel our subscription (${vendors}) at the end of the current billing period and confirm by email.\n\nContext: ${f.detail}\n\nThanks`,

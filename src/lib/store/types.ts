@@ -87,6 +87,8 @@ export interface Store {
   /** Upserts findings by fingerprint and returns each one's status (dismissals are kept). */
   syncFindings(findings: readonly Finding[]): Promise<Map<string, FindingStatus>>;
   setFindingStatus(fingerprint: string, status: FindingStatus, note?: string, actor?: Actor): Promise<void>;
+  /** A finding's current status (null when this scope has never seen it). */
+  findingStatus(fingerprint: string): Promise<FindingStatus | null>;
   /** The latest decision on each finding: who (when someone signed in made it) and when. */
   findingDecisions(): Promise<Map<string, FindingDecision>>;
   listAcceptedFindings(): Promise<AcceptedFinding[]>;
@@ -155,6 +157,13 @@ export interface Store {
   setSlackWebhook(url: string | null): Promise<void>;
   /** Records that the Monday digest went out now (the companies that waited longest go first). */
   markDigestSent(): Promise<void>;
+  /**
+   * Claims this week's digest: true for exactly one caller unless one was sent in the last 6 days
+   * (a repeated or retried cron run). Marks it sent; `releaseDigest` gives it back after a failed post.
+   */
+  claimDigest(): Promise<boolean>;
+  /** Puts back the time of the digest before a claim whose post failed. */
+  releaseDigest(previous: string | null): Promise<void>;
   lastDigestSentAt(): Promise<string | null>;
   /** Deletes the uploaded rows of one account (never the entered cash); returns how many went. */
   deleteUploadedAccount(account: string): Promise<number>;

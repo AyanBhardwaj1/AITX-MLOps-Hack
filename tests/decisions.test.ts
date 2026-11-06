@@ -39,3 +39,44 @@ describe("who decided a finding", () => {
     await POST(post({ mode: "demo", fingerprint: "zombie:demo-test", status: "open" }));
   });
 });
+
+describe("drafts follow their finding", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key-for-tests-0000000000");
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("VERCEL", "");
+    vi.stubEnv("SIGNUPS", "open");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+  const decide = (body: unknown) => new Request("http://localhost/api/actions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const draft = (fp: string) => ({ fingerprint: `cancel:${fp}`, findingFingerprint: fp, kind: "jira_ticket" as const, title: "Cancel it", body: "Please cancel.", createdBy: "autopilot" as const });
+
+  it("dismissing a finding rejects its pending drafts, and a dismissed finding's draft can't be approved", async () => {
+    const findings = await import("@/app/api/findings/route");
+    const actions = await import("@/app/api/actions/route");
+    const { getStore } = await import("@/lib/server/store");
+    const { scopeFor } = await import("@/lib/server/scope");
+    as(crypto.randomUUID(), "maya@acme.example");
+    const store = getStore(await scopeFor("company"));
+    await store.syncFindings([finding("zombie:loom"), finding("zombie:zoom")]);
+    const [loom, zoom] = await store.saveDrafts([draft("zombie:loom"), draft("zombie:zoom")]);
+    expect((await findings.POST(post({ mode: "company", fingerprint: "zombie:loom", status: "dismissed" }))).status).toBe(200);
+    expect((await store.listActions(10)).find((a) => a.id === loom!.id)!.status).toBe("rejected");
+    // A draft whose finding was dismissed some other way (before this rule) can't be approved.
+    await store.setFindingStatus("zombie:zoom", "dismissed");
+    expect((await actions.POST(decide({ mode: "company", id: zoom!.id, decision: "approved" }))).status).toBe(409);
+  });
+
+  it("on the public demo a decision shows for that visitor but isn't saved for everyone", async () => {
+    const actions = await import("@/app/api/actions/route");
+    const { getStore } = await import("@/lib/server/store");
+    await getStore("demo").syncFindings([finding("zombie:demo-inbox")]);
+    const [d] = await getStore("demo").saveDrafts([draft("zombie:demo-inbox")]);
+    const res = await actions.POST(decide({ mode: "demo", id: d!.id, decision: "rejected" }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).action.status).toBe("rejected");
+    expect((await getStore("demo").listActions(50)).find((a) => a.id === d!.id)!.status).toBe("draft");
+  });
+});

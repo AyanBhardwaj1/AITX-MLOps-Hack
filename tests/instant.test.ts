@@ -165,3 +165,19 @@ describe("who pays us", () => {
     expect(ans).toMatch(/If it stopped paying/);
   });
 });
+
+describe("dismissed findings stay dismissed", () => {
+  it("'pay twice' leaves out what the team dismissed", () => {
+    const doubles = a.findings.filter((f) => f.kind === "duplicate_charge" || f.kind === "duplicate_tools");
+    expect(doubles.length).toBeGreaterThan(0);
+    const gone = doubles[0]!;
+    const text = instantAnswer(a, "pay_twice", new Set([gone.id])).text;
+    expect(text).not.toContain(gone.title);
+  });
+
+  it("Copilot won't draft an action for a dismissed finding", async () => {
+    const { draftAction } = await import("@/lib/agent/tools");
+    const f = a.findings[0]!;
+    expect(draftAction(a, { findingId: f.id, kind: "jira_ticket" }, new Set([f.id]))).toMatchObject({ error: expect.stringMatching(/dismissed/) });
+  });
+});

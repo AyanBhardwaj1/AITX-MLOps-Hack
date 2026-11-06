@@ -8,6 +8,9 @@ import { StoreError, type AcceptedFinding, type ActivityEntry, type Actor, type 
  * In-process store: used when DATABASE_URL isn't set. State lives as long as the server
  * process, which on serverless hosts can be short; the Postgres store is the durable one.
  */
+/** A digest within this long means this week's has gone (6 days: a weekly run a little early still sends). */
+const DIGEST_GAP_MS = 6 * 86_400_000;
+
 export function createMemoryStore(): Store {
   const findingStatus = new Map<string, FindingStatus>();
   const latestFinding = new Map<string, Finding>();
@@ -55,6 +58,9 @@ export function createMemoryStore(): Store {
       decisions.set(fingerprint, { actorId: actor?.id ?? null, by: actor?.email ?? null, at: new Date().toISOString() });
       if (status === "accepted") acceptedAt.set(fingerprint, new Date().toISOString());
       else acceptedAt.delete(fingerprint);
+    },
+    async findingStatus(fingerprint) {
+      return findingStatus.get(fingerprint) ?? null;
     },
     async findingDecisions() {
       return new Map([...decisions].map(([k, v]) => [k, { ...v }]));
@@ -213,6 +219,14 @@ export function createMemoryStore(): Store {
     },
     async lastDigestSentAt() {
       return lastDigestAt;
+    },
+    async claimDigest() {
+      if (lastDigestAt !== null && Date.now() - Date.parse(lastDigestAt) < DIGEST_GAP_MS) return false;
+      lastDigestAt = new Date().toISOString();
+      return true;
+    },
+    async releaseDigest(previous) {
+      lastDigestAt = previous;
     },
     async deleteUploadedAccount(account) {
       if (account === CASH_ACCOUNT_ID) return 0;

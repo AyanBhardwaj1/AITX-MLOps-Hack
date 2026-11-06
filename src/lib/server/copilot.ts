@@ -173,7 +173,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
         description: "Draft (never send) a cancellation email, downgrade request, card-limit checklist or Jira ticket for a finding.",
         inputSchema: draftActionInput,
         execute: async (input) => {
-          const draft = draftAction(a, input);
+          const draft = draftAction(a, input, dismissed);
           if ("error" in draft) return draft;
           const saved = await saveDraft(draft);
           return { ...draft, id: saved.id, status: saved.status, note: "Saved to the Inbox. A person must approve it before anything is sent." };
