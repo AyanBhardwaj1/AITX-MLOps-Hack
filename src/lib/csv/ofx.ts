@@ -1,5 +1,5 @@
 import type { RhoTransaction } from "../rho/schema";
-import { importCsv, inferTransactionType, MOSTLY_POSITIVE_SHARE, parseAmountCents, resolveCardPayoffs, type CsvImport } from "./import";
+import { importCsv, inferTransactionType, MOSTLY_POSITIVE_SHARE, resolveCardPayoffs, type CsvImport } from "./import";
 
 /**
  * OFX statements → the same Rho-shaped transactions a CSV gives. Quicken (.qfx) and QuickBooks Web
@@ -48,7 +48,9 @@ export function combineBalances(lists: readonly (readonly OfxBalance[] | undefin
 /** True for an OFX 1 header, an OFX 2 processing instruction, or a bare <OFX> document. */
 export function looksLikeOfx(text: string): boolean {
   const head = text.slice(0, 4096).replace(/^﻿/, "").trimStart();
-  return /^OFXHEADER\s*:/i.test(head) || /^<\?xml[^>]*\?>\s*<\?OFX\b/i.test(head) || /^<OFX>/i.test(head);
+  if (/^OFXHEADER\s*:/i.test(head) || /^<OFX>/i.test(head)) return true;
+  // OFX 2: the XML declaration, then (optionally) comments and the OFX instruction, then <OFX>.
+  return /^<\?xml[^>]*\?>(?:\s*(?:<!--[\s\S]*?-->|<\?OFX\b[^>]*\?>))*\s*(?:<\?OFX\b|<OFX>)/i.test(head);
 }
 
 /** Any bank export: OFX, QFX and QBO by their content, everything else as a CSV. */
@@ -57,7 +59,10 @@ export function importStatement(text: string, options: ImportOptions): Statement
 }
 
 const STATEMENT = /<(STMTRS|CCSTMTRS)>([\s\S]*?)<\/\1>/gi;
-const TRANSACTION = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+const STATEMENT_OPEN = /<(?:STMTRS|CCSTMTRS)>/gi;
+/** Where transactions start and end; a missing </STMTTRN> ends at the next one (SGML files can be sloppy). */
+const TXN_TAGS = /<STMTTRN>|<\/STMTTRN>|<\/BANKTRANLIST>/gi;
+const F_TRNTYPE = /<TRNTYPE>([^<]*)/i;
 const field = (tag: string) => new RegExp(`<${tag}>([^<]*)`, "i");
 const F = { curdef: field("CURDEF"), acctid: field("ACCTID"), posted: field("DTPOSTED"), amount: field("TRNAMT"), name: field("NAME"), memo: field("MEMO") };
 const TXN_CURRENCY = /<CURRENCY>[\s\S]*?<CURSYM>([^<]*)/i;
@@ -82,8 +87,38 @@ function ofxDate(raw: string): string | null {
   return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(iso) ? iso : null;
 }
 
-/** OFX amounts sometimes carry extra zero decimals ("-12.000"). */
-const ofxAmount = (raw: string) => parseAmountCents(raw.replace(/(\.\d\d)0+$/, "$1"));
+/**
+ * OFX amounts: an optional sign, digits, and "." or "," as the decimal mark ("-.50", "-12,50").
+ * OFX has no thousands separators, so "-12,000" is twelve dollars (only "1,234.56", with both marks, is read as thousands). Extra zero decimals are fine;
+ * fractions of a cent and anything else are refused rather than guessed.
+ */
+function ofxAmount(raw: string): number | null {
+  let s = raw.replace(/\s/g, "");
+  // Both marks ("1,234.56") can only mean comma thousands, which some banks write anyway.
+  if (/^[+-]?\d{1,3}(,\d{3})+\.\d*$/.test(s)) s = s.replaceAll(",", "");
+  const m = /^([+-]?)(\d*)(?:[.,](\d*))?$/.exec(s);
+  if (!m || (!m[2] && !m[3]) || m[2]!.length > 13) return null;
+  const fraction = (m[3] ?? "").replace(/0+$/, "");
+  if (fraction.length > 2) return null;
+  const cents = Number(m[2] || "0") * 100 + Number(fraction.padEnd(2, "0"));
+  return m[1] === "-" ? -cents : cents;
+}
+
+/** Each transaction's block: from its <STMTTRN> to its close, the next one, or the list's end. One pass. */
+function transactionBlocks(body: string): { block: string; at: number }[] {
+  const blocks: { block: string; at: number }[] = [];
+  let open: number | null = null;
+  const close = (end: number) => {
+    if (open !== null) blocks.push({ block: body.slice(open, end), at: open });
+    open = null;
+  };
+  for (const tag of body.matchAll(TXN_TAGS)) {
+    close(tag.index!);
+    if (tag[0].length === "<STMTTRN>".length) open = tag.index! + tag[0].length;
+  }
+  close(body.length);
+  return blocks;
+}
 
 function refuseOtherCurrency(code: string) {
   const c = code.trim().toUpperCase();
@@ -94,35 +129,48 @@ function refuseOtherCurrency(code: string) {
 export function importOfx(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: ImportOptions): StatementImport & { balances: OfxBalance[] } {
   const statements = [...text.matchAll(STATEMENT)];
   if (statements.length === 0) throw new Error("This OFX file has no bank or card statement in it.");
+  if ((text.match(STATEMENT_OPEN)?.length ?? 0) > statements.length) throw new Error("This OFX file looks cut short: a statement in it has no end. Download it again.");
+  // Unreadable transactions are reported by line. Positions only move forward, so count as we go.
+  let lineCursor = 0;
+  let line = 1;
   const lineAt = (index: number) => {
-    let line = 1;
-    for (let i = text.indexOf("\n"); i !== -1 && i < index; i = text.indexOf("\n", i + 1)) line += 1;
+    for (let i = text.indexOf("\n", lineCursor); i !== -1 && i < index; i = text.indexOf("\n", i + 1)) {
+      line += 1;
+      lineCursor = i + 1;
+    }
     return line;
+  };
+  // Every account is named by its number, whatever else is in the file, so a single-account and an
+  // all-accounts download of the same account agree. Two accounts the last four can't tell apart
+  // (a checking and a card both ending 1234) get more digits.
+  const ids = statements.map((s) => ({ id: value(s[2]!, F.acctid).replace(/\s/g, ""), card: s[1]!.toUpperCase() === "CCSTMTRS" }));
+  const distinct = new Map(ids.map((a) => [`${a.card}|${a.id}`, a]));
+  const nameFor = (id: string, card: boolean) => {
+    if (!id) return accountId;
+    const clash = [...distinct.values()].some((o) => (o.id !== id || o.card !== card) && o.id.slice(-4) === id.slice(-4));
+    return clash ? `${accountId} …${id.slice(-8)}${card ? " card" : ""}` : `${accountId} …${id.slice(-4)}`;
   };
   const transactions: RhoTransaction[] = [];
   const skipped: number[] = [];
   const balances: OfxBalance[] = [];
-  for (const s of statements) {
+  for (const [i, s] of statements.entries()) {
     const body = s[2]!;
-    const onCard = s[1]!.toUpperCase() === "CCSTMTRS";
+    const onCard = ids[i]!.card;
     refuseOtherCurrency(value(body, F.curdef));
-    // One statement keeps the name the founder gave the file; several are told apart by number.
-    const last4 = value(body, F.acctid).replace(/\s/g, "").slice(-4);
-    const account = statements.length > 1 && last4 ? `${accountId} …${last4}` : accountId;
+    const account = nameFor(ids[i]!.id, onCard);
     const bodyStart = s.index! + s[0].indexOf(body);
     // A bank account's balance is cash; a card's balance is what's owed, never cash.
     const ledger = onCard ? null : LEDGER.exec(body.slice(body.lastIndexOf("</BANKTRANLIST>") + 1))?.[1];
     const balance = ledger ? ofxAmount(value(ledger, F_BAL.amount)) : null;
-    if (balance !== null) balances.push({ key: value(body, F.acctid).replace(/\s/g, "") || account, cents: balance, asOf: ofxDate(value(ledger!, F_BAL.asOf)) });
-    for (const t of body.matchAll(TRANSACTION)) {
-      const block = t[1]!;
+    if (balance !== null) balances.push({ key: ids[i]!.id || account, cents: balance, asOf: ofxDate(value(ledger!, F_BAL.asOf)) });
+    for (const { block, at } of transactionBlocks(body)) {
       const currency = TXN_CURRENCY.exec(block)?.[1];
       if (currency) refuseOtherCurrency(currency);
       const date = ofxDate(value(block, F.posted));
       const raw = ofxAmount(value(block, F.amount));
       const description = value(block, F.name) || value(block, F.memo);
       if (!date || raw === null || !description) {
-        skipped.push(lineAt(bodyStart + t.index!));
+        skipped.push(lineAt(bodyStart + at - "<STMTTRN>".length));
         continue;
       }
       const amount = flipSigns ? -raw : raw;
@@ -134,7 +182,8 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
         account_type: onCard ? "credit" : "checking",
         amount: { amount, currency: "USD" },
         status: "settled",
-        transaction_type: inferTransactionType(description, amount, onCard),
+        // A card statement says outright which row is the payment toward it.
+        transaction_type: onCard && amount > 0 && value(block, F_TRNTYPE).toUpperCase() === "PAYMENT" ? "credit_repayment" : inferTransactionType(description, amount, onCard),
         counterparty_name: description,
         initiated_at: `${date}T12:00:00Z`,
         posted_at: `${date}T12:00:00Z`,

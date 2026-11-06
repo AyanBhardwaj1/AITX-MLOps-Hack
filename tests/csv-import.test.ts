@@ -98,3 +98,10 @@ describe("importCsv", () => {
     expect(importCsv(csv, { accountId: "a" }).mostlyPositive).toBe(true);
   });
 });
+
+describe("card payoffs by their wording", () => {
+  it("knows a payment to the card however the bank punctuates it", () => {
+    const csv = "Date,Description,Amount\n2026-10-01,PAYMENT - THANK YOU,500.00\n2026-10-02,PAYMENT THANK YOU,10.00\n2026-10-03,THANK YOU FOR SHOPPING,-5.00\n";
+    expect(importCsv(csv, { accountId: "card", resolvePayoffs: false }).transactions.map((t) => t.transaction_type)).toEqual(["credit_repayment", "credit_repayment", "ach_debit"]);
+  });
+});

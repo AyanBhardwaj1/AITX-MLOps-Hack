@@ -33,7 +33,7 @@ export interface CsvImport {
 }
 
 /** Paying off the company's own card. A transfer only when the card's rows are also uploaded. */
-const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT THANK YOU|ONLINE PAYMENT)\b/i;
+const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT\W+THANK YOU|ONLINE PAYMENT)\b/i;
 /** Moving money between the company's own accounts: never burn. */
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
 /** Mercury statuses for money that never moved. */

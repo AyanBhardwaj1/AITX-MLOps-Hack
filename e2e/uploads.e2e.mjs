@@ -47,7 +47,7 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByText("3 transactions found.").waitFor();
     await p.getByRole("button", { name: "Upload and analyse" }).click();
     await p.getByText(/Saved 3 new transactions/).waitFor({ timeout: 20_000 });
-    await p.getByRole("button", { name: "Delete chase ink" }).waitFor();
+    await p.getByRole("button", { name: "Delete chase ink …9876" }).waitFor();
     await p.setInputFiles('input[type="file"]', FIXTURES + "chase-ink-oct.qfx");
     await p.getByText("3 transactions found.").waitFor();
     await p.getByRole("button", { name: "Upload and analyse" }).click();
