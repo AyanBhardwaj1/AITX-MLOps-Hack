@@ -1,5 +1,6 @@
 // Sign in, upload, see your own dashboard, sign out; another founder sees none of it.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { APP, signIn, suite, uploadSample } from "./helpers.mjs";
 
 await suite("accounts", async ({ browser, step }) => {
@@ -23,6 +24,20 @@ await suite("accounts", async ({ browser, step }) => {
     const href = await a.locator('link[rel="manifest"]').getAttribute("href");
     const manifest = await (await fetch(new URL(href, APP))).json();
     assert.equal(manifest.start_url, "/app");
+  });
+  await step("the grader's monthly P&L downloads from the browser, with nothing uploaded", async () => {
+    await a.goto(`${APP}/grader`);
+    const rows = ["2026-08", "2026-09", "2026-10"].flatMap((m) => [`${m}-01,GUSTO PAYROLL,-5000.00`, `${m}-05,STRIPE TRANSFER,3000.00`, `${m}-09,FIGMA,-45.00`]);
+    const sent = [];
+    a.on("request", (r) => r.postData()?.includes("GUSTO PAYROLL") && sent.push(r.url()));
+    await a.setInputFiles('input[type="file"]', { name: "checking.csv", mimeType: "text/csv", buffer: Buffer.from(["Date,Description,Amount", ...rows, "2026-10-31,FIGMA,-1.00"].join("\n")) });
+    await a.getByLabel(/Today's total cash/).fill("100000");
+    await a.getByRole("button", { name: "Grade my runway" }).click();
+    const [dl] = await Promise.all([a.waitForEvent("download"), a.getByRole("button", { name: "Download monthly P&L (CSV)" }).click()]);
+    const lines = readFileSync(await dl.path(), "utf8").replace(/^\uFEFF/, "").trim().split("\r\n");
+    assert.equal(lines[0], "Category,Aug 2026,Sep 2026,Oct 2026,Total");
+    assert.equal(lines.at(-1), "Net cash flow,-2045,-2045,-2046,-6136");
+    assert.deepEqual(sent, []);
   });
   await step("company pages send a signed-out visitor to sign in; the APIs answer 401", async () => {
     await a.goto(`${APP}/app?mode=company`);

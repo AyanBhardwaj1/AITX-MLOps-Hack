@@ -44,6 +44,7 @@ demo, the free grader and the public site work exactly as before.
 - **Monthly cash P&L.** "Where the money goes" downloads a year of whole months as a CSV: net
   cash per category per month (money in positive, refunds netted, transfers and pending left out)
   and a net row that matches burn's monthly figures to the cent. For the accountant or the board.
+  The free grader offers the same download, built in the browser (the files still never leave it).
 - **Upload reminder in Slack.** When a company's data is two weeks old (when the alerts go
   quiet), the daily job reminds its Slack once for that export to upload a fresh one.
 - **Add to your home screen.** A web app manifest lets a phone install Runway; it opens on the

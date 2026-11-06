@@ -37,6 +37,14 @@ describe("gradeCsvFiles", () => {
     expect(g.runwayMonths).toBeCloseTo(api.snapshot.runwayMonths, 0);
   });
 
+  it("builds the monthly cash P&L in the browser, matching the connected account's", async () => {
+    const { cashPnl } = await import("@/lib/finance/cash-pnl");
+    const g = gradeCsvFiles([{ name: "mercury.csv", text: mercuryCsv(demo.transactions) }], cash);
+    const fromApi = cashPnl(api.txns, api.asOf)!;
+    expect(g.pnl!.months).toEqual(fromApi.months);
+    expect(g.pnl!.netCents).toEqual(fromApi.netCents);
+  });
+
   it("reports unreadable files and rows instead of failing silently", () => {
     const g = gradeCsvFiles([{ name: "junk.csv", text: "foo,bar\n1,2" }, { name: "ok.csv", text: "date,description,amount\n2026-09-05,ZOOM.US,-149.90\nbad,ZOOM,1\n" }], 100_000_00);
     expect(g.errors).toEqual([expect.stringContaining("junk.csv")]);

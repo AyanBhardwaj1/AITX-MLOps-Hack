@@ -8,6 +8,7 @@ import { analyze } from "./pipeline";
 import type { RhoTransaction } from "./rho/schema";
 import type { Cents, Finding, IsoDate } from "./types";
 import { burnBridge, type BurnBridge } from "./finance/burn-bridge";
+import { cashPnl, type CashPnl } from "./finance/cash-pnl";
 
 /**
  * The free Runway Grader: bank CSV exports in, runway and the biggest waste out. Same deterministic
@@ -38,6 +39,8 @@ export interface GraderResult {
   errors: string[];
   /** Last complete month's net burn against the month before, vendor by vendor (null: not two whole months). */
   bridge: BurnBridge | null;
+  /** Net cash per category per whole month, for the P&L download (built here, in the browser). */
+  pnl: CashPnl | null;
 }
 
 const TOP_FINDINGS = 3;
@@ -197,6 +200,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     zeroCashDate: a.snapshot.zeroCashDate,
     range: { p10: forecast.runwayMonths.p10, p90: forecast.runwayMonths.p90 },
     bridge: burnBridge(a.txns, a.asOf),
+    pnl: cashPnl(a.txns, a.asOf),
     wasteMonthlyCents: a.findings.reduce((s, f) => s + f.monthlySavingsCents, 0),
     oneTimeCents: a.findings.reduce((s, f) => s + f.oneTimeCents, 0),
     // First-year value, so a recurring $57/month outranks a one-off $120.
