@@ -32,8 +32,9 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Uploaded bank exports:</strong> your files are read in your browser. Only the transaction rows are sent and stored for your
-                company: date, description, amount, the account name you give each file, and the cardholder where the export has one, plus the
-                cash balance you enter. Nobody else’s account can read them.
+                company: date, description, amount, the account name you give each file (for an OFX, Quicken or QuickBooks download, with the
+                account number’s last four digits and its kind, such as “savings”), and the cardholder where the export has one, plus the
+                cash balance you enter. Full account numbers and a download’s balances stay in your browser. Nobody else’s account can read them.
               </li>
               <li>
                 <strong>Connected bank data:</strong> account names and balances and the transaction history your bank’s API returns (the
