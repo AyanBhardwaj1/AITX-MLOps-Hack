@@ -189,7 +189,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     burnBridge: burnBridge(a.txns, a.asOf),
     people: peopleSpend(a.txns, a.snapshot),
     // From today (data can stop a while back): what the schedules say is still to go out.
-    committed: committedSpend(a.streams, { from: new Date().toISOString().slice(0, 10), days: 30, cashCents: a.snapshot.cashCents }),
+    committed: committedSpend(a.streams, { from: new Date().toISOString().slice(0, 10), days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf }),
     capabilities: {
       copilot: hasOpenAI(),
       jira: canFileJiraFromApp(),

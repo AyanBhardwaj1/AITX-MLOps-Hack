@@ -33,3 +33,14 @@ describe("committed spend in the next 30 days", () => {
     expect(c.items.map((i) => i.date)).toEqual(["2026-12-01"]);
   });
 });
+
+describe("committed spend, review", () => {
+  it("tells per-seat streams apart and says when cash falls short", () => {
+    const a = { ...stream("slack", "software", "monthly", "2026-11-10", 900_00), cardholder: "Maya Chen" };
+    const b = { ...stream("slack", "software", "monthly", "2026-11-10", 900_00), cardholder: "Sam Lee" };
+    const c = committedSpend([a, b], { from: "2026-11-06", days: 30, cashCents: 1_000_00 });
+    const keys = c.items.map((i) => `${i.vendorKey}|${i.cardholder ?? ""}|${i.workspace ?? ""}|${i.date}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(c.cashAfterCents).toBe(-800_00);
+  });
+});

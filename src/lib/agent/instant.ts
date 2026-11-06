@@ -215,7 +215,9 @@ function committedAnswer(a: Analysis): InstantAnswer {
     question: INSTANT_QUESTIONS.committed,
     tools,
     text: [
-      `**${formatDollars(c.totalCents)}** in recurring charges is scheduled between ${formatDate(c.from)} and ${formatDate(c.until)}, leaving **${formatDollars(c.cashAfterCents)}** of today's cash. The biggest:`,
+      `**${formatDollars(c.totalCents)}** in recurring charges is scheduled between ${formatDate(c.from)} and ${formatDate(c.until)}, ${
+        c.cashAfterCents >= 0 ? `leaving **${formatDollars(c.cashAfterCents)}**` : `**${formatDollars(-c.cashAfterCents)} more** than`
+      } the cash Runway has${c.cashAsOf ? ` (as of ${formatDate(c.cashAsOf)})` : ""}. The biggest:`,
       rows.join("\n"),
       "That's a floor: one-off and usage-based spend come on top.",
     ].join("\n\n"),

@@ -148,3 +148,28 @@ describe("review of the detector fixes", () => {
     expect(searchable("a \u0000 b")).toBe("a b");
   });
 });
+
+describe("second review of the detector fixes", () => {
+  it("doesn't swallow other businesses into Apple or Amazon", () => {
+    for (const d of ["BIG APPLE BAGELS", "APPLE LEISURE GROUP", "CANDY APPLE CAFE"]) expect(resolveVendor(d).key, d).not.toBe("apple");
+    expect(resolveVendor("APPLE COM BILL").key).toBe("apple_subscriptions");
+    expect(resolveVendor("APPLE").key).toBe("apple");
+    expect(resolveVendor("APPLE.COM 800-676-2775 CA").key).toBe("apple");
+    expect(resolveVendor("AMAZON WEB SVCS").key).toBe("aws");
+    for (const d of ["AMAZON MUSIC*AB12", "AMAZON KINDLE SVCS", "AMAZON.COM*PRIME MEMBER", "AMAZON BUSINESS PRIME"]) expect(resolveVendor(d).key, d).toBe("amazon_prime");
+    expect(resolveVendor("AMZN Mktp US*123").key).toBe("amazon");
+  });
+
+  it("verifies the rest of a double charge after a partial refund between the legs", () => {
+    const txns = [txn("SOMEVENDOR INC", "2026-10-01", -100_00, undefined, "Card:a1"), txn("SOMEVENDOR INC", "2026-10-02", 40_00, undefined, "p"), txn("SOMEVENDOR INC", "2026-10-03", -100_00, undefined, "Card:a2"), txn("SOMEVENDOR INC", "2026-10-20", 60_00, undefined, "rest")];
+    const f: AcceptedFinding = { fingerprint: "duplicate_charge:somevendor_inc:Card:a2", kind: "duplicate_charge", title: "x", vendorKeys: ["somevendor_inc"], monthlySavingsCents: 0, oneTimeCents: 60_00, acceptedAt: "2026-10-05T00:00:00Z" };
+    expect(verifySavings([f], txns, "2026-10-25").checks[0]!.status).toBe("verified");
+  });
+
+  it("isn't moved by one late or early posting", () => {
+    const late = ["2026-07-26", "2026-08-26", "2026-09-26", "2026-10-26", "2026-11-30"].map((d) => txn("NOTION", d, -100_00));
+    expect(detectStreams(late, "2026-12-01")[0]!.nextExpected).toBe("2026-12-26");
+    const early = ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-30"].map((d) => txn("FIGMA", d, -100_00));
+    expect(detectStreams(early, "2026-10-02")[0]!.nextExpected).toBe("2026-11-01");
+  });
+});

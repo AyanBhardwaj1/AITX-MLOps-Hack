@@ -142,7 +142,13 @@ function checkRefund(txns: readonly EnrichedTxn[], f: AcceptedFinding, acceptedO
   const charge = txns.find((t) => t.id === chargeId);
   // Refunds count from the double charge on (never one from before it), and only for a while after
   // it or after acting on it; without the charge row, only refunds after acting count.
-  const since = charge ? charge.postedAt : acceptedOn;
+  // The first leg: the same amount from the vendor a few days before (the detector's own rule).
+  const firstLeg = charge
+    ? txns
+        .filter((t) => t.id !== charge.id && t.vendor.key === vendorKey && t.amountCents === charge.amountCents && t.postedAt <= charge.postedAt && daysBetween(t.postedAt, charge.postedAt) <= SAME_EVENT_DAYS)
+        .sort((a, b) => b.postedAt.localeCompare(a.postedAt))[0]
+    : undefined;
+  const since = charge ? (firstLeg?.postedAt ?? charge.postedAt) : acceptedOn;
   const until = addDays(charge && charge.postedAt > acceptedOn ? charge.postedAt : acceptedOn, REFUND_WAIT_DAYS);
   let alreadyNetted = charge ? Math.max(0, -charge.amountCents - f.oneTimeCents) : 0;
   const refunds = txns

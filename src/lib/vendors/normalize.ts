@@ -5,7 +5,9 @@ import { VENDOR_CATALOG, type CatalogEntry } from "./catalog";
 const BANK_BOILERPLATE = /^(?:(?:purchase|recurring payment|recurring purchase) authorized on \d{1,2}\/\d{1,2}(?:\/\d{2,4})?|checkcard \d{4}|pos (?:debit|purchase)|debit card purchase|card purchase)\s+/;
 const PROCESSOR_PREFIX = /^(sq|tst|paypal|pp|sp|py|pos|checkcard)\s*\*\s*/;
 /** Amazon order descriptors carry an order reference (and more), which must not become the vendor. */
-const AMAZON_MARKETPLACE = /^(?:amzn mktp(?: us)?|amazon\.com|amzn\.com)\s*\*.*$/;
+const AMAZON_MARKETPLACE = /^(?:amzn mktp(?: us)?|amazon\.com|amzn\.com)\s*\*(?!.*\b(?:prime|music|kindle)\b).*$/;
+/** A descriptor that is just the brand (and maybe a state): "APPLE", "APPLE.COM … CA", "AMAZON". */
+const BARE_BRAND = /^(apple|amazon)(?: [a-z]{2})?$/;
 const DOMAIN_SUFFIX = /\.(com|net|io|us|co|ai|app)\b/g;
 const PHONE = /\d{3}[-. ]\d{3}[-. ]\d{4}/g;
 const STORE_NUMBER = /#\s*\d+/g;
@@ -51,7 +53,8 @@ function matchCatalog(cleaned: string): CatalogEntry | null {
 /** Maps a raw bank descriptor to a vendor. Catalog hits are free; unknowns get a stable fallback key. */
 export function resolveVendor(rawDescriptor: string): VendorInfo {
   const cleaned = cleanDescriptor(rawDescriptor);
-  const entry = matchCatalog(cleaned);
+  const bare = BARE_BRAND.exec(cleaned)?.[1];
+  const entry = matchCatalog(cleaned) ?? (bare ? (VENDOR_CATALOG.find((e) => e.key === bare) ?? null) : null);
   if (entry) {
     return { key: entry.key, name: entry.name, category: entry.category, job: entry.job, source: "catalog" };
   }

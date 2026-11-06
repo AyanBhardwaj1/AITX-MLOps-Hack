@@ -40,7 +40,7 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   { key: "new_relic", name: "New Relic", category: "software", job: "observability", aliases: ["new relic", "newrelic"] },
   { key: "sentry", name: "Sentry", category: "software", job: "error_tracking", aliases: ["sentry"] },
   { key: "vercel", name: "Vercel", category: "cloud", job: "frontend_hosting", aliases: ["vercel"] },
-  { key: "aws", name: "AWS", category: "cloud", job: null, aliases: ["aws", "amazon web services"] },
+  { key: "aws", name: "AWS", category: "cloud", job: null, aliases: ["aws", "amazon web services", "amazon web svcs", "amzn web services"] },
   { key: "gcp", name: "Google Cloud", category: "cloud", job: null, aliases: ["google *cloud", "google cloud"] },
   { key: "openai", name: "OpenAI", category: "ai_api", job: null, aliases: ["openai"] },
   { key: "anthropic", name: "Anthropic", category: "ai_api", job: null, aliases: ["anthropic"] },
@@ -67,12 +67,14 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   { key: "uber", name: "Uber", category: "travel", job: null, aliases: ["uber trip", "uber"] },
   { key: "doordash", name: "DoorDash", category: "meals", job: null, aliases: ["doordash"] },
   // Apple's subscription billing (App Store, iCloud) is software; the Apple Store is hardware.
-  { key: "apple_subscriptions", name: "Apple (App Store, iCloud)", category: "software", job: null, aliases: ["apple.com/bill", "itunes"] },
-  // Generic "apple" last-resort: the longer subscription aliases above win where they match.
-  { key: "apple", name: "Apple", category: "hardware", job: null, aliases: ["apple store", "apple online store", "apple"] },
-  // Amazon orders: supplies and equipment, bought again and again (never a "double charge").
-  { key: "amazon", name: "Amazon", category: "hardware", job: null, aliases: ["amazon"] },
-  { key: "amazon_prime", name: "Amazon Prime", category: "software", job: null, aliases: ["amazon prime", "amzn prime"] },
+  { key: "apple_subscriptions", name: "Apple (App Store, iCloud)", category: "software", job: null, aliases: ["apple.com/bill", "apple com bill", "itunes"] },
+  // Plain "APPLE" / "APPLE.COM … CA" descriptors are matched exactly in normalize.ts, never as a
+  // word inside another business's name ("BIG APPLE BAGELS").
+  { key: "apple", name: "Apple", category: "hardware", job: null, aliases: ["apple store", "apple online store"] },
+  // Amazon orders (supplies and equipment, bought again and again; never a "double charge"):
+  // matched from the order descriptors in normalize.ts. Subscriptions are their own vendor.
+  { key: "amazon", name: "Amazon", category: "hardware", job: null, aliases: [] },
+  { key: "amazon_prime", name: "Amazon Prime", category: "software", job: null, aliases: ["amazon prime", "amzn prime", "amazon music", "amazon kindle", "kindle svcs", "prime member", "amazon business prime"] },
   // Money in and bank
   { key: "stripe", name: "Stripe payouts", category: "revenue", job: null, aliases: ["stripe"] },
   { key: "bank_fees", name: "Bank fees", category: "fees", job: null, aliases: ["wire fee", "service fee", "foreign transaction fee"] },

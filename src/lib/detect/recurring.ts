@@ -101,9 +101,11 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   for (const d of days) counts.set(d, (counts.get(d) ?? 0) + 1);
   // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
   const usual = [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]![0];
-  // A billing day that moved: the last charge's day, when it's well away from the usual one.
+  // A billing day that moved: the last charge's day, when it's more than a week from the usual one
+  // (a holiday or weekend posting a few days off, either side of a month end, isn't a move).
   const lastDay = days.at(-1)!;
-  const billingDay = Math.abs(lastDay - usual) > 3 ? lastDay : usual;
+  const apart = Math.abs(lastDay - usual);
+  const billingDay = Math.min(apart, 31 - apart) > 7 ? lastDay : usual;
   const on = (month: string) => {
     const [y, m] = month.split("-").map(Number) as [number, number];
     return `${month}-${String(Math.min(billingDay, new Date(Date.UTC(y, m, 0)).getUTCDate())).padStart(2, "0")}`;
