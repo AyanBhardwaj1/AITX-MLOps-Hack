@@ -2,6 +2,7 @@ import { z } from "zod";
 import { resolveCardPayoffs } from "../csv/import";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
 import type { Cents } from "../types";
+import { MAX_CASH_CENTS } from "../money";
 
 /**
  * Bank exports uploaded into a company. The browser parses files with the grader's importer and
@@ -34,7 +35,7 @@ export type UploadRow = z.infer<typeof uploadRow>;
 
 export const uploadChunk = z.object({
   /** Today's total cash across bank accounts (a CSV has no balance). */
-  cashCents: z.number().int().min(0).max(1e13),
+  cashCents: z.number().int().min(0).max(MAX_CASH_CENTS),
   rows: z.array(uploadRow).min(1).max(MAX_CHUNK_ROWS),
 });
 export type UploadChunk = z.infer<typeof uploadChunk>;

@@ -6,8 +6,12 @@ import { formatDollars, parseDollarsToCents } from "@/lib/money";
 
 type State = { kind: "idle" } | { kind: "busy" } | { kind: "saved"; cents: number } | { kind: "error"; message: string };
 
-/** Cash moves every day and exports don't: anyone on the team can update it without a file. */
-export function CashUpdate({ cashCents }: { cashCents: number }) {
+/**
+ * Cash moves every day and exports don't: anyone on the team can update it without a file.
+ * `onSaved` lets the upload form beside it take the new figure, so its next upload doesn't put
+ * the old one back.
+ */
+export function CashUpdate({ cashCents, onSaved }: { cashCents: number; onSaved: (cents: number) => void }) {
   const id = useId();
   const router = useRouter();
   const [draft, setDraft] = useState("");
@@ -16,7 +20,7 @@ export function CashUpdate({ cashCents }: { cashCents: number }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const cents = parseDollarsToCents(draft);
-    if (cents === null) return setState({ kind: "error", message: "Enter today's total cash in dollars, like 482,000." });
+    if (cents === null) return setState({ kind: "error", message: "Enter today's total cash in dollars, like 482,000 (up to $100 billion)." });
     setState({ kind: "busy" });
     const res = await fetch("/api/uploads/cash", {
       method: "POST",
@@ -27,6 +31,7 @@ export function CashUpdate({ cashCents }: { cashCents: number }) {
     if (!res?.ok) return setState({ kind: "error", message: body?.error ?? "Couldn’t save that just now. Try again." });
     setDraft("");
     setState({ kind: "saved", cents });
+    onSaved(cents);
     router.refresh();
   }
 
@@ -47,6 +52,8 @@ export function CashUpdate({ cashCents }: { cashCents: number }) {
             placeholder="482,000"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            aria-invalid={state.kind === "error" || undefined}
+            aria-describedby={state.kind === "error" ? `${id}-error` : undefined}
             className="tabular w-44 rounded-lg border border-line bg-panel px-3 py-2 focus-visible:border-brand"
           />
           <button
@@ -61,7 +68,7 @@ export function CashUpdate({ cashCents }: { cashCents: number }) {
           </p>
         </div>
         {state.kind === "error" && (
-          <p role="alert" className="text-warn">
+          <p id={`${id}-error`} role="alert" className="text-warn">
             {state.message}
           </p>
         )}

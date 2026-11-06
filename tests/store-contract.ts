@@ -219,6 +219,8 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       };
       await store.saveUploads(100_000_00, [row], 10);
       expect(await store.setUploadCash(75_000_00)).toBe("saved");
+      // The same figure again changes nothing (and so logs nothing).
+      expect(await store.setUploadCash(75_000_00)).toBe("unchanged");
       const loaded = await store.loadUploads();
       expect(loaded!.cashCents).toBe(75_000_00);
       expect(loaded!.rows).toHaveLength(1);

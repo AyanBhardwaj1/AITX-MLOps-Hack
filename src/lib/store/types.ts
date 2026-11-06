@@ -118,7 +118,7 @@ export interface Store {
    */
   saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
   /** Sets today's cash without adding rows; "no_uploads" when nothing has been uploaded to attach it to. */
-  setUploadCash(cashCents: number): Promise<"saved" | "no_uploads">;
+  setUploadCash(cashCents: number): Promise<"saved" | "unchanged" | "no_uploads">;
   /** Everything uploaded for this scope, or null when nothing has been. */
   loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
   /** Appends to the company's activity log (server-written text only). */

@@ -290,7 +290,7 @@ export function UploadForm({
               </dd>
             </div>
           </dl>
-          {storageReady && <CashUpdate cashCents={summary.cashCents} />}
+          {storageReady && <CashUpdate cashCents={summary.cashCents} onSaved={(cents) => setCash(String(cents / 100))} />}
           {summary.accounts.length > 0 && (
             <table className="mt-4 w-full text-left text-sm">
               <caption className="sr-only">Uploaded accounts</caption>

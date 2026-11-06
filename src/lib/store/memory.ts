@@ -134,6 +134,7 @@ export function createMemoryStore(): Store {
     },
     async setUploadCash(cashCents) {
       if (uploads.size === 0 || uploadCash === null) return "no_uploads";
+      if (uploadCash === cashCents) return "unchanged";
       uploadCash = cashCents;
       return "saved";
     },

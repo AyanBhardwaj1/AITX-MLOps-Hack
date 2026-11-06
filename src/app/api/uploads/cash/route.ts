@@ -36,11 +36,12 @@ export async function POST(request: Request) {
     // Falls through to validation.
   }
   const parsed = body.safeParse(raw);
-  if (!parsed.success) return NextResponse.json({ error: "Enter today's total cash in dollars." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Enter today's total cash in dollars, up to $100 billion." }, { status: 400 });
   try {
     const result = await getStore(scope).setUploadCash(parsed.data.cashCents);
     if (result === "no_uploads") return NextResponse.json({ error: "Upload a bank export first; the cash goes with it." }, { status: 409 });
-    await logActivity(scope, "cash", `Set today's cash to ${formatDollars(parsed.data.cashCents)}`);
+    // The same figure again changes nothing, so it can't push real entries out of the log.
+    if (result === "saved") await logActivity(scope, "cash", `Set today's cash to ${formatDollars(parsed.data.cashCents)}`);
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);

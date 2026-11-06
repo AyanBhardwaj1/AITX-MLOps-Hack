@@ -34,5 +34,9 @@ describe("typed cash amounts", () => {
     // Past what a number holds exactly: refused rather than rounded.
     expect(parseDollarsToCents("90071992547409.93")).toBeNull();
     for (const bad of ["", "-5", "1.234", "abc", "1e6", "1.2.3", "."]) expect(parseDollarsToCents(bad)).toBeNull();
+    // The same ceiling the server enforces, so the browser never sends what will be refused.
+    const { MAX_CASH_CENTS } = await import("@/lib/money");
+    expect(parseDollarsToCents("100,000,000,000")).toBe(MAX_CASH_CENTS);
+    expect(parseDollarsToCents("100,000,000,000.01")).toBeNull();
   });
 });

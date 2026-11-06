@@ -154,6 +154,9 @@ describe("POST /api/uploads", () => {
     const store = getStore(await scopeFor("company"));
     expect((await store.loadUploads())!.cashCents).toBe(2_345_678_00);
     expect((await store.listActivity(5))[0]).toMatchObject({ kind: "cash", actorEmail: "user-l@acme.example", detail: "Set today's cash to $2,345,678" });
+    // Posting the same figure again is fine, but can't fill the log.
+    for (let i = 0; i < 3; i++) expect((await cash(req({ cashCents: 2_345_678_00 }))).status).toBe(200);
+    expect((await store.listActivity(20)).filter((e) => e.kind === "cash")).toHaveLength(1);
 
     // Another company's cash is untouched.
     as("user-m");

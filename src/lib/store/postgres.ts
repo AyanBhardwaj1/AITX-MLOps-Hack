@@ -479,13 +479,22 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const connectionId = await csvConnection(pool, org, false);
       if (!connectionId) return "no_uploads";
       // Only alongside stored rows: cash on its own has no dashboard to feed.
-      const { rowCount } = await pool.query(
-        `update public.accounts set balance_minor = $3, synced_at = now()
-          where connection_id = $1 and provider_account_id = $2
-            and exists (select 1 from public.transactions t where t.connection_id = $1 and t.removed_at is null)`,
+      const { rows } = await pool.query<{ changed: boolean }>(
+        `with target as (
+           select a.ctid as at, a.balance_minor from public.accounts a
+            where a.connection_id = $1 and a.provider_account_id = $2
+              and exists (select 1 from public.transactions t where t.connection_id = $1 and t.removed_at is null)
+            for update
+         ), changed as (
+           update public.accounts a set balance_minor = $3, synced_at = now()
+             from target where a.ctid = target.at and target.balance_minor <> $3
+           returning 1
+         )
+         select exists (select 1 from changed) as changed from target`,
         [connectionId, CASH_ACCOUNT_ID, cashCents],
       );
-      return (rowCount ?? 0) > 0 ? "saved" : "no_uploads";
+      if (!rows[0]) return "no_uploads";
+      return rows[0].changed ? "saved" : "unchanged";
     },
 
     async loadUploads() {

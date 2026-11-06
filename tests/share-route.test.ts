@@ -82,7 +82,7 @@ describe("company investor links", () => {
       await vi.advanceTimersByTimeAsync(2);
       await pending;
       expect(done).toBe(true);
-      expect(quiet).toHaveBeenCalledWith("[activity] couldn't record", "timed out");
+      expect(quiet).toHaveBeenCalledWith("[activity] couldn't record (or still recording)", "timed out");
     } finally {
       vi.useRealTimers();
       spy.mockRestore();

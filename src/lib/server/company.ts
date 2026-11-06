@@ -253,7 +253,8 @@ export async function logActivity(scope: string, kind: ActivityKind, detail: str
     });
     await Promise.race([write, late]);
   } catch (err) {
-    console.error("[activity] couldn't record", err instanceof Error ? err.message : "unknown error");
+    // After a timeout the write may still land; it just wasn't waited for.
+    console.error("[activity] couldn't record (or still recording)", err instanceof Error ? err.message : "unknown error");
   } finally {
     clearTimeout(timer);
   }
