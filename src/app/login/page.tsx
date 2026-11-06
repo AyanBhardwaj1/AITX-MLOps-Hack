@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
+import { safeNextPath } from "@/lib/auth/session";
+import { sessionUser } from "@/lib/server/company";
 
 export const metadata: Metadata = { title: "Sign in", robots: { index: false, follow: false } };
 
@@ -12,6 +15,8 @@ const ERRORS: Record<string, string> = {
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string | string[] }> }) {
   const { error, next } = await searchParams;
+  // Already signed in: straight on to where they were going (an error notice still shows).
+  if (!error && (await sessionUser())) redirect(safeNextPath(typeof next === "string" ? next : null));
   return (
     <main id="main" className="mx-auto flex min-h-[80vh] max-w-sm flex-col justify-center px-6">
       <Link href="/" className="text-sm text-muted hover:text-ink">
