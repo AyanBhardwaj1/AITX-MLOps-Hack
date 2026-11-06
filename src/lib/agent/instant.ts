@@ -4,7 +4,7 @@ import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { getBudgets, getBurnBridge, getChanges, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -196,6 +196,32 @@ function whoSpends(a: Analysis): InstantAnswer {
   };
 }
 
+function committedAnswer(a: Analysis): InstantAnswer {
+  const c = getCommitted(a);
+  const tools = ["get_committed_spend"];
+  if (c.items.length === 0) return { question: INSTANT_QUESTIONS.committed, tools, text: `No recurring charges are expected between ${formatDate(c.from)} and ${formatDate(c.until)}.` };
+  const byVendor = new Map<string, { name: string; cents: number; times: number }>();
+  for (const i of c.items) {
+    const v = byVendor.get(i.vendorKey) ?? { name: i.vendorName, cents: 0, times: 0 };
+    v.cents += i.amountCents;
+    v.times += 1;
+    byVendor.set(i.vendorKey, v);
+  }
+  const rows = [...byVendor.values()]
+    .sort((x, y) => y.cents - x.cents)
+    .slice(0, MAX_LISTED)
+    .map((v) => `- ${v.name}: ${formatDollars(v.cents)}${v.times > 1 ? ` (${v.times} charges)` : ""}`);
+  return {
+    question: INSTANT_QUESTIONS.committed,
+    tools,
+    text: [
+      `**${formatDollars(c.totalCents)}** in recurring charges is scheduled between ${formatDate(c.from)} and ${formatDate(c.until)}, leaving **${formatDollars(c.cashAfterCents)}** of today's cash. The biggest:`,
+      rows.join("\n"),
+      "That's a floor: one-off and usage-based spend come on top.",
+    ].join("\n\n"),
+  };
+}
+
 const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>, budgets: InstantBudgets) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
@@ -206,6 +232,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   budgets: budgetsAnswer,
   burn_moved: burnMoved,
   people: whoSpends,
+  committed: committedAnswer,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */

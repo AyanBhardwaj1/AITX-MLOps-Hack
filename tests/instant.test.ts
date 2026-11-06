@@ -99,3 +99,16 @@ describe("who spends the most", () => {
     expect(ans.text).toContain(`**${people.rows[0]!.cardholder}**: ${formatDollars(people.rows[0]!.monthlyCents)}/month`);
   });
 });
+
+describe("what's going out", () => {
+  it("totals the recurring charges scheduled in the next 30 days", async () => {
+    const { generateDemoCompany: gen } = await import("@/lib/seed/demo-company");
+    const demo = gen();
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions });
+    const { getCommitted } = await import("@/lib/agent/tools");
+    const c = getCommitted(a);
+    const ans = instantAnswer(a, "committed");
+    expect(ans.tools).toEqual(["get_committed_spend"]);
+    expect(ans.text).toContain(formatDollars(c.totalCents));
+  });
+});

@@ -11,6 +11,7 @@ import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budgets";
 import { burnBridge } from "../finance/burn-bridge";
 import { peopleSpend } from "../finance/people-spend";
+import { committedSpend } from "../finance/committed";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -232,6 +233,12 @@ export const changesInput = z.object({});
 /** Recent alerts: burn spikes, large one-offs, price changes, new vendors, renewals due, low runway. */
 export function getChanges(a: Analysis) {
   return detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths });
+}
+
+export const committedInput = z.object({});
+/** Recurring charges scheduled over the next 30 days from today (cents), the total and the cash left after them. */
+export function getCommitted(a: Analysis, today: string = new Date().toISOString().slice(0, 10)) {
+  return committedSpend(a.streams, { from: today, days: 30, cashCents: a.snapshot.cashCents });
 }
 
 export const peopleSpendInput = z.object({});

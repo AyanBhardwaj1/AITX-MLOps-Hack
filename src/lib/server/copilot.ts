@@ -9,6 +9,8 @@ import {
   getBurnBridge,
   getPeopleSpend,
   peopleSpendInput,
+  committedInput,
+  getCommitted,
   changesInput,
   getChanges,
   runScenario,
@@ -48,6 +50,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 - For "how long do we really have" questions, use get_runway_forecast and explain the range: it follows the last 6 months' burn trend and its noise, held real outcomes about 7-8 times in 10 in backtests, and cannot foresee one-off shocks (a lost customer, a big bill); use plan_scenario for planned changes. Mention big upcoming renewals from get_upcoming_renewals when relevant.
 - For hiring, fundraising or "are we default alive" questions, call plan_scenario (with the what-ifs) and report the verdict, break-even month and growth needed.
 - For "what changed" or "anything I should know" questions, call get_recent_changes.
+- For "what's going out soon" or "what's due this month" questions, call get_committed_spend.
 - For "who spends the most" or card-holder questions, call get_people_spend.
 - For "why did burn go up/down" questions, call get_burn_bridge: drivers' changeCents plus otherCents minus revenueChangeCents equals changeCents exactly.
 - For budget questions ("are we over budget?"), call get_budgets. "heading for" adds recurring bills still due this month and one-off spend at its pace from day 7.
@@ -124,6 +127,12 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
           "This month's budgets per category: monthlyCents, monthToDateCents, projectedCents (heading for), lastMonthCents and status (under, over_pace, over). runwayWithinBudgets: runway in months (null = no end) if every budgeted category came down to its budget, with the monthly saving in cents; null when no budget would change runway.",
         inputSchema: budgetsInput,
         execute: async () => getBudgets(budgets.analysis ? await budgets.analysis() : a, budgets.list, budgets.emptyNote),
+      }),
+      get_committed_spend: tool({
+        description:
+          "Recurring charges already scheduled over the next 30 days from today: items (date, vendorName, category, amountCents), totalCents and cashAfterCents. A floor: one-off and usage spend aren't included. Integer cents.",
+        inputSchema: committedInput,
+        execute: async () => getCommitted(a),
       }),
       get_people_spend: tool({
         description:

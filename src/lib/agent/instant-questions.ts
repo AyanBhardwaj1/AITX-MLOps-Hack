@@ -9,5 +9,6 @@ export const INSTANT_QUESTIONS = {
   budgets: "Are we on budget this month?",
   burn_moved: "Why did burn change last month?",
   people: "Who spends the most on cards?",
+  committed: "What's going out in the next 30 days?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;
