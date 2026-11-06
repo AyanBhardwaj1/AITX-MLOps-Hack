@@ -212,12 +212,15 @@ async function holdsData(scope: string): Promise<boolean> {
 const webhookHint = (url: string) => `…${url.slice(-4)}`;
 
 /** Whether the signed-in user's company has its own Slack connected (any member may see this). */
-export async function companySlackStatus(): Promise<{ connected: boolean; hint: string | null }> {
+export async function companySlackStatus(): Promise<{ connected: boolean; hint: string | null; lastDigestAt: string | null; runwayAlertBelow: number | null }> {
   const user = await sessionUser();
   if (!user) throw new SignInRequired();
   const company = await ensureCompanyFor(user);
-  const url = await getStore(company.scope).getSlackWebhook();
-  return { connected: url !== null, hint: url ? webhookHint(url) : null };
+  const store = getStore(company.scope);
+  const url = await store.getSlackWebhook();
+  // What the channel has heard, so a teammate who isn't in it knows (a hiccup here hides it, never the panel).
+  const [lastDigestAt, runwayAlertBelow] = await Promise.all([store.lastDigestSentAt().catch(() => null), store.runwayAlertLevel().catch(() => null)]);
+  return { connected: url !== null, hint: url ? webhookHint(url) : null, lastDigestAt: url ? lastDigestAt : null, runwayAlertBelow: url ? runwayAlertBelow : null };
 }
 
 /** The signed-in owner's company (OwnerOnly / SignInRequired otherwise). */

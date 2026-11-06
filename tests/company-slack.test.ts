@@ -57,7 +57,7 @@ describe("a company's own Slack digest", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.url).toBe(HOOK_A);
     const got = await (await slack.GET()).json();
-    expect(got).toEqual({ connected: true, hint: "…aaaa" });
+    expect(got).toMatchObject({ connected: true, hint: "…aaaa", runwayAlertBelow: null });
     expect(JSON.stringify(got)).not.toContain("TAAA");
   });
 
@@ -109,7 +109,7 @@ describe("a company's own Slack digest", () => {
     const slack = await import("@/app/api/company/slack/route");
     await slack.POST(post("/api/company/slack", { url: HOOK_A }));
     expect((await slack.POST(post("/api/company/slack", { url: null }))).status).toBe(200);
-    expect(await (await slack.GET()).json()).toEqual({ connected: false, hint: null });
+    expect(await (await slack.GET()).json()).toMatchObject({ connected: false, hint: null });
     const digest = await import("@/app/api/digest/route");
     expect((await digest.POST(post("/api/digest", { mode: "company" }))).status).toBe(409);
   });

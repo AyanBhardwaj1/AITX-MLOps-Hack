@@ -1,9 +1,16 @@
 "use client";
 
 import { useId, useState } from "react";
+import { formatDate } from "@/lib/format";
 
 /** The company's own Slack for its Monday digest and budget alerts: the owner connects or removes it; others see the state. */
-export function SlackPanel({ owner, initial }: { owner: boolean; initial: { connected: boolean; hint: string | null } }) {
+export function SlackPanel({
+  owner,
+  initial,
+}: {
+  owner: boolean;
+  initial: { connected: boolean; hint: string | null; lastDigestAt?: string | null; runwayAlertBelow?: number | null };
+}) {
   const id = useId();
   const [state, setState] = useState(initial);
   const [url, setUrl] = useState("");
@@ -17,7 +24,8 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
     const body = (await res?.json().catch(() => null)) as { error?: string } | null;
     setBusy(false);
     if (!res?.ok) return setMessage({ tone: "error", text: body?.error ?? "That didn’t go through. Try again." });
-    setState({ connected: next !== null, hint: next ? `…${next.slice(-4)}` : null });
+    // A new channel hasn't heard anything yet.
+    setState({ connected: next !== null, hint: next ? `…${next.slice(-4)}` : null, lastDigestAt: null, runwayAlertBelow: null });
     setUrl("");
     setMessage({ tone: "ok", text: next ? "Connected. A test message is in your channel." : "Disconnected." });
   }
@@ -35,6 +43,10 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
         {state.connected ? (
           <>
             Connected <span className="text-muted">(webhook ending {state.hint})</span>
+            <span className="block text-xs text-muted">
+              {state.lastDigestAt ? `Last digest ${formatDate(state.lastDigestAt.slice(0, 10))}.` : "No digest sent yet."}
+              {state.runwayAlertBelow ? ` The channel last heard runway was under ${state.runwayAlertBelow} months.` : ""}
+            </span>
           </>
         ) : (
           "Not connected."
