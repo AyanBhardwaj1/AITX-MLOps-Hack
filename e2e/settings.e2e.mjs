@@ -22,6 +22,9 @@ await suite("settings", async ({ browser, step }) => {
     await uploadSample(p);
     await p.goto(`${APP}/app?mode=company`);
     await p.getByText("Acme Robotics · your uploaded exports").waitFor();
+    // Why burn moved: last whole month against the one before, adding up to the change.
+    await p.getByRole("heading", { name: "Why burn moved" }).waitFor();
+    await p.getByRole("rowheader", { name: "Change in net burn" }).waitFor();
     await p.goto(`${APP}/app/settings`);
     const activity = p.getByRole("region", { name: "Recent activity" });
     await activity.getByText(/Uploaded [\d,]+ transactions · founder-a@acme\.example/).waitFor();

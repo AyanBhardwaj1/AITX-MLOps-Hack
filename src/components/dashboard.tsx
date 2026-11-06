@@ -26,6 +26,8 @@ import { CopilotPanel } from "./copilot-panel";
 import { InboxPanel } from "./inbox-panel";
 import { ForecastChart } from "./forecast-chart";
 import { AiSpendCard, RenewalsCard } from "./insight-cards";
+import { BurnBridgeCard } from "./burn-bridge-card";
+import type { BurnBridge } from "@/lib/finance/burn-bridge";
 import { RunwayChart } from "./runway-chart";
 import { SavingsTracker } from "./savings-tracker";
 import { CategorySpendCard } from "./category-spend-card";
@@ -97,6 +99,8 @@ export interface DashboardData {
   renewals: Renewal[];
   aiSpend: AiSpendTrend | null;
   changes: Change[];
+  /** Last complete month's net burn against the month before, vendor by vendor. */
+  burnBridge: BurnBridge | null;
   savings: SavingsSummary;
   capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean; accounts: boolean; signedIn: boolean; manage: boolean };
 }
@@ -356,6 +360,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         </section>
 
         <RunwayTrendCard points={data.runwayHistory} />
+        <BurnBridgeCard bridge={data.burnBridge} mode={data.mode} />
         <CategorySpendCard rows={data.categorySpend} mode={data.mode} />
         {data.budgets && <BudgetsCard budgets={data.budgets} mode={data.mode} />}
         <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />

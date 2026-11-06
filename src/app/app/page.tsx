@@ -25,6 +25,7 @@ import { cashAccountIds } from "@/lib/rho/map";
 import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingDecision, FindingStatus } from "@/lib/store/types";
+import { burnBridge } from "@/lib/finance/burn-bridge";
 
 export const dynamic = "force-dynamic";
 
@@ -183,6 +184,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     aiSpend: aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS),
     savings,
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
+    burnBridge: burnBridge(a.txns, a.asOf),
     capabilities: {
       copilot: hasOpenAI(),
       jira: canFileJiraFromApp(),
