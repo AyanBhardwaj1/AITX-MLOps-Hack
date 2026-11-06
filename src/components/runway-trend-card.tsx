@@ -2,7 +2,7 @@
 
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { RunwayPoint } from "@/lib/finance/runway-history";
-import { formatDate, formatDay } from "@/lib/format";
+import { formatDate, formatDay, runwayTrendVerdict } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
 
 const LINE = "#0f766e";
@@ -14,14 +14,7 @@ export function RunwayTrendCard({ points }: { points: RunwayPoint[] }) {
   if (points.length < 2) return null;
   const first = points[0]!;
   const last = points.at(-1)!;
-  const both = Number.isFinite(first.runwayMonths) && Number.isFinite(last.runwayMonths);
-  const delta = both ? last.runwayMonths - first.runwayMonths : null;
-  const verdict =
-    delta === null
-      ? "Some months were cash-flow positive, so runway had no end date then."
-      : Math.abs(delta) < 0.1
-        ? `Runway has held at about ${last.runwayMonths.toFixed(1)} months since ${formatDate(first.date)}.`
-        : `Runway ${delta > 0 ? "grew" : "shrank"} by ${Math.abs(delta).toFixed(1)} months since ${formatDate(first.date)}: ${first.runwayMonths.toFixed(1)} → ${last.runwayMonths.toFixed(1)}.`;
+  const verdict = runwayTrendVerdict(first, last);
   // Cash-flow-positive points have no finite runway: leave a gap rather than drawing a fake value.
   const rows = points.map((p) => ({ label: formatDay(p.date), runway: Number.isFinite(p.runwayMonths) ? Number(p.runwayMonths.toFixed(1)) : null }));
   return (

@@ -51,3 +51,15 @@ describe("the grader's cash box", () => {
     for (const bad of ["0x10", "0b11", "1e3", "", "12.345", "--5", "1-", "abc", "200000000000"]) expect(parseCashInput(bad)).toBeNull();
   });
 });
+
+describe("the Runway over time sentence", () => {
+  it("states the change as the difference of the two runways it shows", async () => {
+    const { runwayTrendVerdict } = await import("@/lib/format");
+    // 2.04 → 1.16 shows as 2.0 → 1.2, so the change is 0.8, not the unrounded 0.88 → 0.9.
+    expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: 2.04 }, { date: "2026-10-26", runwayMonths: 1.16 })).toBe(
+      "Runway shrank by 0.8 months since May 1, 2026: 2.0 → 1.2.",
+    );
+    expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: 12.24 }, { date: "2026-10-26", runwayMonths: 12.21 })).toBe("Runway has held at about 12.2 months since May 1, 2026.");
+    expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: Infinity }, { date: "2026-10-26", runwayMonths: 12 })).toMatch(/no end date/);
+  });
+});

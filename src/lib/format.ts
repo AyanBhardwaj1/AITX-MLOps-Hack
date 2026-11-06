@@ -57,3 +57,11 @@ export function shownGainMonths(before: number, after: number): number | null {
   if (!Number.isFinite(after)) return null;
   return Math.round((Number(after.toFixed(1)) - Number(before.toFixed(1))) * 10) / 10;
 }
+
+/** "Runway shrank by 0.8 months since May 1, 2026: 2.0 → 1.2." The change is the difference of the two runways shown. */
+export function runwayTrendVerdict(first: { date: string; runwayMonths: number }, last: { date: string; runwayMonths: number }): string {
+  if (!Number.isFinite(first.runwayMonths) || !Number.isFinite(last.runwayMonths)) return "Some months were cash-flow positive, so runway had no end date then.";
+  const delta = Math.round((Number(last.runwayMonths.toFixed(1)) - Number(first.runwayMonths.toFixed(1))) * 10) / 10;
+  if (delta === 0) return `Runway has held at about ${last.runwayMonths.toFixed(1)} months since ${formatDate(first.date)}.`;
+  return `Runway ${delta > 0 ? "grew" : "shrank"} by ${Math.abs(delta).toFixed(1)} months since ${formatDate(first.date)}: ${first.runwayMonths.toFixed(1)} → ${last.runwayMonths.toFixed(1)}.`;
+}
