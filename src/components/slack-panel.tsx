@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-/** The company's own Slack for its Monday digest: the owner connects or removes it; others see the state. */
+/** The company's own Slack for its Monday digest and budget alerts: the owner connects or removes it; others see the state. */
 export function SlackPanel({ owner, initial }: { owner: boolean; initial: { connected: boolean; hint: string | null } }) {
   const id = useId();
   const [state, setState] = useState(initial);
@@ -28,8 +28,8 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
         Monday digest in Slack
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Every Monday morning, what changed in your spending, your runway and the waste worth cutting, posted to a channel you choose. Only the
-        digest text goes to Slack.
+        Every Monday morning, what changed in your spending, your runway and the waste worth cutting, posted to a channel you choose, plus a
+        short note the day a budget goes over. Only that text goes to Slack.
       </p>
       <p className="mt-3 text-sm">
         {state.connected ? (

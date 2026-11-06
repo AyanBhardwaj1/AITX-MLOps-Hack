@@ -62,18 +62,23 @@ export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): 
     let company: string | undefined;
     try {
       company = (await getAccounts().nameForScope(scope)) ?? undefined;
-      const run = await runAndPersist({ store, loadData, label: scope, trigger: "cron", company });
-      (run.status === "failed" || !run.persisted ? result.failed : result.ran).push(scope);
     } catch (err) {
-      console.error("[autopilot] company run failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
-      result.failed.push(scope);
+      console.error("[autopilot] couldn't read the company name", { scope, error: err instanceof Error ? err.message : "unknown error" });
     }
+    // Budgets first: quick, and well inside the time limit (the review's AI memo can take many seconds).
     try {
       const alert = await sendBudgetAlerts({ store, load: async () => analyze(await loadData()), company: company ?? "your company", now: new Date(), link: appUrl("company") });
       if (alert.status === "sent") result.budgetAlerts += 1;
     } catch (err) {
       // Claims were given back: tomorrow's run tries again.
       console.error("[budget-alerts] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
+    }
+    try {
+      const run = await runAndPersist({ store, loadData, label: scope, trigger: "cron", company });
+      (run.status === "failed" || !run.persisted ? result.failed : result.ran).push(scope);
+    } catch (err) {
+      console.error("[autopilot] company run failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
+      result.failed.push(scope);
     }
   }
   return result;

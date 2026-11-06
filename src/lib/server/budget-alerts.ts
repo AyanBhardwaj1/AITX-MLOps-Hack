@@ -49,12 +49,12 @@ export async function sendBudgetAlerts({
 
   const over = budgetStatus(analysis.txns, analysis.asOf, budgets, analysis.streams).filter((r) => r.status === "over");
   const claimed: BudgetRow[] = [];
-  for (const row of over) if (await store.claimBudgetAlert(row.category, month)) claimed.push(row);
-  if (claimed.length === 0) return { status: "none" };
-
   try {
+    for (const row of over) if (await store.claimBudgetAlert(row.category, month)) claimed.push(row);
+    if (claimed.length === 0) return { status: "none" };
     await post(url, budgetAlertText({ company, month, rows: claimed, link }));
   } catch (err) {
+    // Whatever failed (a claim or the post), every claim made so far goes back.
     await Promise.all(claimed.map((r) => store.releaseBudgetAlert(r.category, month).catch(() => undefined)));
     if (err instanceof SlackError && (err.status === 404 || err.status === 410)) {
       // Removed on Slack's side: disconnect, as the digest does, so the owner sees it in settings.

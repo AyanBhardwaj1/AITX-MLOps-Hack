@@ -81,9 +81,27 @@ describe("budget alerts in Slack", () => {
     expect(await gone.getSlackWebhook()).toBeNull();
   });
 
+  it("gives back the claims already made when a later one fails", async () => {
+    const store = await companyWith();
+    const claim = store.claimBudgetAlert.bind(store);
+    let calls = 0;
+    const flaky = Object.assign(Object.create(store), {
+      claimBudgetAlert: async (category: Parameters<typeof claim>[0], month: string) => {
+        calls += 1;
+        if (calls === 2) throw new Error("connection reset");
+        return claim(category, month);
+      },
+    }) as typeof store;
+    const post = vi.fn(async () => undefined);
+    await expect(sendBudgetAlerts({ store: flaky, load: async () => analysis, company: "Acme", now: NOW, post })).rejects.toThrow(/connection reset/);
+    expect(post).not.toHaveBeenCalled();
+    // Both alerts are still owed.
+    expect(await sendBudgetAlerts({ store, load: async () => analysis, company: "Acme", now: NOW, post })).toEqual({ status: "sent", categories: ["meals", "software"] });
+  });
+
   it("writes plain amounts and a link back when there is one", () => {
     const text = budgetAlertText({
-      company: "Acme",
+      company: "Acme & Co",
       month: "2026-11",
       rows: [
         { category: "ai_api", monthlyCents: 2_000_00, monthToDateCents: 2_412_34, projectedCents: 5_000_00, lastMonthCents: 0, status: "over" },
@@ -92,7 +110,7 @@ describe("budget alerts in Slack", () => {
       link: "https://runway.example/app?mode=company",
     });
     expect(text).toBe(
-      "*Budget alert for Acme*\n• *AI APIs* is over budget: $2,412.34 so far of $2,000 in November.\n• *Legal &amp; accounting* is over budget: $1,500 so far of $1,000 in November.\n<https://runway.example/app?mode=company|See budgets in Runway>",
+      "*Budget alert for Acme &amp; Co*\n• *AI APIs* is over budget: $2,412.34 so far of $2,000 in November.\n• *Legal &amp; accounting* is over budget: $1,500 so far of $1,000 in November.\n<https://runway.example/app?mode=company|See budgets in Runway>",
     );
   });
 });
