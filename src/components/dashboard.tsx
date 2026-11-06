@@ -6,14 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CORRECTIONS_STATUS_ID, CorrectionEditor, CorrectionsList, RECURRING_HEADING_ID } from "./vendor-correction";
 import { Fragment, useMemo, useState } from "react";
-import { simulateSavings, stressRunway, type Snapshot, runwayDaysFreedBy } from "@/lib/finance/runway";
+import { simulateSavings, stressRunway, type Snapshot, runwayCostOf } from "@/lib/finance/runway";
 import type { AiSpendTrend } from "@/lib/finance/ai-spend";
 import type { Forecast } from "@/lib/finance/forecast";
 import type { MonthHistory } from "@/lib/finance/history";
 import type { Renewal } from "@/lib/finance/renewals";
 import type { Change } from "@/lib/insights/changes";
 import type { SavingsSummary } from "@/lib/insights/savings";
-import { burnBasis, categoryName, formatDate, formatMoney } from "@/lib/format";
+import { burnBasis, categoryName, describeRunwayCost, formatDate, formatMoney } from "@/lib/format";
 import { formatCents, formatDollars } from "@/lib/money";
 import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
@@ -178,10 +178,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const sim = simulateSavings(data.snapshot, savings);
   const allSim = simulateSavings(data.snapshot, monthly.reduce((s, f) => s + f.monthlySavingsCents, 0));
   // Days of runway each recurring charge costs (gained if it stopped); none when runway has no end.
-  const runwayCost = (monthlyCents: number) => {
-    const days = runwayDaysFreedBy(data.snapshot, monthlyCents);
-    return days === null ? "—" : `${days} ${days === 1 ? "day" : "days"}`;
-  };
+  const runwayCost = (monthlyCents: number) => describeRunwayCost(runwayCostOf(data.snapshot, monthlyCents));
   // The gain as the two shown figures differ (12.4 − 12.2 = +0.2), not each rounded on its own.
   const shownDelta = (after: number) => (Number.isFinite(after) ? (Number(after.toFixed(1)) - Number(data.snapshot.runwayMonths.toFixed(1))).toFixed(1) : "∞");
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
@@ -528,7 +525,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                       <th className="px-2 py-2 font-medium">Cadence</th>
                       <th className="px-2 py-2 text-right font-medium">Per month</th>
                       <th className="px-2 py-2 text-right font-medium">
-                        <abbr title="Days of runway gained if this charge stopped" className="no-underline">
+                        <abbr title="Days of runway gained if this charge stopped. Breaks even: stopping it alone would make you cash-flow positive." className="no-underline">
                           Runway it costs
                         </abbr>
                       </th>

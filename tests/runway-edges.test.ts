@@ -162,14 +162,40 @@ describe("second review of the burn fix", () => {
 });
 
 describe("days of runway a recurring charge costs", () => {
+  const payroll = (amountCents: number) =>
+    ["2026-08", "2026-09", "2026-10"].map((m, i) => ({ id: `p${i}`, accountId: "a", postedAt: `${m}-01`, amountCents: -amountCents, description: "Gusto", type: "ach", status: "posted", vendor: { key: "gusto", name: "Gusto", category: "payroll", job: null, source: "catalog" } }) as never);
+
   it("is the runway gained if it stopped, in whole days; none when runway has no end", async () => {
-    const { computeSnapshot, runwayDaysFreedBy } = await import("@/lib/finance/runway");
-    const t = ["2026-08", "2026-09", "2026-10"].map((m, i) => ({ id: `p${i}`, accountId: "a", postedAt: `${m}-01`, amountCents: -100_000_00, description: "Gusto", type: "ach", status: "posted", vendor: { key: "gusto", name: "Gusto", category: "payroll", job: null, source: "catalog" } }) as never);
-    const s = computeSnapshot({ cashCents: 1_200_000_00, txns: t, asOf: "2026-11-12" });
+    const { computeSnapshot, runwayCostOf } = await import("@/lib/finance/runway");
+    const s = computeSnapshot({ cashCents: 1_200_000_00, txns: payroll(100_000_00), asOf: "2026-11-12" });
     // 12 months of runway at $100k/mo; dropping $1k/mo gives 1,200,000/99,000 = 12.1212 months: +0.1212 mo ≈ 3.7 days.
-    expect(runwayDaysFreedBy(s, 1_000_00)).toBe(4);
-    expect(runwayDaysFreedBy(s, 0)).toBe(0);
+    expect(runwayCostOf(s, 1_000_00)).toEqual({ kind: "days", days: 4 });
+    expect(runwayCostOf(s, 0)).toEqual({ kind: "days", days: 0 });
     const positive = computeSnapshot({ cashCents: 1, txns: [], asOf: "2026-11-12" });
-    expect(runwayDaysFreedBy(positive, 1_000_00)).toBeNull();
+    expect(runwayCostOf(positive, 1_000_00)).toBeNull();
+  });
+
+  it("says a charge breaks even when stopping it alone makes the company cash-flow positive", async () => {
+    const { computeSnapshot, runwayCostOf } = await import("@/lib/finance/runway");
+    const s = computeSnapshot({ cashCents: 1_200_000_00, txns: payroll(100_000_00), asOf: "2026-11-12" });
+    expect(runwayCostOf(s, s.netBurnCents)).toEqual({ kind: "breakeven" });
+    expect(runwayCostOf(s, s.netBurnCents + 1)).toEqual({ kind: "breakeven" });
+  });
+
+  it("caps the figure near breakeven instead of showing decades of days", async () => {
+    const { computeSnapshot, runwayCostOf, RUNWAY_COST_CAP_DAYS } = await import("@/lib/finance/runway");
+    const s = computeSnapshot({ cashCents: 1_200_000_00, txns: payroll(100_000_00), asOf: "2026-11-12" });
+    // A charge one dollar short of all the burn: stopping it leaves $1/mo of burn, i.e. ~100,000 years.
+    expect(runwayCostOf(s, s.netBurnCents - 1_00)).toEqual({ kind: "over", days: RUNWAY_COST_CAP_DAYS });
+    expect(RUNWAY_COST_CAP_DAYS).toBe(1826);
+  });
+
+  it("labels each case in words for the table, the CSV and Copilot", async () => {
+    const { describeRunwayCost } = await import("@/lib/format");
+    expect(describeRunwayCost(null)).toBe("—");
+    expect(describeRunwayCost({ kind: "breakeven" })).toBe("breaks even");
+    expect(describeRunwayCost({ kind: "over", days: 1826 })).toBe("over 5 years");
+    expect(describeRunwayCost({ kind: "days", days: 1 })).toBe("1 day");
+    expect(describeRunwayCost({ kind: "days", days: 30 })).toBe("30 days");
   });
 });

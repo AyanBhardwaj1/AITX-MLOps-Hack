@@ -5,7 +5,7 @@ import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
-import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod, runwayDaysFreedBy } from "../finance/runway";
+import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod, runwayCostOf } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget, suggestBudgets } from "../finance/budgets";
@@ -262,13 +262,13 @@ export function getSuggestedBudgets(a: Analysis) {
 
 export const recurringRunwayCostInput = z.object({});
 const RUNWAY_COST_LISTED = 8;
-/** The biggest active recurring charges (monthly cents) and the days of runway each costs (gained if it stopped). */
+/** The biggest active recurring charges (monthly cents) and the runway each costs: days gained if it stopped, "over" five years, or "breakeven". */
 export function getRecurringRunwayCost(a: Analysis) {
   return a.streams
     .filter((s) => s.active)
     .sort((x, y) => y.monthlyCostCents - x.monthlyCostCents)
     .slice(0, RUNWAY_COST_LISTED)
-    .map((s) => ({ vendorName: s.vendorName, category: s.category, cadence: s.cadence, monthlyCents: s.monthlyCostCents, runwayDays: runwayDaysFreedBy(a.snapshot, s.monthlyCostCents) }));
+    .map((s) => ({ vendorName: s.vendorName, category: s.category, cadence: s.cadence, monthlyCents: s.monthlyCostCents, runwayCost: runwayCostOf(a.snapshot, s.monthlyCostCents) }));
 }
 
 export const uncategorisedInput = z.object({});

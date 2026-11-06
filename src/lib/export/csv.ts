@@ -4,7 +4,8 @@ import type { EnrichedTxn, Finding } from "../types";
 import type { Prep1099 } from "../finance/form-1099";
 import type { CashPnl } from "../finance/cash-pnl";
 import { categoryName } from "../format";
-import { runwayDaysFreedBy } from "../finance/runway";
+import { runwayCostOf, type RunwayCost } from "../finance/runway";
+import { describeRunwayCost } from "../format";
 
 /**
  * CSV downloads for spreadsheets and board prep. Vendor names and details come from bank
@@ -64,13 +65,16 @@ export function form1099Csv(prep: Prep1099 | null): string {
   );
 }
 
+/** A number of days where there is one, so the column sorts; otherwise the same words as the table. */
+const runwayCostCell = (cost: RunwayCost | null) => (cost?.kind === "days" ? cost.days : cost ? describeRunwayCost(cost) : "no end");
+
 export function recurringCsv(a: Analysis): string {
   return toCsv(
     ["Vendor", "Category", "What it does", "Cadence", "Per month (USD)", "Runway it costs (days)", "Last charge", "Next charge", "Cardholders"],
     a.streams
       .filter((s) => s.active)
       .toSorted((x, y) => y.monthlyCostCents - x.monthlyCostCents)
-      .map((s) => [s.vendorName, s.category, s.job, s.cadence, dollars(s.monthlyCostCents), runwayDaysFreedBy(a.snapshot, s.monthlyCostCents), s.lastDate, s.nextExpected, s.cardholders.join(" / ")]),
+      .map((s) => [s.vendorName, s.category, s.job, s.cadence, dollars(s.monthlyCostCents), runwayCostCell(runwayCostOf(a.snapshot, s.monthlyCostCents)), s.lastDate, s.nextExpected, s.cardholders.join(" / ")]),
   );
 }
 

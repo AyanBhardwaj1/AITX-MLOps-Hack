@@ -41,6 +41,16 @@ describe("exports from the demo company", () => {
     expect(datadog).toMatch(/^Datadog,software,observability,monthly,3600,\d+,2026-\d{2}-\d{2},2026-\d{2}-\d{2},/);
   });
 
+  it("says 'over 5 years' for a charge near all of burn instead of decades of days", () => {
+    const lines = recurringCsv(a).replace(/^\uFEFF/, "").trim().split("\r\n").slice(1);
+    // The demo's payroll is nearly its whole net burn: stopping it would leave decades of runway.
+    expect(lines.find((l) => l.startsWith("Gusto Payroll,"))).toContain(",over 5 years,");
+    for (const l of lines) {
+      const cell = l.split(",")[5]!;
+      expect(cell === "over 5 years" || cell === "breaks even" || Number(cell) <= 1826).toBe(true);
+    }
+  });
+
   it("lists findings with their savings and the status people gave them", () => {
     const lines = findingsCsv(a.findings, new Map([[a.findings[0]!.id, "dismissed"]])).replace(/^\uFEFF/, "").trim().split("\r\n");
     expect(lines[0]).toBe("Finding,Kind,Monthly savings (USD),One-time (USD),Confidence,Status,Detail");

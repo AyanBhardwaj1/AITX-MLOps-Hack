@@ -37,7 +37,8 @@ demo, the free grader and the public site work exactly as before.
   left after them.
 - **Runway each subscription costs.** The recurring charges table (and its CSV) shows how many
   days of runway each charge costs: what you'd gain if it stopped, by the same arithmetic as
-  ticking a finding.
+  ticking a finding. Past five years it reads "over 5 years", and a charge whose stopping alone
+  would make you cash-flow positive reads "breaks even".
 - **Needs a category.** Spending Runway couldn't categorise (it still counts in burn, but not in
   where the money goes, budgets or the 1099 list) is shown per month with its share, biggest
   vendors first, each a click from setting its category. Hidden under 1% of spending.

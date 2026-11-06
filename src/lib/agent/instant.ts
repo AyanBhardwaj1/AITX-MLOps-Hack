@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { burnBasis, categoryName, formatDate, formatMoney } from "../format";
+import { burnBasis, categoryName, describeRunwayCost, formatDate, formatMoney } from "../format";
 import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
+import type { RunwayCost } from "../finance/runway";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
 import { get1099Prep, getMoneyIn, getRecurringRunwayCost, getSuggestedBudgets, getUncategorised, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
@@ -223,18 +224,21 @@ function suggestBudgetsAnswer(a: Analysis): InstantAnswer {
   };
 }
 
+const runwayCostWords = (c: RunwayCost | null) =>
+  c?.kind === "breakeven" ? "stopping it alone would make you cash-flow positive" : c?.kind === "over" ? `${describeRunwayCost(c)} of runway` : describeRunwayCost(c);
+
 function runwayCostAnswer(a: Analysis): InstantAnswer {
   const rows = getRecurringRunwayCost(a);
   const tools = ["get_recurring_runway_cost"];
   if (rows.length === 0) return { question: INSTANT_QUESTIONS.runway_cost, tools, text: "No recurring charges were found." };
-  if (rows.every((r) => r.runwayDays === null))
+  if (rows.every((r) => r.runwayCost === null))
     return { question: INSTANT_QUESTIONS.runway_cost, tools, text: "You're cash-flow positive, so no recurring charge shortens runway at today's rate." };
   return {
     question: INSTANT_QUESTIONS.runway_cost,
     tools,
     text: [
       "The biggest recurring charges, and the days of runway each one costs (what you'd gain if it stopped):",
-      rows.map((r) => `- ${r.vendorName}: ${formatDollars(r.monthlyCents)}/month, ${r.runwayDays === null ? "more than all your burn" : `${r.runwayDays} ${r.runwayDays === 1 ? "day" : "days"}`}`).join("\n"),
+      rows.map((r) => `- ${r.vendorName}: ${formatDollars(r.monthlyCents)}/month, ${runwayCostWords(r.runwayCost)}`).join("\n"),
       "Payroll and rent are on the list because they're the biggest; tick the waste findings to see what's worth cutting.",
     ].join("\n\n"),
   };

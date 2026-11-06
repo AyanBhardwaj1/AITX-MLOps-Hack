@@ -127,15 +127,22 @@ export interface Simulation {
   zeroCashDate: IsoDate | null;
 }
 
+/** Past five years the exact count of days means nothing to a reader; it reads as "over 5 years". */
+export const RUNWAY_COST_CAP_DAYS = Math.round(60 * AVG_DAYS_PER_MONTH);
+
 /**
- * The runway a recurring charge costs: days gained if it stopped, rounded. Null when runway has no
- * end (nothing to gain). Same arithmetic as ticking a finding.
+ * The runway a recurring charge costs: whole days gained if it stopped ("days"), capped at five years
+ * ("over"), or "breakeven" when stopping it alone makes the company cash-flow positive. Null when
+ * runway already has no end (nothing to gain). Same arithmetic as ticking a finding.
  */
-export function runwayDaysFreedBy(snapshot: Snapshot, monthlyCents: Cents): number | null {
+export type RunwayCost = { kind: "days"; days: number } | { kind: "over"; days: number } | { kind: "breakeven" };
+
+export function runwayCostOf(snapshot: Snapshot, monthlyCents: Cents): RunwayCost | null {
   if (!Number.isFinite(snapshot.runwayMonths)) return null;
   const after = simulateSavings(snapshot, Math.max(0, monthlyCents)).runwayMonths;
-  if (!Number.isFinite(after)) return null;
-  return Math.round((after - snapshot.runwayMonths) * AVG_DAYS_PER_MONTH);
+  if (!Number.isFinite(after)) return { kind: "breakeven" };
+  const days = Math.round((after - snapshot.runwayMonths) * AVG_DAYS_PER_MONTH);
+  return days > RUNWAY_COST_CAP_DAYS ? { kind: "over", days: RUNWAY_COST_CAP_DAYS } : { kind: "days", days };
 }
 
 export function simulateSavings(snapshot: Snapshot, monthlySavingsCents: Cents): Simulation {
