@@ -13,7 +13,7 @@ import { resolveVendor } from "../vendors/normalize";
  * - "generic": date, description, amount (one account, no types, no cardholder)
  */
 
-export type CsvLayout = "rho" | "mercury" | "generic" | "headerless";
+export type CsvLayout = "rho" | "mercury" | "generic" | "headerless" | "ofx";
 
 export interface CsvImport {
   layout: CsvLayout;
@@ -38,7 +38,7 @@ const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT THANK YO
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
 /** Mercury statuses for money that never moved. */
 const NOT_COMPLETED = /^(failed|cancel+ed|canceled|declined|reversed)$/i;
-const MOSTLY_POSITIVE_SHARE = 0.7;
+export const MOSTLY_POSITIVE_SHARE = 0.7;
 
 /** Payouts from revenue processors often say "TRANSFER" too; they are revenue, not internal moves. */
 const isRevenuePayout = (description: string) => resolveVendor(description).category === "revenue";
@@ -275,6 +275,14 @@ function rowAmount(cells: readonly string[], m: Mapping): number | null {
   return Math.abs(into) - Math.abs(out);
 }
 
+/** A bank row's type from its text and sign: own-account moves, card payoffs, then card or bank spend. */
+export function inferTransactionType(description: string, amountCents: number, onCard: boolean): string {
+  if (!isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)) return "internal_transfer";
+  if (CARD_PAYOFF_PATTERN.test(description)) return "credit_repayment";
+  if (onCard) return amountCents < 0 ? "card_debit" : "card_credit";
+  return amountCents < 0 ? "ach_debit" : "ach_credit";
+}
+
 function rowToTransaction(cells: readonly string[], m: Mapping, accountId: string, rowNo: number, flipSigns: boolean, order: DateOrder): RhoTransaction | "not_completed" | null {
   const get = (col: number | null) => (col === null ? "" : (cells[col] ?? ""));
   if (m.layout === "mercury" && NOT_COMPLETED.test(get(m.status).trim())) return "not_completed";
@@ -287,19 +295,7 @@ function rowToTransaction(cells: readonly string[], m: Mapping, accountId: strin
   const amount = m.invert !== flipSigns ? -raw : raw;
   const cardholder = text(get(m.cardholder)) || null;
   const explicitType = m.layout === "rho" ? get(m.type).trim() : "";
-  const inferred =
-    !isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)
-      ? "internal_transfer"
-      : CARD_PAYOFF_PATTERN.test(description)
-        ? "credit_repayment"
-        : cardholder
-          ? amount < 0
-            ? "card_debit"
-            : "card_credit"
-          : amount < 0
-            ? "ach_debit"
-            : "ach_credit";
-  const type = explicitType || inferred;
+  const type = explicitType || inferTransactionType(description, amount, cardholder !== null);
   const account = text(get(m.account)) || accountId;
   const first = cardholder?.split(" ")[0];
   return {

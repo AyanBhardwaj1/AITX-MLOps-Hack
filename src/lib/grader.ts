@@ -1,4 +1,5 @@
-import { importCsv, resolveCardPayoffs } from "./csv/import";
+import { resolveCardPayoffs } from "./csv/import";
+import { importStatement } from "./csv/ofx";
 import { DEFAULT_ACCOUNT_LABEL, fileAccountLabel } from "./uploads/rows";
 import { forecastCash } from "./finance/forecast";
 import { monthlyHistory } from "./finance/history";
@@ -110,7 +111,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     seenTexts.add(f.text);
     try {
       // Card payoffs are decided over all files together below, never per file.
-      const r = importCsv(f.text, { accountId: `upload_${i + 1}`, resolvePayoffs: false });
+      const r = importStatement(f.text, { accountId: `upload_${i + 1}`, resolvePayoffs: false });
       // Overlapping exports repeat rows; a row already seen in an earlier file is the same transaction.
       const fileRows = new Set<string>();
       for (const t of r.transactions) {

@@ -14,7 +14,7 @@ demo, the free grader and the public site work exactly as before.
   sent. Most layouts work: Posting/Transaction Date, Payee/Merchant, Amount or separate
   Debit/Credit columns, a summary block above the header, files with no header row, cards that list
   charges as positive (detected, or flip a file by hand), trailing minus signs, day-first dates.
-  Amounts in other currencies are refused rather than guessed. Re-uploading an overlapping export
+  OFX, Quicken (QFX) and QuickBooks (QBO) downloads work too, in the grader as well. Amounts in other currencies are refused rather than guessed. Re-uploading an overlapping export
   adds nothing twice. No data yet? "Fill in a sample export" shows how it works.
 - **Update today's cash without a file.** Cash moves daily and exports don't; anyone on the team can
   type the new balance on the upload page and the runway uses it at once. The page shows when cash was

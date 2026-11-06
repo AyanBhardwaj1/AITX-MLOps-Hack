@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { importCsv } from "@/lib/csv/import";
+import { importStatement } from "@/lib/csv/ofx";
 import { formatDate } from "@/lib/format";
 import { formatDollars, parseDollarsToCents } from "@/lib/money";
 import { CashUpdate } from "./cash-update";
@@ -49,7 +49,7 @@ async function previewFile(file: File): Promise<Picked["preview"]> {
   if (file.size > MAX_FILE_BYTES)
     return { error: "Over 20 MB. Export a shorter date range." };
   try {
-    const r = importCsv(await file.text(), {
+    const r = importStatement(await file.text(), {
       accountId: "preview",
       resolvePayoffs: false,
     });
@@ -83,7 +83,7 @@ async function parseFiles(files: readonly Picked[]): Promise<Parsed> {
       continue;
     }
     try {
-      const r = importCsv(await f.text(), {
+      const r = importStatement(await f.text(), {
         accountId: account.trim() || fileAccountLabel(f.name),
         resolvePayoffs: false,
         flipSigns: flip,
@@ -166,7 +166,7 @@ export function UploadForm({
     if (files.length === 0)
       return setState({
         kind: "error",
-        message: "Choose at least one CSV export.",
+        message: "Choose at least one export file.",
         notes: [],
       });
     const { rows, notes } = await parseFiles(files);
@@ -412,19 +412,19 @@ export function UploadForm({
       >
         <div>
           <label htmlFor={`${id}-files`} className="block text-sm font-medium">
-            1. Bank and card exports (CSV)
+            1. Bank and card exports (CSV, OFX, QFX or QBO)
           </label>
           <p className="text-xs text-muted">
             Most bank and card exports work: a date, a description and an amount
-            (or debit and credit) column, with or without a header row. Up to 20
-            MB each.
+            (or debit and credit) column, with or without a header row; or the
+            Quicken (QFX), QuickBooks (QBO) or OFX download. Up to 20 MB each.
           </p>
           <input
             key={inputKey}
             id={`${id}-files`}
             name="files"
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.ofx,.qfx,.qbo,text/csv,application/x-ofx"
             multiple
             onChange={(e) => {
               const picked = [...(e.target.files ?? [])];

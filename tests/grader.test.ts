@@ -63,6 +63,23 @@ describe("gradeCsvFiles", () => {
     expect(g.notes.join(" ")).not.toMatch(/weren't uploaded/);
   });
 
+  it("reads a card's OFX (QFX/QBO) download beside a checking CSV, with the same runway", () => {
+    const esc = (v: string) => v.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
+    const card = settled.filter((t) => t.account_type === "credit");
+    const ofx = [
+      "OFXHEADER:100",
+      "DATA:OFXSGML",
+      "VERSION:102",
+      "",
+      "<OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><CURDEF>USD<CCACCTFROM><ACCTID>4111111111114321</CCACCTFROM><BANKTRANLIST>",
+      ...card.map((t, i) => `<STMTTRN>\n<TRNTYPE>${t.amount.amount < 0 ? "DEBIT" : "CREDIT"}\n<DTPOSTED>${dateOf(t).replaceAll("-", "")}\n<TRNAMT>${(t.amount.amount / 100).toFixed(2)}\n<FITID>${i}\n<NAME>${esc(t.counterparty_name)}\n</STMTTRN>`),
+      "</BANKTRANLIST></CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1></OFX>",
+    ].join("\n");
+    const g = gradeCsvFiles([{ name: "checking.csv", text: generic(settled.filter((t) => t.account_type === "checking")) }, { name: "card.qfx", text: ofx }], cash);
+    expect(Math.abs(g.runwayMonths - api.snapshot.runwayMonths)).toBeLessThan(0.25);
+    expect(g.notes.join(" ")).not.toMatch(/weren't uploaded|couldn't be read/);
+  });
+
   it("ignores the same file uploaded twice and rows repeated across overlapping exports", () => {
     const text = mercuryCsv(demo.transactions);
     const g = gradeCsvFiles([{ name: "a.csv", text }, { name: "a-copy.csv", text }], cash);

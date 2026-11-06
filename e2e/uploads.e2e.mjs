@@ -42,6 +42,17 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Upload and analyse" }).click();
     await p.getByText(/Saved 0 new transactions; 10 were already stored/).waitFor({ timeout: 20_000 });
   });
+  await step("a card's Quicken (QFX) download uploads, once", async () => {
+    await p.setInputFiles('input[type="file"]', FIXTURES + "chase-ink-oct.qfx");
+    await p.getByText("3 transactions found.").waitFor();
+    await p.getByRole("button", { name: "Upload and analyse" }).click();
+    await p.getByText(/Saved 3 new transactions/).waitFor({ timeout: 20_000 });
+    await p.getByRole("button", { name: "Delete chase ink" }).waitFor();
+    await p.setInputFiles('input[type="file"]', FIXTURES + "chase-ink-oct.qfx");
+    await p.getByText("3 transactions found.").waitFor();
+    await p.getByRole("button", { name: "Upload and analyse" }).click();
+    await p.getByText(/Saved 0 new transactions; 3 were already stored/).waitFor({ timeout: 20_000 });
+  });
   await step("today's cash updates without a file, and the activity log says who", async () => {
     await p.getByText("Update today's cash").click();
     await p.getByLabel(/Total cash across your bank accounts today/).fill("$612,345.50");

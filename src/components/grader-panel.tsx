@@ -66,14 +66,14 @@ export function GraderPanel() {
       >
         <div>
           <label htmlFor={`${id}-files`} className="block text-sm font-medium">
-            1. Bank and card exports (CSV)
+            1. Bank and card exports (CSV, OFX, QFX or QBO)
           </label>
-          <p className="text-xs text-muted">Most bank and card exports: a date, a description and an amount (or debit and credit) column, with or without a header row (common layouts recognised; not yet tested on every bank&apos;s real files). Add your card&apos;s export too, to see card waste.</p>
+          <p className="text-xs text-muted">Most bank and card exports: a date, a description and an amount (or debit and credit) column, with or without a header row, or the Quicken (QFX), QuickBooks (QBO) or OFX download (common layouts recognised; not yet tested on every bank&apos;s real files). Add your card&apos;s export too, to see card waste.</p>
           <input
             id={`${id}-files`}
             name="files"
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.ofx,.qfx,.qbo,text/csv,application/x-ofx"
             multiple
             onChange={(e) => void onFiles(e.target.files)}
             className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand"
