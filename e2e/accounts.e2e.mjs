@@ -1,6 +1,7 @@
 // Sign in, upload, see your own dashboard, sign out; another founder sees none of it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { APP, signIn, suite, uploadSample } from "./helpers.mjs";
 
 await suite("accounts", async ({ browser, step }) => {
@@ -11,6 +12,24 @@ await suite("accounts", async ({ browser, step }) => {
     // Nothing hidden inside a scroll box (a screen-reader label) stretches the page past its footer.
     const below = await a.evaluate(() => document.documentElement.scrollHeight - (document.querySelector("footer").getBoundingClientRect().bottom + scrollY));
     assert.ok(below < 40, `page runs ${below}px past the footer`);
+    // No serious or critical accessibility violations on the public pages and the demo (axe-core).
+    const axe = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
+    // Reduced motion, so a fade-in caught halfway isn't read as low contrast.
+    await a.emulateMedia({ reducedMotion: "reduce" });
+    for (const path of ["/", "/grader", "/privacy", "/app?mode=demo"]) {
+      await a.goto(`${APP}${path}`);
+      await a.waitForLoadState("networkidle");
+      await a.addScriptTag({ content: axe });
+      const bad = await a.evaluate(async () =>
+        (await window.axe.run(document, { resultTypes: ["violations"] })).violations
+          .filter((v) => v.impact === "serious" || v.impact === "critical")
+          .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+      );
+      assert.deepEqual(bad, [], `${path} has accessibility violations`);
+    }
+    await a.emulateMedia({ reducedMotion: "no-preference" });
+    await a.goto(`${APP}/app?mode=demo`);
+    await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
     // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.
     const nav = a.getByRole("navigation", { name: "Dashboard sections" });
     for (const href of await nav.getByRole("link").evaluateAll((ls) => ls.map((l) => l.getAttribute("href")))) assert.equal(await a.locator(href).count(), 1, `${href} found`);

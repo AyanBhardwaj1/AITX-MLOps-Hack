@@ -219,3 +219,16 @@ describe("dates in instant answers", () => {
     expect(text).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
   });
 });
+
+describe("wording follows the data", () => {
+  it("names only payroll when rent isn't among the biggest recurring charges", () => {
+    const noRent = { ...a, streams: a.streams.filter((s) => s.category !== "rent") };
+    const text = instantAnswer(noRent, "runway_cost").text;
+    expect(text).toMatch(/Payroll shows up because/);
+    expect(text).not.toMatch(/\brent\b/i);
+  });
+
+  it("says when cash runs out the way the dashboard does", () => {
+    expect(instantAnswer(a, "how_long").text).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+  });
+});

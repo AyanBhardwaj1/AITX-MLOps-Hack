@@ -9,7 +9,7 @@ const signInAvailable = () => Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && pr
 export function SiteHeader() {
   return (
     <header className="wrap flex items-center justify-between gap-6 py-6 text-[15px]">
-      <Link href="/" className="flex items-center gap-2.5 font-semibold" aria-label="Runway home">
+      <Link href="/" className="flex items-center gap-2.5 font-semibold">
         <span className="board w-8 text-[18px]" aria-hidden="true">
           R
         </span>

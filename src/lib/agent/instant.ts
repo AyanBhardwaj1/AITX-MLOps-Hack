@@ -88,7 +88,7 @@ function howLong(a: Analysis): InstantAnswer {
   const f = getForecast(a);
   const snap = getFinancialSnapshot(a);
   const lines = [
-    `At today's burn, about **${months(snap.runwayMonths)}**` + (snap.zeroCashDate ? ` (cash runs out around ${snap.zeroCashDate}).` : "."),
+    `At today's burn, about **${months(snap.runwayMonths)}**` + (snap.zeroCashDate ? ` (cash runs out around ${formatDate(snap.zeroCashDate)}).` : "."),
     `From ${f.method}, the range is **${range(f.runwayMonths.p10, f.runwayMonths.p90)}**` +
       (f.trendCentsPerMonth ? ` (burn ${f.trendCentsPerMonth > 0 ? "rising" : "falling"} about ${formatDollars(Math.abs(f.trendCentsPerMonth))} a month).` : ".") +
       ` It can't foresee one-off shocks like a lost customer or a big bill, and in tests it held the real outcome about 7–8 times in 10, so the low end is not a worst case.`,
@@ -227,6 +227,15 @@ function suggestBudgetsAnswer(a: Analysis): InstantAnswer {
 const runwayCostWords = (c: RunwayCost | null) =>
   c?.kind === "breakeven" ? "stopping it alone would make you cash-flow positive" : c?.kind === "over" ? `${describeRunwayCost(c)} of runway` : describeRunwayCost(c);
 
+/** Payroll and rent lead the list by size, not waste: say so, naming only the ones listed. */
+function bigButNotWaste(categories: readonly string[]): string {
+  const named = (["payroll", "rent"] as const).filter((c) => categories.includes(c)).map((c) => (c === "payroll" ? "Payroll" : "rent"));
+  const tail = "tick the waste findings to see what's worth cutting.";
+  if (named.length === 0) return `Tick the waste findings to see what's worth cutting.`;
+  const subject = named.length === 2 ? "Payroll and rent show up" : `${named[0] === "rent" ? "Rent" : "Payroll"} shows up`;
+  return `${subject} because ${named.length === 2 ? "they're" : "it's"} among the biggest charges, not because ${named.length === 2 ? "they're" : "it's"} waste; ${tail}`;
+}
+
 function runwayCostAnswer(a: Analysis): InstantAnswer {
   const rows = getRecurringRunwayCost(a);
   const tools = ["get_recurring_runway_cost"];
@@ -239,9 +248,7 @@ function runwayCostAnswer(a: Analysis): InstantAnswer {
     text: [
       "The biggest recurring charges, and the days of runway each one costs (what you'd gain if it stopped):",
       rows.map((r) => `- ${r.vendorName}: ${formatDollars(r.monthlyCents)}/month, ${runwayCostWords(r.runwayCost)}`).join("\n"),
-      ...(rows.some((r) => r.category === "payroll" || r.category === "rent")
-        ? ["Payroll and rent show up because they're the biggest charges, not because they're waste; tick the waste findings to see what's worth cutting."]
-        : ["Tick the waste findings to see what's worth cutting."]),
+      bigButNotWaste(rows.map((r) => r.category)),
     ].join("\n\n"),
   };
 }
