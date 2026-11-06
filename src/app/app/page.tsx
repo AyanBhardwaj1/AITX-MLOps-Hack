@@ -26,6 +26,7 @@ import { savingsFor } from "@/lib/server/savings";
 import { getStore, hasDatabase } from "@/lib/server/store";
 import type { FindingDecision, FindingStatus } from "@/lib/store/types";
 import { burnBridge } from "@/lib/finance/burn-bridge";
+import { peopleSpend } from "@/lib/finance/people-spend";
 
 export const dynamic = "force-dynamic";
 
@@ -185,6 +186,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     savings,
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     burnBridge: burnBridge(a.txns, a.asOf),
+    people: peopleSpend(a.txns, a.snapshot),
     capabilities: {
       copilot: hasOpenAI(),
       jira: canFileJiraFromApp(),

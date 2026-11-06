@@ -25,6 +25,9 @@ await suite("settings", async ({ browser, step }) => {
     // Why burn moved: last whole month against the one before, adding up to the change.
     await p.getByRole("heading", { name: "Why burn moved" }).waitFor();
     await p.getByRole("rowheader", { name: "Change in net burn" }).waitFor();
+    // Spend by person: the sample's cardholders, each linked to their transactions.
+    await p.getByRole("heading", { name: "Spend by person" }).waitFor();
+    await p.getByRole("region", { name: "Spend by person table" }).getByRole("link").first().waitFor();
     await p.goto(`${APP}/app/settings`);
     const activity = p.getByRole("region", { name: "Recent activity" });
     await activity.getByText(/Uploaded [\d,]+ transactions · founder-a@acme\.example/).waitFor();
