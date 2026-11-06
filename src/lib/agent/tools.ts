@@ -154,11 +154,11 @@ export interface ActionDraft {
   title: string;
   body: string;
 }
-/** Drafts are built from templates over typed findings, so injected text can't change what gets sent. */
 /** What makes two versions of a finding the same one to act on (a demo visitor's fix can change one that keeps its id). */
 export const sameFinding = (f: { title: string; vendorKeys: readonly string[]; monthlySavingsCents: number; oneTimeCents: number }) =>
   JSON.stringify([f.title, f.vendorKeys, f.monthlySavingsCents, f.oneTimeCents]);
 
+/** Drafts are built from templates over typed findings, so injected text can't change what gets sent. */
 export function draftAction(a: Analysis, input: z.infer<typeof draftActionInput>, dismissed: ReadonlySet<string> = new Set()): ActionDraft | { error: string } {
   const f = a.findings.find((x) => x.id === input.findingId);
   if (!f) return { error: `No finding with id ${input.findingId}` };

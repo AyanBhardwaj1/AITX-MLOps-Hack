@@ -52,10 +52,13 @@ const FORMS: Partial<Record<Category, Form1099>> = {
 
 /**
  * Known companies (the vendor catalog) are corporations or platforms that report for you (Deel,
- * ad networks, Pilot, Carta), so they're left out, except law firms, which get one even when
- * incorporated, and landlords.
+ * ad networks, Pilot, Carta), so they're left out while they keep their catalog category, except
+ * law firms, which get one even when incorporated, and landlords. A person who moves one to another
+ * category is saying the match was wrong, and it's listed.
  */
 const CATALOG_REPORTABLE = new Set(["wilson_sonsini"]);
+/** Payroll and contractor platforms file their workers' forms themselves: never listed, whatever a fix says. */
+const FILES_FOR_YOU = new Set(["gusto", "deel"]);
 
 const MAX_UNPLACED = 5;
 const BANK_PAID = new Set<EnrichedTxn["type"]>(["ach", "wire", "other"]);
@@ -74,6 +77,7 @@ export function form1099Year(asOf: IsoDate): number {
 function formFor(t: EnrichedTxn): Form1099 | null {
   const form = FORMS[t.vendor.category];
   if (!form) return null;
+  if (FILES_FOR_YOU.has(t.vendor.key)) return null;
   if (isKnownCompany(t.vendor) && t.vendor.category !== "rent" && !CATALOG_REPORTABLE.has(t.vendor.key)) return null;
   return form;
 }
@@ -88,8 +92,9 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
     if (first === null || t.postedAt < first) first = t.postedAt;
     if (t.status !== "posted" || !t.postedAt.startsWith(prefix)) continue;
     if (!BANK_PAID.has(t.type)) continue;
-    // Known spend Runway names itself (card payoffs standing in for card spend) isn't a payee.
-    if (t.vendor.category === "other" && !isKnownCompany(t.vendor)) {
+    // Known spend Runway names itself (card payoffs standing in for card spend) isn't a payee, and one
+    // a person filed as Other was categorised (as on the needs-a-category card).
+    if (t.vendor.category === "other" && !isKnownCompany(t.vendor) && t.vendor.source !== "user") {
       const u = unplaced.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, paidCents: 0 };
       u.paidCents -= t.amountCents;
       unplaced.set(t.vendor.key, u);

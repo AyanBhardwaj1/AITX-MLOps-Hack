@@ -132,9 +132,10 @@ demo, the free grader and the public site work exactly as before.
   exporting findings or loading the dashboard no longer writes their version into the shared demo
   store, and Copilot answers with the same fixed numbers the dashboard shows. A fix changes a
   vendor's category, not who it is: a known company left in its own category stays off the 1099
-  list (moved to Contractors, it's listed: that's the person's call), Stripe's payouts stay "many
-  customers", and a known company marked Revenue counts as a customer. The AI vendor labeller can't call anything a transfer or revenue, which
-  would take its spend out of burn.
+  list (moved elsewhere, it's the person's call and it's listed, except payroll platforms that
+  file for you), Stripe's payouts stay "many customers", and a known company marked Revenue counts
+  as a customer. The AI vendor labeller can't call anything a transfer or revenue, which would take
+  its spend out of burn, and picking Transfer by hand says what it does to burn before saving.
 - **Bank files read as written.** A quote inside a field (DELL 27" MONITOR) no longer swallows
   every row after it; a quote that never closes is refused with its line. ".50", "12." and a
   Unicode minus read as amounts, rows over $100 billion are refused, and skipped rows are named by
