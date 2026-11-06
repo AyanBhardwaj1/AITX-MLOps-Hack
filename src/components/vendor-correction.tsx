@@ -179,7 +179,7 @@ export function CorrectionEditor({
         Cancel
       </button>
       {/* Always present, so screen readers announce the note when it appears; after the buttons, so they don't move. */}
-      <p id={`${id}-note`} role="status" className="max-w-xs basis-full text-warn empty:hidden">
+      <p id={`${id}-note`} role="status" className="basis-full text-warn [contain:inline-size] empty:sr-only">
         {nextCategory === "transfer" && category !== "transfer" ? TRANSFER_NOTE : ""}
       </p>
       {error && (

@@ -115,7 +115,7 @@ export function CategoryFix({
             Cancel
           </button>
           {/* Always present, so screen readers announce it; after the buttons, so they don't move. */}
-          <span id={`${id}-note`} role="status" className="max-w-xs basis-full text-xs text-warn empty:hidden">
+          <span id={`${id}-note`} role="status" className="basis-full text-xs text-warn [contain:inline-size] empty:sr-only">
             {draft === "transfer" && category !== "transfer" ? TRANSFER_NOTE : ""}
           </span>
         </form>

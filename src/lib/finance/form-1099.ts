@@ -58,7 +58,6 @@ const FORMS: Partial<Record<Category, Form1099>> = {
  */
 const CATALOG_REPORTABLE = new Set(["wilson_sonsini"]);
 
-
 const MAX_UNPLACED = 5;
 const BANK_PAID = new Set<EnrichedTxn["type"]>(["ach", "wire", "other"]);
 

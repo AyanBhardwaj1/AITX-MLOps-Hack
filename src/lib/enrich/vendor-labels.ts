@@ -16,8 +16,9 @@ const MAX_DESCRIPTOR_CHARS = 60;
 
 
 /**
- * The categories the model may choose. Not "transfer" or "revenue": those take a vendor's money out
- * of burn, so only the rules or a person's own fix may say so (no AI touches the numbers).
+ * The categories the model may choose. Not "transfer", which takes a vendor's money out of burn, or
+ * "revenue", which hides it from spending: only the rules or a person's own fix may say so (no AI
+ * touches the numbers).
  */
 export const LLM_CATEGORIES = CATEGORIES.filter((c) => c !== "transfer" && c !== "revenue") as unknown as readonly [
   Exclude<(typeof CATEGORIES)[number], "transfer" | "revenue">,
