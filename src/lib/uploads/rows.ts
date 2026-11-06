@@ -102,7 +102,12 @@ export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {
  * Everything a company uploaded, ready for the engine: one cash account holding the balance they
  * entered, an empty account per uploaded account, and card payoffs resolved over all rows together.
  */
-export function uploadedDataset({ cashCents, rows: all, today }: { cashCents: Cents; rows: readonly RhoTransaction[]; today?: string }): { accounts: RhoAccount[]; transactions: RhoTransaction[] } {
+export function uploadedDataset({ cashCents, rows: all, today }: { cashCents: Cents; rows: readonly RhoTransaction[]; today?: string }): {
+  accounts: RhoAccount[];
+  transactions: RhoTransaction[];
+  /** Rows left out for being dated after today. */
+  futureRows: number;
+} {
   // A row dated after today (a scheduled payment in the export) hasn't happened: counted, it would
   // move "as of" into the future and quiet the alerts (a rent payment due on the 1st, uploaded on
   // the 31st, would turn the month). Today is UTC, which is already tomorrow for US evenings.
@@ -117,5 +122,5 @@ export function uploadedDataset({ cashCents, rows: all, today }: { cashCents: Ce
     { id: CASH_ACCOUNT_ID, account_type: "checking", account_name: "Cash (entered at upload)", balance: { amount: cashCents, currency: "USD" } },
     ...[...accountTypes].filter(([id]) => id !== CASH_ACCOUNT_ID).map(([id, type]) => ({ id, account_type: type, account_name: id, balance: { amount: 0, currency: "USD" } })),
   ];
-  return { accounts, transactions: resolveCardPayoffs(rows).transactions };
+  return { accounts, transactions: resolveCardPayoffs(rows).transactions, futureRows: all.length - rows.length };
 }

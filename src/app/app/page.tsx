@@ -135,6 +135,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     label: dataset.label,
     companyName: await companyName(mode),
     freshness: mode === "company" ? dataFreshness(a.asOf, new Date()) : undefined,
+    futureRows: mode === "company" ? dataset.futureRows || undefined : undefined,
     laggingAccounts: mode === "company" ? laggingFor(dataset, a) : undefined,
     cashFreshness: mode === "company" && dataset.cashEnteredAt ? (cashFreshness(dataset.cashEnteredAt, new Date()) ?? undefined) : undefined,
     gettingStarted: await companyProgress(mode, [...statuses.values()].filter((s) => s !== "open").length),

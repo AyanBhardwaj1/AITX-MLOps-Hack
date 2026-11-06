@@ -29,6 +29,8 @@ export interface Dataset {
   actedOn?: AcceptedFinding[];
   /** A company's uploads: when today's cash was last entered or confirmed (ISO). */
   cashEnteredAt?: string;
+  /** A company's uploads: rows left out for being dated after today (scheduled payments). */
+  futureRows?: number;
 }
 
 const SANDBOX_CACHE_MS = 5 * 60_000;
@@ -58,7 +60,10 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
 async function loadCompanyDataset(scope: string): Promise<Dataset> {
   const uploads = await getStore(scope).loadUploads();
   if (!uploads) throw new NoCompanyData();
-  return { ...uploadedDataset({ ...uploads, today: new Date().toISOString().slice(0, 10) }), cashEnteredAt: uploads.cashEnteredAt, label: "company" };
+  const data = uploadedDataset({ ...uploads, today: new Date().toISOString().slice(0, 10) });
+  // Only rows dated after today: nothing has happened yet to analyse, as with no uploads at all.
+  if (data.transactions.length === 0) throw new NoCompanyData();
+  return { ...data, cashEnteredAt: uploads.cashEnteredAt, label: "company" };
 }
 
 export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };

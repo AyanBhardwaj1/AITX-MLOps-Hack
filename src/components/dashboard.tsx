@@ -68,6 +68,8 @@ export interface DashboardData {
   companyName: string;
   /** How old a company's uploaded data is (company mode only). */
   freshness?: { daysOld: number; stale: boolean };
+  /** Uploaded rows dated after today (scheduled payments), not counted until their date. */
+  futureRows?: number;
   /** A company's uploaded accounts whose exports end two weeks or more before the newest one. */
   laggingAccounts?: { name: string; lastDate: string; daysBehind: number }[];
   /** A company's cash figure: entered by hand, so it ages on its own. */
@@ -363,6 +365,12 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             to keep it accurate; no file needed.
           </p>
         )}
+        {data.futureRows ? (
+          <p role="status" className="mb-4 rounded-lg border border-line bg-panel px-4 py-2 text-sm text-muted">
+            {data.futureRows} uploaded {data.futureRows === 1 ? "row is" : "rows are"} dated after today (scheduled payments, most likely) and{" "}
+            {data.futureRows === 1 ? "isn't" : "aren't"} counted until {data.futureRows === 1 ? "its" : "their"} date.
+          </p>
+        ) : null}
         {data.gettingStarted && <GettingStartedCard {...data.gettingStarted} />}
 
         <ThisWeekCard changes={data.changes} mode={data.mode} slack={data.capabilities.slack} />

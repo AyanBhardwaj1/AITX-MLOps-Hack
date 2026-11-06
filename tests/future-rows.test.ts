@@ -24,6 +24,7 @@ describe("rows dated after today", () => {
   it("are left out of the company's data (a scheduled payment hasn't happened), even tomorrow's", () => {
     const d = uploadedDataset({ cashCents: 1, rows: [row("past", "2026-11-05", -100), row("today", "2026-11-06", -100), row("rent on the 1st", "2026-11-07", -100), row("scheduled", "2026-12-15", -1_000)], today: "2026-11-06" });
     expect(d.transactions.map((t) => t.id)).toEqual(["past", "today"]);
+    expect(d.futureRows).toBe(2);
   });
 });
 
