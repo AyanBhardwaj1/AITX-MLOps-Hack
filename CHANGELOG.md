@@ -21,10 +21,12 @@ demo, the free grader and the public site work exactly as before.
   last entered, and the dashboard asks for a fresh figure once it's a week old.
 - **Transactions page.** Search every transaction by vendor, the bank's description or cardholder;
   filter by category, month and money in or out, with totals for the whole match, and download
-  exactly what matched as a CSV. Works on the demo too.
+  exactly what matched as a CSV. "Most spent with" ranks the vendors behind the totals, and a
+  vendor's own view lets you fix its category right there. Works on the demo too.
 - **Monthly budgets.** Set a budget per spending category. The dashboard shows this month so far,
   where it's heading (recurring bills still due plus one-off spend at its pace) and last month, and
-  the Monday digest names any budget that's over or heading over. The demo has a sample set.
+  the Monday digest names any budget that's over or heading over. Copilot answers "Are we on
+  budget this month?" from the same numbers. The demo has a sample set.
 - **Your data, your call.** See what's stored per account, delete one account's rows or everything,
   and download it all as a CSV that uploads back cleanly.
 - **Teams.** Invite up to nine teammates by email; they see and work on the same data. The owner can
