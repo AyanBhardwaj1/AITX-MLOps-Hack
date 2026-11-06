@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import type { Team } from "@/lib/accounts/types";
 
@@ -12,6 +13,7 @@ async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: 
 /** Who's in the company; the owner can invite, withdraw invites and remove people. */
 export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team; owner: boolean; selfId: string; signInUrl: string }) {
   const id = useId();
+  const router = useRouter();
   const [team, setTeam] = useState<Team>(initial);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -29,6 +31,11 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
     setMessage(r.ok ? { tone: "ok", text: done } : { tone: "error", text: r.error ?? "That didn’t go through. Try again." });
     if (r.ok) await load();
     return r.ok;
+  }
+
+  async function makeOwner(userId: string, email: string | null) {
+    if (!window.confirm(`Make ${email ?? "them"} the owner? They'll be able to rename or delete the company and manage the team; you'll stay on as a member.`)) return;
+    if (await act("/api/company/team/transfer", { userId }, `${email ?? "They"} now own${email ? "s" : ""} the company.`)) router.refresh();
   }
 
   async function invite(e: React.FormEvent) {
@@ -53,6 +60,17 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
               </span>
               <span className="flex shrink-0 items-center gap-3 text-muted">
                 {m.role === "owner" ? "Owner" : "Member"}
+                {owner && m.role !== "owner" && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void makeOwner(m.userId, m.email)}
+                    className="text-brand hover:underline disabled:opacity-50"
+                    aria-label={`Make ${m.email ?? "them"} the owner`}
+                  >
+                    Make owner
+                  </button>
+                )}
                 {owner && m.role !== "owner" && (
                   <button type="button" disabled={busy} onClick={() => void act("/api/company/team/remove", { userId: m.userId }, `Removed ${m.email ?? "them"}.`)} className="text-warn hover:underline disabled:opacity-50">
                     Remove

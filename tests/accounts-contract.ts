@@ -194,6 +194,23 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
         expect((await store.team(owner.id))!.members).toHaveLength(1);
       });
 
+      it("hands ownership to a member, who can then manage the company; the old owner becomes a member", async () => {
+        const store = await makeStore();
+        const owner = user();
+        const company = await store.ensureCompanyFor(owner);
+        const mate = user();
+        await store.invite(owner.id, mate.email);
+        await store.ensureCompanyFor(mate);
+        const stranger = user();
+        await store.ensureCompanyFor(stranger);
+        expect(await store.transferOwnership(owner.id, stranger.id)).toBe(false);
+        expect(await store.transferOwnership(mate.id, owner.id)).toBe(false);
+        expect(await store.transferOwnership(owner.id, mate.id)).toBe(true);
+        expect(await store.companyFor(mate.id)).toEqual({ ...company, role: "owner" });
+        expect((await store.companyFor(owner.id))!.role).toBe("member");
+        expect(await store.leaveCompany(owner.id)).toBe(true);
+      });
+
       it("drops pending invites with the company", async () => {
         const store = await makeStore();
         const owner = user();

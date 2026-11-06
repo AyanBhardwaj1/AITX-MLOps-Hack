@@ -63,4 +63,19 @@ await suite("teams", async ({ browser, step }) => {
     await cof.waitForURL(/\/app\/upload$/, { timeout: 10_000 });
     await cof.getByRole("heading", { name: /^Set up / }).waitFor();
   });
+  await step("the owner hands the company to a teammate and stays on as a member", async () => {
+    const heir = await (await browser.newContext()).newPage();
+    owner.on("dialog", (d) => d.accept());
+    await owner.goto(`${APP}/app/settings`);
+    await owner.getByLabel("Invite by email").fill("heir@elsewhere.example");
+    await owner.getByRole("button", { name: "Invite", exact: true }).click();
+    await owner.getByText("Invited heir@elsewhere.example.").waitFor();
+    await signIn(heir, "heir@elsewhere.example");
+    await heir.waitForURL(`${APP}/app?mode=company`);
+    await owner.goto(`${APP}/app/settings`);
+    await owner.getByRole("button", { name: "Make heir@elsewhere.example the owner" }).click();
+    await owner.getByText(", a member of this company.").waitFor({ timeout: 10_000 });
+    await heir.goto(`${APP}/app/settings`);
+    await heir.getByText(", the owner of this company.").waitFor();
+  });
 });

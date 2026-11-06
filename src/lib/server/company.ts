@@ -182,3 +182,9 @@ export async function leaveCurrentCompany(): Promise<boolean> {
   if (!user) throw new SignInRequired();
   return getAccounts().leaveCompany(user.id);
 }
+
+/** The signed-in owner makes a member the owner; they stay on as a member. */
+export async function transferCompany(memberUserId: string): Promise<boolean> {
+  const { user } = await ownedCompany();
+  return getAccounts().transferOwnership(user.id, memberUserId);
+}

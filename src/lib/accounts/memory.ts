@@ -99,6 +99,15 @@ export function createMemoryAccounts(): AccountsStore {
       invites = invites.filter((i) => !(i.orgId === orgId && i.email === normalized));
       return invites.length < before;
     },
+    async transferOwnership(ownerId, memberUserId) {
+      const orgId = ownedOrg(ownerId);
+      const target = memberships.find((m) => m.orgId === orgId && m.userId === memberUserId && m.role === "member");
+      const current = memberships.find((m) => m.orgId === orgId && m.userId === ownerId && m.role === "owner");
+      if (!orgId || !target || !current) return false;
+      target.role = "owner";
+      current.role = "member";
+      return true;
+    },
     async leaveCompany(userId) {
       const before = memberships.length;
       memberships = memberships.filter((m) => !(m.userId === userId && m.role !== "owner"));

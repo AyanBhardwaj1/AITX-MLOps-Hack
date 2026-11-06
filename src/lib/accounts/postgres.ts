@@ -141,6 +141,17 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
       return (rowCount ?? 0) > 0;
     },
 
+    async transferOwnership(ownerId, memberUserId) {
+      const org = await ownedOrg(pool, ownerId);
+      if (!org) return false;
+      return inTransaction(`team:${org}`, async (c) => {
+        const promoted = await c.query(`update public.memberships set role = 'owner' where org_id = $1 and user_id = $2 and role = 'member'`, [org, memberUserId]);
+        if (!promoted.rowCount) return false;
+        await c.query(`update public.memberships set role = 'member' where org_id = $1 and user_id = $2`, [org, ownerId]);
+        return true;
+      });
+    },
+
     async leaveCompany(userId) {
       const { rowCount } = await pool.query(`delete from public.memberships where user_id = $1 and role <> 'owner'`, [userId]);
       return (rowCount ?? 0) > 0;

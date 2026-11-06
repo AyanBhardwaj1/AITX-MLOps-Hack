@@ -150,4 +150,22 @@ describe("teammates", () => {
     as(ownerId);
     expect((await leave()).status).toBe(409);
   });
+
+  it("the owner hands the company to a teammate", async () => {
+    const ownerId = crypto.randomUUID();
+    await ownerWithCompany(ownerId);
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: "heir@acme.example" }));
+    const heirId = crypto.randomUUID();
+    as(heirId, "heir@acme.example");
+    const { currentCompany } = await import("@/lib/server/company");
+    await currentCompany();
+    const transfer = (await import("@/app/api/company/team/transfer/route")).POST;
+    expect((await transfer(post("/api/company/team/transfer", { userId: ownerId }))).status).toBe(403);
+    as(ownerId);
+    expect((await transfer(post("/api/company/team/transfer", { userId: "nope" }))).status).toBe(400);
+    expect((await transfer(post("/api/company/team/transfer", { userId: heirId }))).status).toBe(200);
+    as(heirId, "heir@acme.example");
+    expect((await currentCompany())!.role).toBe("owner");
+  });
 });
