@@ -79,7 +79,7 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
   return (
     // Grows with the conversation up to a cap, so the empty state has no dead space.
     <div className="flex max-h-[640px] flex-col">
-      <div ref={scroller} className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
+      <div ref={scroller} className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4" role="log" aria-label="Copilot conversation" tabIndex={0} aria-live="polite">
         <p className="rounded-lg bg-canvas px-3 py-2 text-xs text-muted">
           AI chat is off on this server (no <code>OPENAI_API_KEY</code>). Pick a question: Copilot&apos;s own tools answer it, written up from a
           template instead of by AI. Every number is the same as the dashboard&apos;s.
