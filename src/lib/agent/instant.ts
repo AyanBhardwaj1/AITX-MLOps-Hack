@@ -177,7 +177,7 @@ function burnMoved(a: Analysis): InstantAnswer {
   const rows = [
     ...b.drivers.map((d) => `- ${d.name}${d.kind === "new" ? " (new)" : d.kind === "stopped" ? " (stopped)" : ""}: ${signed(d.changeCents)}`),
     ...(b.otherCents ? [`- Everything else: ${signed(b.otherCents)}`] : []),
-    ...(b.revenueChangeCents ? [`- ${b.revenueChangeCents > 0 ? "More" : "Less"} revenue in: ${signed(-b.revenueChangeCents)}`] : []),
+    ...(b.revenueChangeCents ? [`- ${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`] : []),
   ];
   return { question: INSTANT_QUESTIONS.burn_moved, tools, text: [head, ...(rows.length ? ["What moved it (these add up to the change):", rows.join("\n")] : [])].join("\n\n") };
 }

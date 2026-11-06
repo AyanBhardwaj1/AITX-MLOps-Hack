@@ -68,7 +68,7 @@ describe("the 'why burn moved' card", () => {
     expect(html).toContain("Why burn moved");
     expect(html).toContain("up $12,500 on Sep");
     expect(html).toContain('href="/app/transactions?mode=company&amp;vendor=aws&amp;month=2026-10"');
-    expect(html).toContain("More revenue in");
+    expect(html).toContain("More money in");
     expect(html).toContain("+$12,500</td>");
     expect(renderToStaticMarkup(createElement(BurnBridgeCard, { bridge: null, mode: "company" }))).toBe("");
   });
@@ -102,5 +102,21 @@ describe("second review of the bridge", () => {
     expect(html).toContain('href="/app/transactions?mode=demo&amp;vendor=zoom&amp;month=2026-09"');
     const positive = { ...burnBridge(txns, "2026-11-12")!, netBurnCents: -8_000_00 };
     expect(renderToStaticMarkup(createElement(BurnBridgeCard, { bridge: positive, mode: "demo" }))).toContain("cash-flow positive");
+  });
+});
+
+describe("third review of the bridge", () => {
+  it("counts a customer payment as money in, and only a vendor's own refund against it", () => {
+    const t3 = [
+      txn("x0", "2026-09-01", -1_00, "Start"),
+      txn("c9", "2026-09-12", 10_000_00, "Acme Corp", "other"),
+      txn("c10", "2026-10-12", 30_000_00, "Acme Corp", "other"),
+      txn("a10", "2026-10-05", -5_000_00, "AWS", "cloud"),
+      txn("ar", "2026-10-20", 1_000_00, "AWS", "cloud"),
+    ];
+    const b = burnBridge(t3, "2026-11-12")!;
+    expect(b.drivers.map((d) => [d.name, d.changeCents])).toEqual([["AWS", 4_000_00], ["Start", -1_00]]);
+    expect(b.revenueChangeCents).toBe(20_000_00);
+    expect(b.drivers.reduce((s, d) => s + d.changeCents, 0) + b.otherCents - b.revenueChangeCents).toBe(b.changeCents);
   });
 });

@@ -31,10 +31,13 @@ export function peopleSpend(txns: readonly EnrichedTxn[], snapshot: Snapshot): P
   const period = snapshot.burnPeriod;
   if (!period) return null;
   const people = new Map<string, Map<string, { name: string; cents: number }>>();
+  // One person however their name is typed: the most common spelling is shown.
+  const spellings = new Map<string, Map<string, number>>();
   let unassigned = 0;
   for (const t of txns) {
     if (!countsTowardBurn(t) || !inBurnPeriod(snapshot, t)) continue;
-    const who = t.cardholder?.trim();
+    const shown = (t.cardholder ?? "").normalize("NFKC").replace(/[\p{Cf}\p{Cc}]/gu, "").replace(/\s+/g, " ").trim();
+    const who = shown.toLowerCase();
     if (!who) {
       if (t.amountCents < 0) unassigned -= t.amountCents;
       continue;
@@ -44,11 +47,15 @@ export function peopleSpend(txns: readonly EnrichedTxn[], snapshot: Snapshot): P
     v.cents -= t.amountCents;
     vendors.set(t.vendor.key, v);
     people.set(who, vendors);
+    const s = spellings.get(who) ?? new Map<string, number>();
+    s.set(shown, (s.get(shown) ?? 0) + 1);
+    spellings.set(who, s);
   }
   if (people.size === 0) return null;
   const perMonth = (cents: number) => Math.round(cents / period.months) || 0;
   const rows = [...people]
-    .map(([cardholder, vendors]) => {
+    .map(([who, vendors]) => {
+      const cardholder = [...spellings.get(who)!].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]![0];
       const total = [...vendors.values()].reduce((s, v) => s + v.cents, 0);
       const monthlyCents = perMonth(total);
       return {
@@ -63,6 +70,9 @@ export function peopleSpend(txns: readonly EnrichedTxn[], snapshot: Snapshot): P
           .map(([key, v]) => ({ key, name: v.name, monthlyCents: perMonth(v.cents) })),
       };
     })
+    // Refunds only (nothing spent on net): not "spend".
+    .filter((p) => p.monthlyCents > 0)
     .sort((a, b) => b.monthlyCents - a.monthlyCents || a.cardholder.localeCompare(b.cardholder));
+  if (rows.length === 0) return null;
   return { months: period.months, rows, unassignedMonthlyCents: perMonth(unassigned) };
 }

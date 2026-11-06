@@ -124,7 +124,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
       }),
       get_burn_bridge: tool({
         description:
-          "Why net burn moved: last complete month (month) against the one before (previous): netBurnCents, previousNetBurnCents, changeCents, the vendors that moved spending most (drivers: changeCents, kind new/stopped/up/down), otherCents for the rest, and revenueChangeCents (more revenue in lowers burn; refunds are netted against their own vendor). All integer cents.",
+          "Why net burn moved: last complete month (month) against the one before (previous): netBurnCents, previousNetBurnCents, changeCents, the vendors that moved spending most (drivers: changeCents, kind new/stopped/up/down), otherCents for the rest, and revenueChangeCents (more money in lowers burn: revenue, customer payments; a refund from a vendor paid is netted against that vendor). All integer cents.",
         inputSchema: burnBridgeInput,
         execute: async () => getBurnBridge(a),
       }),

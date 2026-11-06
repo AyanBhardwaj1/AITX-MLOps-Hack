@@ -29,7 +29,7 @@ export interface BurnBridge {
   drivers: BurnDriver[];
   /** Every other vendor's change, together. */
   otherCents: Cents;
-  /** More revenue coming in (positive) lowers burn by as much; refunds count against their vendor. */
+  /** More money coming in (positive) lowers burn by as much; a refund from a vendor paid counts against that vendor. */
   revenueChangeCents: Cents;
 }
 
@@ -45,11 +45,17 @@ export function burnBridge(txns: readonly EnrichedTxn[], asOf: IsoDate, { top = 
   const spend = new Map<string, { name: string; category: Category; now: number; before: number }>();
   let inNow = 0;
   let inBefore = 0;
-  for (const t of txns) {
+  const inMonths = (t: EnrichedTxn) => {
     const m = monthKey(t.postedAt);
-    if ((m !== month && m !== previous) || !countsTowardBurn(t)) continue;
-    // Money in is revenue; anything else coming back (a refund) lowers its own vendor's spend.
-    if (t.amountCents >= 0 && t.vendor.category === "revenue") {
+    return (m === month || m === previous) && countsTowardBurn(t);
+  };
+  // Vendors paid in either month: money back from one of them is a refund against its spend.
+  const paid = new Set(txns.filter((t) => t.amountCents < 0 && inMonths(t)).map((t) => t.vendor.key));
+  for (const t of txns) {
+    if (!inMonths(t)) continue;
+    const m = monthKey(t.postedAt);
+    // Money in (revenue, customer payments, interest) unless it's a refund from a vendor paid.
+    if (t.amountCents >= 0 && (t.vendor.category === "revenue" || !paid.has(t.vendor.key))) {
       if (m === month) inNow += t.amountCents;
       else inBefore += t.amountCents;
       continue;

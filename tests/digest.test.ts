@@ -120,3 +120,12 @@ describe("why burn moved, in the digest", () => {
     expect(buildDigest({ ...input, bridge: null }).markdown).not.toContain("Why burn moved");
   });
 });
+
+describe("why burn moved, cash-flow positive", () => {
+  it("doesn't print a negative burn", () => {
+    const bridge = { month: "2026-10", previous: "2026-09", netBurnCents: -25_000_00, previousNetBurnCents: 5_000_00, changeCents: -30_000_00, drivers: [], otherCents: 0, revenueChangeCents: 30_000_00 };
+    const md = buildDigest({ ...input, bridge }).markdown;
+    expect(md).toContain("cash-flow positive by **$25,000**");
+    expect(md).not.toContain("-$25,000");
+  });
+});

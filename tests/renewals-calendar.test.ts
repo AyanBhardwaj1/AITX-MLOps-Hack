@@ -125,3 +125,13 @@ describe("twice-a-month renewals", () => {
     expect(days).toHaveLength(24);
   });
 });
+
+describe("twice-a-month from February", () => {
+  it("keeps the second date in the same month", () => {
+    const ics = renewalsCalendar({ renewals: [renewal({ vendorKey: "p", vendorName: "P", cadence: "semimonthly", amountCents: 6_000_00, dueDate: "2027-02-15" })], company: "Acme", now: NOW });
+    const days = [...ics.matchAll(/DTSTART;VALUE=DATE:(\d{8})/g)].map((m) => m[1]!.slice(4));
+    expect(days).toContain("0228");
+    expect(days).toContain("0330");
+    expect(days.some((d) => d.endsWith("02") || d.endsWith("01"))).toBe(false);
+  });
+});

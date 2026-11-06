@@ -1,4 +1,4 @@
-import { addDays, addMonths } from "../dates";
+import { addDays, addMonths, shiftMonth } from "../dates";
 import { formatMoney } from "../format";
 import type { Renewal } from "../finance/renewals";
 
@@ -62,11 +62,23 @@ const STEP: Record<Renewal["cadence"], { months?: number; days?: number }> = {
 
 /** Every expected date of a renewal from `from` to `until`, stepping on from its next expected date. */
 function datesWithin(r: Renewal, from: string, until: string): string[] {
-  // Twice a month: two monthly series, the expected date and the one half a month from it.
+  // Twice a month: the expected day and the one half a month from it, each month, clamped only
+  // within that month (a February 28th doesn't drag March's 30th back to the 28th).
   if (r.cadence === "semimonthly") {
     const day = Number(r.dueDate.slice(8, 10));
-    const other = addDays(r.dueDate, day <= 15 ? 15 : -15);
-    return [...new Set([...datesWithin({ ...r, cadence: "monthly" }, from, until), ...datesWithin({ ...r, cadence: "monthly", dueDate: other }, from, until)])].sort();
+    const days = [day, day <= 15 ? day + 15 : day - 15];
+    const out: string[] = [];
+    for (let k = 0; k < 400; k++) {
+      const month = shiftMonth(r.dueDate.slice(0, 7), k);
+      const [y, m] = month.split("-").map(Number) as [number, number];
+      const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      if (`${month}-01` > until) break;
+      for (const d of days) {
+        const date = `${month}-${String(Math.min(d, last)).padStart(2, "0")}`;
+        if (date >= from && date <= until && date >= r.dueDate) out.push(date);
+      }
+    }
+    return [...new Set(out)].sort();
   }
   const step = STEP[r.cadence];
   const out: string[] = [];

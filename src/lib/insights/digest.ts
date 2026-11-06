@@ -113,10 +113,12 @@ function blocks(d: DigestInput): Block[] {
     const signed = (c: number) => `${c > 0 ? "+" : "−"}${formatDollars(Math.abs(c))}`;
     out.push(
       { kind: "h", text: "Why burn moved" },
-      { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: `${formatDollars(b.netBurnCents)}` }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
+      b.netBurnCents <= 0
+        ? { kind: "p", spans: [`In ${name(b.month)} more came in than went out: cash-flow positive by `, { bold: formatDollars(-b.netBurnCents) }, `; net burn ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] }
+        : { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: formatDollars(b.netBurnCents) }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
     );
     const items: Span[][] = b.drivers.slice(0, TOP_FINDINGS).map((x) => [`${x.name}${x.kind === "new" ? " (new)" : x.kind === "stopped" ? " (stopped)" : ""}: ${signed(x.changeCents)}`]);
-    if (b.revenueChangeCents) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} revenue in: ${signed(-b.revenueChangeCents)}`]);
+    if (b.revenueChangeCents) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
     if (items.length) out.push({ kind: "ul", items });
   }
   if (d.budgets?.length) {

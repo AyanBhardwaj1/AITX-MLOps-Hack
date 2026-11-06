@@ -43,3 +43,20 @@ describe("spend by person", () => {
     expect(peopleSpend(plain, computeSnapshot({ cashCents: 1, txns: plain, asOf: "2026-11-12" }))).toBeNull();
   });
 });
+
+describe("people, cleaned up", () => {
+  it("one person is one row however their name is typed; blank names and refund-only rows are left out", () => {
+    const t = [
+      txn("s", "2026-08-01", -1_00, "Start"),
+      ...["2026-08", "2026-09", "2026-10"].flatMap((m) => [
+        txn(`a${m}`, `${m}-05`, -100_00, "Figma", "Maya Chen"),
+        txn(`b${m}`, `${m}-06`, -100_00, "Notion", "maya chen"),
+        txn(`c${m}`, `${m}-07`, -100_00, "Loom", "Maya  Chen"),
+        txn(`z${m}`, `${m}-08`, -100_00, "Zoom", "​"),
+        txn(`r${m}`, `${m}-09`, 50_00, "Uber", "Sam Lee", "travel"),
+      ]),
+    ];
+    const people = peopleSpend(t, computeSnapshot({ cashCents: 1, txns: t, asOf: "2026-11-12" }))!;
+    expect(people.rows.map((p) => [p.cardholder, p.monthlyCents])).toEqual([["Maya Chen", 300_00]]);
+  });
+});
