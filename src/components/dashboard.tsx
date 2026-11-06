@@ -31,6 +31,8 @@ import { PeopleSpendCard } from "./people-spend-card";
 import { CommittedCard } from "./committed-card";
 import { Form1099Card } from "./form-1099-card";
 import { MoneyInCard } from "./money-in-card";
+import { UncategorisedCard } from "./uncategorised-card";
+import type { UncategorisedSpend } from "@/lib/finance/uncategorised";
 import type { MoneyIn } from "@/lib/finance/money-in";
 import type { Prep1099 } from "@/lib/finance/form-1099";
 import type { CommittedSpend } from "@/lib/finance/committed";
@@ -113,6 +115,8 @@ export interface DashboardData {
   people: PeopleSpend | null;
   /** Money in per payer over burn's months (null: nothing came in). */
   moneyIn: MoneyIn | null;
+  /** Spend Runway couldn't categorise, over burn's months (null: none). */
+  uncategorised: UncategorisedSpend | null;
   /** Recurring charges scheduled over the next 30 days. */
   committed: CommittedSpend;
   /** Who may need a 1099 (null: no contractor, lawyer or landlord paid by bank near the line). */
@@ -401,6 +405,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         <RunwayTrendCard points={data.runwayHistory} />
         <BurnBridgeCard bridge={data.burnBridge} mode={data.mode} />
         <CategorySpendCard rows={data.categorySpend} mode={data.mode} />
+        <UncategorisedCard spend={data.uncategorised} mode={data.mode} burnMonths={data.snapshot.burnMonths} />
         <PeopleSpendCard people={data.people} mode={data.mode} burnMonths={data.snapshot.burnMonths} />
         <MoneyInCard money={data.moneyIn} mode={data.mode} runwayMonths={data.snapshot.runwayMonths} />
         {data.budgets && <BudgetsCard budgets={data.budgets} mode={data.mode} />}

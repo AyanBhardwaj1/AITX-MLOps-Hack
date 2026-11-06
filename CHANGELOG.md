@@ -34,6 +34,9 @@ demo, the free grader and the public site work exactly as before.
 - **Already scheduled: next 30 days.** Every recurring charge expected over the next 30 days
   (payroll, rent, subscriptions) from its billing day and usual amount, the total, and the cash
   left after them.
+- **Needs a category.** Spending Runway couldn't categorise (it still counts in burn, but not in
+  where the money goes, budgets or the 1099 list) is shown per month with its share, biggest
+  vendors first, each a click from setting its category. Hidden under 1% of spending.
 - **Who pays you.** Money in per payer per month over the same months as burn, with each one's
   share. When one customer is a big share, the card says what runway would be if they stopped
   paying. A payment processor's payouts (Stripe) are many customers, so they're never called the
