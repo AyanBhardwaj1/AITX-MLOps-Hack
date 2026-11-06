@@ -2,7 +2,7 @@
 // Sign-in links are limited per inbox, and other suites use theirs.
 // The operator's early-access page: invite from the waitlist without SQL; invisible to everyone else.
 import assert from "node:assert/strict";
-import { APP, signIn, suite } from "./helpers.mjs";
+import { APP, signIn, suite, uploadSample } from "./helpers.mjs";
 
 await suite("admin", async ({ browser, step }) => {
   const operator = await (await browser.newContext()).newPage();
@@ -35,5 +35,10 @@ await suite("admin", async ({ browser, step }) => {
     const p = await (await browser.newContext()).newPage();
     assert.ok(await signIn(p, "newcomer@hooli.example"));
     await p.waitForURL(/\/app\/upload/);
+    await operator.goto(`${APP}/admin`);
+    await operator.getByText("0 companies with uploaded data, 0 with their own Slack.").waitFor();
+    await uploadSample(p);
+    await operator.reload();
+    await operator.getByText("1 company with uploaded data, 0 with their own Slack.").waitFor();
   });
 });
