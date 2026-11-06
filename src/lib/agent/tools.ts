@@ -222,11 +222,11 @@ export function getChanges(a: Analysis) {
 
 export const budgetsInput = z.object({});
 /** This month's budgets: spent so far, heading for, last month and status, all in cents (same math as the dashboard card). */
-export function getBudgets(a: Analysis, budgets: readonly Budget[]) {
+export function getBudgets(a: Analysis, budgets: readonly Budget[], emptyNote = "No budgets are set. The team can add them on the dashboard's Budgets card.") {
   return {
     month: a.asOf.slice(0, 7),
     asOf: a.asOf,
     budgets: budgetStatus(a.txns, a.asOf, budgets, a.streams),
-    ...(budgets.length === 0 ? { note: "No budgets are set. The team can add them on the dashboard's Budgets card." } : {}),
+    ...(budgets.length === 0 ? { note: emptyNote } : {}),
   };
 }

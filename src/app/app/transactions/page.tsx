@@ -6,6 +6,7 @@ import { searchTransactions, parseTxnQuery, type TxnQuery } from "@/lib/finance/
 import { categoryName, formatDate, formatMoney, formatMonth } from "@/lib/format";
 import { companyName, sessionUser } from "@/lib/server/company";
 import { loadTransactions, parseMode, type DataMode } from "@/lib/server/data";
+import { enrichTransactions } from "@/lib/pipeline";
 import { CATEGORIES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const result = searchTransactions(txns, query);
   // The filtered vendor as the numbers see it now (with any fix applied), for changing its category.
   const vendor = query.vendor ? txns.find((t) => t.vendor.key === query.vendor)?.vendor : undefined;
+  // Before any fix (only worked out when there is one): going back to it undoes the fix.
+  const original =
+    vendor?.source === "user" ? enrichTransactions({ ...dataset, corrections: undefined }).find((t) => t.vendor.key === vendor.key)?.vendor : vendor;
   // A month from an old link that has no transactions still shows as chosen, not as "All".
   const months = query.month && !result.months.includes(query.month) ? [query.month, ...result.months] : result.months;
   const accountNames = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
@@ -132,6 +136,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               category={vendor.category}
               job={vendor.job}
               corrected={vendor.source === "user"}
+              original={{ category: original?.category ?? vendor.category, job: original?.job ?? null }}
             />
           )}
           <Link href={hrefFor(mode, { ...query, vendor: null }, 1)} className="text-muted underline hover:text-ink">

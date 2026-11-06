@@ -181,8 +181,10 @@ function AddBudget({ unbudgeted }: { unbudgeted: Category[] }) {
     setError(null);
     setDraft("");
     announce(`${title(category)} budget added.`);
-    // The submit button is now disabled (empty amount); keep focus where the next budget is typed.
-    amount.current?.focus();
+    // The submit button is now disabled (empty amount): keep focus where the next budget is typed,
+    // or on the heading if that was the last category and this form goes away.
+    if (unbudgeted.length > 1) amount.current?.focus();
+    else document.getElementById(HEADING_ID)?.focus();
     router.refresh();
   }
 

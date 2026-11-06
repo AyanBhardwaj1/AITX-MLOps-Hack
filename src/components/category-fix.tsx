@@ -5,7 +5,7 @@ import { useId, useRef, useState } from "react";
 import { categoryName } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
 import { CATEGORIES, type Category } from "@/lib/types";
-import { recategorize } from "@/lib/vendors/corrections";
+import { categoryChange } from "@/lib/vendors/corrections";
 
 async function send(body: Record<string, unknown>): Promise<string | null> {
   const res = await fetch("/api/corrections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
@@ -19,7 +19,24 @@ async function send(body: Record<string, unknown>): Promise<string | null> {
  * one "Fix" sets on the dashboard (saved per company; on the demo, in this visitor's cookie), and
  * every number follows it.
  */
-export function CategoryFix({ mode, vendorKey, vendorName, category, job, corrected }: { mode: DataMode; vendorKey: string; vendorName: string; category: Category; job: string | null; corrected: boolean }) {
+export function CategoryFix({
+  mode,
+  vendorKey,
+  vendorName,
+  category,
+  job,
+  corrected,
+  original,
+}: {
+  mode: DataMode;
+  vendorKey: string;
+  vendorName: string;
+  category: Category;
+  job: string | null;
+  corrected: boolean;
+  /** What Runway had before any fix, so going back to it undoes the fix instead of copying it. */
+  original: { category: Category; job: string | null };
+}) {
   const id = useId();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -62,7 +79,7 @@ export function CategoryFix({ mode, vendorKey, vendorName, category, job, correc
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void submit({ mode, action: "set", ...recategorize({ vendorKey, category, job }, draft) }, `${vendorName} is now ${categoryName(draft)}.`);
+            void submit({ mode, ...categoryChange({ vendorKey, category, job }, original, draft) }, `${vendorName} is now ${categoryName(draft)}.`);
           }}
           className="inline-flex flex-wrap items-center gap-2"
         >
@@ -86,7 +103,14 @@ export function CategoryFix({ mode, vendorKey, vendorName, category, job, correc
           <button type="submit" disabled={busy || draft === category} className="rounded-lg bg-brand px-3 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-50">
             Save
           </button>
-          <button type="button" onClick={() => setEditing(false)} className="px-1 text-muted hover:text-ink">
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              requestAnimationFrame(() => changeButton.current?.focus());
+            }}
+            className="px-1 text-muted hover:text-ink"
+          >
             Cancel
           </button>
         </form>

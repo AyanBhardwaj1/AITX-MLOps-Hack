@@ -134,4 +134,40 @@ describe("budgets", () => {
     const statuses = new Set(budgetStatus(a.txns, a.asOf, DEMO_BUDGETS, a.streams).map((r) => r.status));
     expect([...statuses].sort()).toEqual(["over", "over_pace", "under"]);
   });
+
+  describe("bills that move around weekends and month ends", () => {
+    /** Charges of `amount` on each date, as one detected stream. */
+    const history = (category: EnrichedTxn["vendor"]["category"], dates: string[], amount: number, cadence: RecurringStream["cadence"]) => {
+      const charges = dates.map((d, i) => txn(`${category}${i}`, d, -amount, category));
+      return { charges, stream: { ...stream(category, charges.map((c) => c.id), "2099-01-01", amount, cadence, dates.at(-1)!), occurrences: dates.length } as RecurringStream };
+    };
+    // Rent due on the 1st, paid the business day before when the 1st is a weekend.
+    const rentDates = ["2026-05-01", "2026-06-01", "2026-06-30", "2026-07-31", "2026-09-01", "2026-10-01"];
+
+    it("expects next month's rent this month when its due date falls on a weekend and it's paid early", () => {
+      // Nov 1 2026 is a Sunday, so November's rent posts Friday Oct 30.
+      const { charges, stream: s } = history("rent", rentDates, 10_000_00, "monthly");
+      const [oct] = budgetStatus(charges, "2026-10-15", [{ category: "rent", monthlyCents: 10_500_00 }], [s]);
+      expect(oct).toMatchObject({ monthToDateCents: 10_000_00, projectedCents: 20_000_00, status: "over_pace" });
+    });
+
+    it("doesn't expect a rent already paid at the end of last month", () => {
+      const { charges, stream: s } = history("rent", [...rentDates, "2026-10-30"], 10_000_00, "monthly");
+      const nov = [...charges, txn("fee", "2026-11-04", -600_00, "rent")];
+      const [row] = budgetStatus(nov, "2026-11-15", [{ category: "rent", monthlyCents: 10_500_00 }], [s]);
+      expect(row!.projectedCents).toBeLessThan(10_500_00);
+      expect(row!.status).toBe("under");
+    });
+
+    it("expects a quarter-end bill that once posted two days late, in the month it's due", () => {
+      const { charges, stream: s } = history("insurance", ["2026-03-31", "2026-06-30", "2026-10-02"], 3_000_00, "quarterly");
+      expect(budgetStatus(charges, "2026-12-10", [{ category: "insurance", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(3_000_00);
+    });
+
+    it("stops expecting a bill more than ten days past due that never came", () => {
+      const { charges, stream: s } = history("software", ["2026-05-10", "2026-06-10", "2026-07-10", "2026-08-10", "2026-09-10", "2026-10-10"], 500_00, "monthly");
+      expect(budgetStatus(charges, "2026-11-08", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(500_00);
+      expect(budgetStatus(charges, "2026-11-25", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(0);
+    });
+  });
 });

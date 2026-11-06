@@ -75,6 +75,15 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Save" }).click();
     await p.getByText("your fix", { exact: true }).waitFor();
     await p.getByText(/Category: marketing/).waitFor();
+    // Back to what Runway had: that undoes the fix rather than saving a copy of it.
+    await p.getByRole("button", { name: /Change .*'s category/ }).click();
+    await p.getByLabel(/^Category for /).selectOption("software");
+    await p.getByRole("button", { name: "Save" }).click();
+    await p.getByText("your fix", { exact: true }).waitFor({ state: "detached" });
+    await p.getByRole("button", { name: /Change .*'s category/ }).click();
+    await p.getByLabel(/^Category for /).selectOption("marketing");
+    await p.getByRole("button", { name: "Save" }).click();
+    await p.getByText("your fix", { exact: true }).waitFor();
     await p.getByRole("button", { name: "Undo my fix" }).click();
     await p.getByText("your fix", { exact: true }).waitFor({ state: "detached" });
     // Signed out, the same address asks for sign-in instead of showing anything.

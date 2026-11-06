@@ -38,3 +38,17 @@ export function applyCorrections(txns: readonly EnrichedTxn[], corrections: Read
 export function recategorize(current: VendorCorrection, category: Category): VendorCorrection {
   return { vendorKey: current.vendorKey, category, job: JOB_CATEGORIES.has(category) ? current.job : null };
 }
+
+/**
+ * The request for changing a vendor's category from `current` (maybe already a fix) to `next`:
+ * back to its original category clears the fix (keeping the original job), and a tool category
+ * keeps the job the vendor has, or had before a fix dropped it.
+ */
+export function categoryChange(
+  current: VendorCorrection,
+  original: { category: Category; job: string | null },
+  next: Category,
+): { action: "clear"; vendorKey: string } | ({ action: "set" } & VendorCorrection) {
+  if (next === original.category) return { action: "clear", vendorKey: current.vendorKey };
+  return { action: "set", ...recategorize({ ...current, job: current.job ?? original.job }, next) };
+}

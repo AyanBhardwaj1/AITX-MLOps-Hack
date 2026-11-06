@@ -52,7 +52,14 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 /** Persists a draft and returns what the model should see (never sends anything). */
 export type SaveDraft = (draft: ActionDraft) => Promise<{ id: string; status: string }>;
 
-export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: ReadonlySet<string> = new Set(), budgets: readonly Budget[] = []) {
+/** Budgets for the chat: the list, the analysis they're measured on (the visitor's own fixes on the demo), and what to say when there are none. */
+export interface CopilotBudgets {
+  list: readonly Budget[];
+  analysis?: Analysis;
+  emptyNote?: string;
+}
+
+export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: ReadonlySet<string> = new Set(), budgets: CopilotBudgets = { list: [] }) {
   return new ToolLoopAgent({
     model: openai(env().OPENAI_MODEL_AGENT),
     instructions: INSTRUCTIONS,
@@ -108,7 +115,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
       get_budgets: tool({
         description: "This month's budgets per category: monthlyCents, monthToDateCents, projectedCents (heading for), lastMonthCents and status (under, over_pace, over).",
         inputSchema: budgetsInput,
-        execute: async () => getBudgets(a, budgets),
+        execute: async () => getBudgets(budgets.analysis ?? a, budgets.list, budgets.emptyNote),
       }),
       get_recent_changes: tool({
         description: "What changed recently: burn spikes, large one-off payments, subscription price changes, new vendors, renewals due within 14 days, and low-runway warnings.",

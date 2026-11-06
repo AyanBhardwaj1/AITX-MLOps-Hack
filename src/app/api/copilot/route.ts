@@ -6,7 +6,7 @@ import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
 import { sanitizeChatMessages } from "@/lib/agent/chat-input";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { createCopilot, type SaveDraft } from "@/lib/server/copilot";
+import { createCopilot, type CopilotBudgets, type SaveDraft } from "@/lib/server/copilot";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
 import { loadAnalysis } from "@/lib/server/data";
@@ -66,15 +66,19 @@ export async function POST(request: Request) {
     ]);
     return { id: saved!.id, status: saved!.status };
   };
-  // The demo's fixed sample, or the company's own; a storage hiccup means no budgets, not a failed chat.
-  const budgets =
-    parsed.data.mode === "demo"
-      ? DEMO_BUDGETS
-      : parsed.data.mode === "company"
-        ? await store.listBudgets().catch((err) => {
-            console.error("[copilot] budgets unavailable", err instanceof Error ? err.message : "unknown error");
-            return [];
-          })
-        : [];
+  // The demo's fixed sample (measured with this visitor's own category fixes, as the card is), or
+  // the company's own; a storage hiccup means no budgets, not a failed chat.
+  const mode = parsed.data.mode;
+  const budgets: CopilotBudgets =
+    mode === "demo"
+      ? { list: DEMO_BUDGETS, analysis: (await loadAnalysis("demo", { visitorFixes: true })).analysis }
+      : mode === "company"
+        ? {
+            list: await store.listBudgets().catch((err) => {
+              console.error("[copilot] budgets unavailable", err instanceof Error ? err.message : "unknown error");
+              return [];
+            }),
+          }
+        : { list: [], emptyNote: "Budgets are for a signed-in company's own data; the Rho sandbox has none." };
   return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed, budgets), uiMessages: messages.messages });
 }

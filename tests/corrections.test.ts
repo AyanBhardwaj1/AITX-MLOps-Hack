@@ -72,4 +72,14 @@ describe("changing just the category", () => {
     expect(recategorize({ vendorKey: "loom", category: "software", job: "async_video" }, "marketing")).toEqual({ vendorKey: "loom", category: "marketing", job: null });
     expect(recategorize({ vendorKey: "x", category: "other", job: null }, "software")).toEqual({ vendorKey: "x", category: "software", job: null });
   });
+
+  it("goes back to the original rather than saving a copy that lost the tool's job", async () => {
+    const { categoryChange } = await import("@/lib/vendors/corrections");
+    const original = { category: "software" as const, job: "team_chat" };
+    // Slack moved to marketing (job dropped), then back to software: that's undoing the fix.
+    expect(categoryChange({ vendorKey: "slack", category: "marketing", job: null }, original, "software")).toEqual({ action: "clear", vendorKey: "slack" });
+    // To another tool category, the original job comes back with it.
+    expect(categoryChange({ vendorKey: "slack", category: "marketing", job: null }, original, "ai_api")).toEqual({ action: "set", vendorKey: "slack", category: "ai_api", job: "team_chat" });
+    expect(categoryChange({ vendorKey: "slack", category: "software", job: "team_chat" }, original, "marketing")).toEqual({ action: "set", vendorKey: "slack", category: "marketing", job: null });
+  });
 });

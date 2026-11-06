@@ -11,7 +11,10 @@ const body = z.object({ orgId: z.uuid() });
 const REFUSED = {
   no_invite: { status: 404, error: "That invite is no longer open." },
   has_team: { status: 409, error: "You own a company with teammates. Remove them or delete it first." },
-  has_data: { status: 409, error: "Your current company has uploaded data. Delete it in settings first, then accept." },
+  has_data: {
+    status: 409,
+    error: "Your current company still has data of its own (uploads, budgets, category fixes, investor links or a Slack channel). Delete that company in settings, then accept.",
+  },
 } as const;
 
 /** The signed-in user accepts a company's invite to its team. */
