@@ -66,8 +66,19 @@ describe("transaction search", () => {
 
   it("ignores anything it doesn't understand in the address instead of failing", () => {
     const q = parseTxnQuery({ q: "x".repeat(500), category: "snacks", month: "2026-13", direction: "sideways", page: "-4" });
-    expect(q).toEqual({ q: "x".repeat(100), category: null, month: null, direction: "all", page: 1 });
+    expect(q).toEqual({ q: "x".repeat(100), category: null, month: null, direction: "all", vendor: null, page: 1 });
+    expect(parseTxnQuery({ vendor: "Zoom; drop" }).vendor).toBeNull();
     expect(parseTxnQuery({ q: ["zoom", "uber"], page: "2.5" })).toMatchObject({ q: "zoom", page: 1 });
     expect(searchTransactions([], parseTxnQuery({}))).toMatchObject({ rows: [], total: 0, pages: 1, page: 1, outCents: 0, inCents: 0, months: [] });
+  });
+
+  it("narrows to one vendor exactly, by its key, from a dashboard link", () => {
+    const withLookalike = [...txns, txn("t6", "2026-10-09", -500, "Zoomies Pet Care", "other")];
+    // A word search for "zoom" also finds the lookalike; the vendor filter doesn't.
+    expect(searchTransactions(withLookalike, parseTxnQuery({ q: "zoom" })).total).toBe(3);
+    const r = searchTransactions(withLookalike, parseTxnQuery({ vendor: "zoom" }));
+    expect(r.rows.map((t) => t.id)).toEqual(["t2", "t1"]);
+    expect(r.vendorName).toBe("Zoom");
+    expect(searchTransactions(withLookalike, parseTxnQuery({ vendor: "nobody" })).vendorName).toBeNull();
   });
 });

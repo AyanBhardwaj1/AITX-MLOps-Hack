@@ -1,9 +1,10 @@
+import Link from "next/link";
 import type { VendorHistory } from "@/lib/finance/vendor-history";
 import { formatDate, formatMoney, formatMonth } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
 
 /** A recurring charge's last year: monthly totals, price moves and the latest bills. */
-export function VendorHistoryPanel({ id, vendorName, history }: { id: string; vendorName: string; history: VendorHistory }) {
+export function VendorHistoryPanel({ id, vendorName, history, transactionsHref }: { id: string; vendorName: string; history: VendorHistory; transactionsHref: string }) {
   const max = Math.max(...history.monthly.map((m) => m.cents), 1);
   return (
     <div id={id} className="grid gap-4 bg-canvas px-5 py-3 text-xs sm:grid-cols-3">
@@ -66,6 +67,9 @@ export function VendorHistoryPanel({ id, vendorName, history }: { id: string; ve
             </li>
           ))}
         </ul>
+        <Link href={transactionsHref} className="mt-2 inline-block font-medium text-brand hover:underline">
+          Every {vendorName} transaction →
+        </Link>
       </div>
     </div>
   );

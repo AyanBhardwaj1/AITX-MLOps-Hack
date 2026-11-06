@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { formatCompactDollars, categoryName } from "@/lib/format";
+import type { DataMode } from "@/lib/modes";
 import type { CategorySpendRow } from "@/lib/finance/category-spend";
 import { formatDollars } from "@/lib/money";
 
@@ -23,7 +25,7 @@ function change(r: CategorySpendRow): string {
  * Where the money goes: average monthly spend per category, the last 3 complete months against the
  * 3 before, as a dumbbell per category (light hollow dot = before, dark dot = now).
  */
-export function CategorySpendCard({ rows }: { rows: CategorySpendRow[] }) {
+export function CategorySpendCard({ rows, mode }: { rows: CategorySpendRow[]; mode: DataMode }) {
   if (rows.length === 0) return null;
   const max = Math.max(...rows.flatMap((r) => [r.recentCents, r.priorCents]), 1);
   const x = (cents: number) => `${(cents / max) * 100}%`;
@@ -55,7 +57,17 @@ export function CategorySpendCard({ rows }: { rows: CategorySpendRow[] }) {
               key={r.category}
               className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-1.5 text-sm sm:grid-cols-[10rem_minmax(4rem,1fr)_auto]"
             >
-              <span className="min-w-0 truncate">{label(r.category)}</span>
+              {r.category === "rest" ? (
+                <span className="min-w-0 truncate">{label(r.category)}</span>
+              ) : (
+                <Link
+                  href={`/app/transactions?mode=${mode}&category=${r.category}&direction=out`}
+                  className="min-w-0 truncate underline-offset-2 hover:text-brand hover:underline"
+                >
+                  {label(r.category)}
+                  <span className="sr-only"> transactions</span>
+                </Link>
+              )}
               <span className="relative col-span-2 row-start-2 h-4 sm:col-span-1 sm:col-start-2 sm:row-start-1" aria-hidden="true">
                 <span className="absolute inset-y-[7px] left-0 right-0 rounded bg-line/60" />
                 <span className="absolute inset-y-[7px]" style={{ left: x(lo), width: `calc(${x(hi)} - ${x(lo)})`, background: RANGE }} />

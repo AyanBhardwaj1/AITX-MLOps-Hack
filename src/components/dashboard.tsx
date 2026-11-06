@@ -327,7 +327,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         </section>
 
         <RunwayTrendCard points={data.runwayHistory} />
-        <CategorySpendCard rows={data.categorySpend} />
+        <CategorySpendCard rows={data.categorySpend} mode={data.mode} />
         <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />
         <ScenarioPlanner
           history={data.history}
@@ -462,7 +462,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                       {expanded && (
                         <tr>
                           <td colSpan={5} className="p-0">
-                            <VendorHistoryPanel id={historyId} vendorName={s.vendorName} history={s.history} />
+                            <VendorHistoryPanel id={historyId} vendorName={s.vendorName} history={s.history} transactionsHref={`/app/transactions?mode=${data.mode}&vendor=${encodeURIComponent(s.vendorKey)}`} />
                           </td>
                         </tr>
                       )}

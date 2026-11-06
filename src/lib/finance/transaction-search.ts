@@ -10,6 +10,8 @@ export interface TxnQuery {
   /** YYYY-MM */
   month: string | null;
   direction: "all" | "in" | "out";
+  /** One vendor's key, from a dashboard link (exact, unlike a word search). */
+  vendor: string | null;
   page: number;
 }
 
@@ -23,6 +25,8 @@ export interface TxnSearchResult {
   inCents: Cents;
   /** Months that have transactions, newest first, for the month picker. */
   months: string[];
+  /** The filtered vendor's display name, when there is one and it has transactions. */
+  vendorName: string | null;
 }
 
 type Params = Record<string, string | string[] | undefined>;
@@ -34,16 +38,19 @@ export function parseTxnQuery(params: Params): TxnQuery {
   const month = first(params.month);
   const direction = first(params.direction);
   const page = first(params.page);
+  const vendor = first(params.vendor);
   return {
     q: first(params.q).trim().slice(0, MAX_QUERY_CHARS),
     category: (CATEGORIES as readonly string[]).includes(category) ? (category as Category) : null,
     month: /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : null,
     direction: direction === "in" || direction === "out" ? direction : "all",
+    vendor: /^[a-z0-9_]{1,80}$/.test(vendor) ? vendor : null,
     page: /^[1-9]\d{0,5}$/.test(page) ? Number(page) : 1,
   };
 }
 
 function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boolean {
+  if (query.vendor && t.vendor.key !== query.vendor) return false;
   if (query.category && t.vendor.category !== query.category) return false;
   if (query.month && !t.postedAt.startsWith(query.month)) return false;
   if (query.direction === "in" && t.amountCents <= 0) return false;
@@ -68,5 +75,6 @@ export function searchTransactions(txns: readonly EnrichedTxn[], query: TxnQuery
   const pages = Math.max(1, Math.ceil(found.length / PAGE_SIZE));
   const page = Math.min(query.page, pages);
   const months = [...new Set(txns.map((t) => t.postedAt.slice(0, 7)))].sort().reverse();
-  return { rows: found.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total: found.length, page, pages, outCents, inCents, months };
+  const vendorName = query.vendor ? (txns.find((t) => t.vendor.key === query.vendor)?.vendor.name ?? null) : null;
+  return { rows: found.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total: found.length, page, pages, outCents, inCents, months, vendorName };
 }
