@@ -1,5 +1,5 @@
 import type { Cents } from "./types";
-import type { RunwayCost } from "./finance/runway";
+import { RUNWAY_COST_CAP_DAYS, type RunwayCost } from "./finance/runway";
 
 /**
  * Display formatting shared by the server and the browser. Dates are formatted in UTC from
@@ -40,6 +40,6 @@ export const categoryName = (category: string) => CATEGORY_NAMES[category] ?? ca
 export function describeRunwayCost(cost: RunwayCost | null): string {
   if (!cost) return "—";
   if (cost.kind === "breakeven") return "breaks even";
-  if (cost.kind === "over") return `over ${Math.round(cost.days / 365.25)} years`;
+  if (cost.kind === "over") return `over ${Math.round(RUNWAY_COST_CAP_DAYS / 365.25)} years`;
   return `${cost.days} ${cost.days === 1 ? "day" : "days"}`;
 }

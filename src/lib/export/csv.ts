@@ -65,16 +65,17 @@ export function form1099Csv(prep: Prep1099 | null): string {
   );
 }
 
-/** A number of days where there is one, so the column sorts; otherwise the same words as the table. */
-const runwayCostCell = (cost: RunwayCost | null) => (cost?.kind === "days" ? cost.days : cost ? describeRunwayCost(cost) : "no end");
+/** Days stay a number so the column sorts and sums; anything that isn't a count of days goes in its own note column. */
+const runwayCostCells = (cost: RunwayCost | null) =>
+  cost?.kind === "days" ? [cost.days, ""] : ["", cost ? describeRunwayCost(cost) : "runway has no end"];
 
 export function recurringCsv(a: Analysis): string {
   return toCsv(
-    ["Vendor", "Category", "What it does", "Cadence", "Per month (USD)", "Runway it costs (days)", "Last charge", "Next charge", "Cardholders"],
+    ["Vendor", "Category", "What it does", "Cadence", "Per month (USD)", "Runway it costs (days)", "Runway note", "Last charge", "Next charge", "Cardholders"],
     a.streams
       .filter((s) => s.active)
       .toSorted((x, y) => y.monthlyCostCents - x.monthlyCostCents)
-      .map((s) => [s.vendorName, s.category, s.job, s.cadence, dollars(s.monthlyCostCents), runwayCostCell(runwayCostOf(a.snapshot, s.monthlyCostCents)), s.lastDate, s.nextExpected, s.cardholders.join(" / ")]),
+      .map((s) => [s.vendorName, s.category, s.job, s.cadence, dollars(s.monthlyCostCents), ...runwayCostCells(runwayCostOf(a.snapshot, s.monthlyCostCents)), s.lastDate, s.nextExpected, s.cardholders.join(" / ")]),
   );
 }
 

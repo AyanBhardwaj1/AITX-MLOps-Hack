@@ -8,6 +8,9 @@ await suite("accounts", async ({ browser, step }) => {
   await step("the demo works without signing in, and the public pages stay public", async () => {
     await a.goto(`${APP}/app?mode=demo`);
     await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
+    // Nothing hidden inside a scroll box (a screen-reader label) stretches the page past its footer.
+    const below = await a.evaluate(() => document.documentElement.scrollHeight - (document.querySelector("footer").getBoundingClientRect().bottom + scrollY));
+    assert.ok(below < 40, `page runs ${below}px past the footer`);
     // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.
     const nav = a.getByRole("navigation", { name: "Dashboard sections" });
     for (const href of await nav.getByRole("link").evaluateAll((ls) => ls.map((l) => l.getAttribute("href")))) assert.equal(await a.locator(href).count(), 1, `${href} found`);

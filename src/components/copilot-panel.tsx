@@ -121,7 +121,7 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
           </div>
         ))}
       </div>
-      <div className="max-h-64 shrink-0 space-y-1.5 overflow-y-auto border-t border-line p-3">
+      <div className="relative max-h-64 shrink-0 space-y-1.5 overflow-y-auto border-t border-line p-3">
         {entries.length < INSTANT.length && <p className="px-1 pb-0.5 text-xs font-medium text-muted">{entries.length ? "Ask another" : "Try asking"}</p>}
         {INSTANT.filter((q) => !entries.some((e) => e.id === q.id)).map((q) => (
           <button
@@ -158,7 +158,7 @@ export function CopilotPanel({ mode, enabled, dismissed = [] }: { mode: DataMode
 
   return (
     <div className="flex h-[560px] flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      <div className="relative flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="space-y-2">
             <p className="text-sm text-muted">Ask about your burn, or let Copilot build a plan. Every number comes from the same math as the dashboard.</p>

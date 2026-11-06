@@ -517,7 +517,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                   </a>
                 </p>
               </div>
-              <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="Recurring charges">
+              <div className="relative max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="Recurring charges">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-panel text-left text-xs text-muted shadow-[inset_0_-1px_0_var(--color-line)]">
                     <tr>

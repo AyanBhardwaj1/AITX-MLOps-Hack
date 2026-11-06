@@ -20,7 +20,7 @@ export function PeopleSpendCard({ people, mode, burnMonths }: { people: PeopleSp
         </h2>
         <p className="text-xs text-muted">Card spend per month, {burnBasis(burnMonths)}, after refunds. Spending no card is named on (payroll, rent, transfers out) is left out.</p>
       </div>
-      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Spend by person table">
+      <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label="Spend by person table">
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-muted">
             <tr>

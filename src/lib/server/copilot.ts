@@ -156,7 +156,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
       }),
       get_recurring_runway_cost: tool({
         description:
-          "The biggest active recurring charges (monthlyCents, a monthly equivalent) and runwayDays: the days of runway each costs, i.e. gained if it stopped (null when runway has no end, or the charge alone exceeds net burn). Integer cents.",
+          "The biggest active recurring charges: vendorName, category, cadence, monthlyCents (a monthly equivalent, integer cents), and the runway each costs, i.e. gained if it stopped. runwayCost is {kind:\"days\",days} for a count of days, {kind:\"over\"} when it is more than five years (no exact count), {kind:\"breakeven\"} when stopping that charge alone would make the company cash-flow positive, or null when runway already has no end. runwayCostText is the same in words, as the dashboard shows it: quote it as written.",
         inputSchema: recurringRunwayCostInput,
         execute: async () => getRecurringRunwayCost(a),
       }),

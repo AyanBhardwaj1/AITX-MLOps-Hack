@@ -70,7 +70,7 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: DataMode; llm
   const waiting = run?.tickets.filter((t) => t.status === "draft").length ?? 0;
 
   return (
-    <div className="max-h-[560px] space-y-4 overflow-y-auto p-4 text-sm">
+    <div className="relative max-h-[560px] space-y-4 overflow-y-auto p-4 text-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="text-muted">
           Runs the monthly review on its own (also daily on a schedule): pull, analyze, plan, write the memo, and draft a task per finding into

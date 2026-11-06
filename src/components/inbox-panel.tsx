@@ -98,7 +98,7 @@ export function InboxPanel({
   const ordered = shown ? orderInbox(shown, impactByFinding) : null;
 
   return (
-    <div className="max-h-[560px] space-y-3 overflow-y-auto p-4 text-sm">
+    <div className="relative max-h-[560px] space-y-3 overflow-y-auto p-4 text-sm">
       <p className="text-muted">
         Drafts from Copilot and Autopilot. {jira ? "Approving a ticket files it in Jira." : "Approved drafts are ready to copy and send."} Nothing is sent
         without your approval.

@@ -239,7 +239,9 @@ function runwayCostAnswer(a: Analysis): InstantAnswer {
     text: [
       "The biggest recurring charges, and the days of runway each one costs (what you'd gain if it stopped):",
       rows.map((r) => `- ${r.vendorName}: ${formatDollars(r.monthlyCents)}/month, ${runwayCostWords(r.runwayCost)}`).join("\n"),
-      "Payroll and rent are on the list because they're the biggest; tick the waste findings to see what's worth cutting.",
+      ...(rows.some((r) => r.category === "payroll" || r.category === "rent")
+        ? ["Payroll and rent show up because they're the biggest charges, not because they're waste; tick the waste findings to see what's worth cutting."]
+        : ["Tick the waste findings to see what's worth cutting."]),
     ].join("\n\n"),
   };
 }

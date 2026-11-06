@@ -5,7 +5,8 @@ import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
-import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod, runwayCostOf } from "../finance/runway";
+import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod, runwayCostOf, type RunwayCost } from "../finance/runway";
+import { describeRunwayCost } from "../format";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget, suggestBudgets } from "../finance/budgets";
@@ -261,6 +262,8 @@ export function getSuggestedBudgets(a: Analysis) {
 }
 
 export const recurringRunwayCostInput = z.object({});
+/** The structured cost plus the words the table shows, so a model quotes "over 5 years", never the cap as a count. */
+const runwayCostFields = (runwayCost: RunwayCost | null) => ({ runwayCost, runwayCostText: describeRunwayCost(runwayCost) });
 const RUNWAY_COST_LISTED = 8;
 /** The biggest active recurring charges (monthly cents) and the runway each costs: days gained if it stopped, "over" five years, or "breakeven". */
 export function getRecurringRunwayCost(a: Analysis) {
@@ -268,7 +271,7 @@ export function getRecurringRunwayCost(a: Analysis) {
     .filter((s) => s.active)
     .sort((x, y) => y.monthlyCostCents - x.monthlyCostCents)
     .slice(0, RUNWAY_COST_LISTED)
-    .map((s) => ({ vendorName: s.vendorName, category: s.category, cadence: s.cadence, monthlyCents: s.monthlyCostCents, runwayCost: runwayCostOf(a.snapshot, s.monthlyCostCents) }));
+    .map((s) => ({ vendorName: s.vendorName, category: s.category, cadence: s.cadence, monthlyCents: s.monthlyCostCents, ...runwayCostFields(runwayCostOf(a.snapshot, s.monthlyCostCents)) }));
 }
 
 export const uncategorisedInput = z.object({});

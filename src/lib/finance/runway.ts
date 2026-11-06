@@ -135,14 +135,14 @@ export const RUNWAY_COST_CAP_DAYS = Math.round(60 * AVG_DAYS_PER_MONTH);
  * ("over"), or "breakeven" when stopping it alone makes the company cash-flow positive. Null when
  * runway already has no end (nothing to gain). Same arithmetic as ticking a finding.
  */
-export type RunwayCost = { kind: "days"; days: number } | { kind: "over"; days: number } | { kind: "breakeven" };
+export type RunwayCost = { kind: "days"; days: number } | { kind: "over" } | { kind: "breakeven" };
 
 export function runwayCostOf(snapshot: Snapshot, monthlyCents: Cents): RunwayCost | null {
   if (!Number.isFinite(snapshot.runwayMonths)) return null;
   const after = simulateSavings(snapshot, Math.max(0, monthlyCents)).runwayMonths;
   if (!Number.isFinite(after)) return { kind: "breakeven" };
   const days = Math.round((after - snapshot.runwayMonths) * AVG_DAYS_PER_MONTH);
-  return days > RUNWAY_COST_CAP_DAYS ? { kind: "over", days: RUNWAY_COST_CAP_DAYS } : { kind: "days", days };
+  return days > RUNWAY_COST_CAP_DAYS ? { kind: "over" } : { kind: "days", days };
 }
 
 export function simulateSavings(snapshot: Snapshot, monthlySavingsCents: Cents): Simulation {

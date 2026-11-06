@@ -198,7 +198,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         {result.total === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-muted">Nothing matches these filters.</p>
         ) : (
-          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Transactions">
+          <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label="Transactions">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted">
                 <tr>

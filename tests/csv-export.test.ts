@@ -34,20 +34,21 @@ describe("exports from the demo company", () => {
 
   it("lists every active recurring charge with dollars, not cents", () => {
     const lines = recurringCsv(a).replace(/^\uFEFF/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("Vendor,Category,What it does,Cadence,Per month (USD),Runway it costs (days),Last charge,Next charge,Cardholders");
+    expect(lines[0]).toBe("Vendor,Category,What it does,Cadence,Per month (USD),Runway it costs (days),Runway note,Last charge,Next charge,Cardholders");
     expect(lines.length - 1).toBe(a.streams.filter((s) => s.active).length);
     const datadog = lines.find((l) => l.startsWith("Datadog,"))!;
     // $3,600 a month after the 50% increase: dollars, not 360000 cents.
-    expect(datadog).toMatch(/^Datadog,software,observability,monthly,3600,\d+,2026-\d{2}-\d{2},2026-\d{2}-\d{2},/);
+    expect(datadog).toMatch(/^Datadog,software,observability,monthly,3600,\d+,,2026-\d{2}-\d{2},2026-\d{2}-\d{2},/);
   });
 
   it("says 'over 5 years' for a charge near all of burn instead of decades of days", () => {
     const lines = recurringCsv(a).replace(/^\uFEFF/, "").trim().split("\r\n").slice(1);
     // The demo's payroll is nearly its whole net burn: stopping it would leave decades of runway.
-    expect(lines.find((l) => l.startsWith("Gusto Payroll,"))).toContain(",over 5 years,");
+    // The days column stays numeric (sortable, summable); the words go in the note beside it.
+    expect(lines.find((l) => l.startsWith("Gusto Payroll,"))).toContain(",,over 5 years,");
     for (const l of lines) {
-      const cell = l.split(",")[5]!;
-      expect(cell === "over 5 years" || cell === "breaks even" || Number(cell) <= 1826).toBe(true);
+      const [days, note] = l.split(",").slice(5, 7);
+      expect(days === "" ? ["over 5 years", "breaks even"].includes(note!) : Number(days) <= 1826 && note === "").toBe(true);
     }
   });
 

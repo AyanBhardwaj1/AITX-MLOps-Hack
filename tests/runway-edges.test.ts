@@ -186,7 +186,7 @@ describe("days of runway a recurring charge costs", () => {
     const { computeSnapshot, runwayCostOf, RUNWAY_COST_CAP_DAYS } = await import("@/lib/finance/runway");
     const s = computeSnapshot({ cashCents: 1_200_000_00, txns: payroll(100_000_00), asOf: "2026-11-12" });
     // A charge one dollar short of all the burn: stopping it leaves $1/mo of burn, i.e. ~100,000 years.
-    expect(runwayCostOf(s, s.netBurnCents - 1_00)).toEqual({ kind: "over", days: RUNWAY_COST_CAP_DAYS });
+    expect(runwayCostOf(s, s.netBurnCents - 1_00)).toEqual({ kind: "over" });
     expect(RUNWAY_COST_CAP_DAYS).toBe(1826);
   });
 
@@ -194,7 +194,7 @@ describe("days of runway a recurring charge costs", () => {
     const { describeRunwayCost } = await import("@/lib/format");
     expect(describeRunwayCost(null)).toBe("—");
     expect(describeRunwayCost({ kind: "breakeven" })).toBe("breaks even");
-    expect(describeRunwayCost({ kind: "over", days: 1826 })).toBe("over 5 years");
+    expect(describeRunwayCost({ kind: "over" })).toBe("over 5 years");
     expect(describeRunwayCost({ kind: "days", days: 1 })).toBe("1 day");
     expect(describeRunwayCost({ kind: "days", days: 30 })).toBe("30 days");
   });
