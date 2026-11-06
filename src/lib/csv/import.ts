@@ -34,8 +34,13 @@ export interface CsvImport {
 
 /** Paying off the company's own card. A transfer only when the card's rows are also uploaded. */
 const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT\W+THANK YOU|ONLINE PAYMENT)\b/i;
-/** Money a customer sends ("ONLINE PAYMENT FROM ACME CORP") reads like a payoff but is money in. */
+/**
+ * Money a customer sends ("ONLINE PAYMENT FROM ACME CORP") reads like a payoff but is money in;
+ * from one of the company's own accounts ("PAYMENT FROM CHECKING", "… FROM CHK 1234") it's the
+ * card's side of a payoff.
+ */
 const PAYMENT_FROM = /\bPAYMENT\W+FROM\b/i;
+const FROM_OWN_ACCOUNT = /\bFROM\W+(?:CHECKING|CHECK|CHK|SAVINGS|SAV|ACCOUNT|ACCT|DDA|BANK|[X*]+|\d)/i;
 /** Moving money between the company's own accounts: never burn. */
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
 /** Mercury statuses for money that never moved. */
@@ -285,7 +290,7 @@ function rowAmount(cells: readonly string[], m: Mapping): number | null {
 /** A bank row's type from its text and sign: own-account moves, card payoffs, then card or bank spend. */
 export function inferTransactionType(description: string, amountCents: number, onCard: boolean): string {
   if (!isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)) return "internal_transfer";
-  if (CARD_PAYOFF_PATTERN.test(description) && !(amountCents > 0 && PAYMENT_FROM.test(description))) return "credit_repayment";
+  if (CARD_PAYOFF_PATTERN.test(description) && !(amountCents > 0 && PAYMENT_FROM.test(description) && !FROM_OWN_ACCOUNT.test(description))) return "credit_repayment";
   if (onCard) return amountCents < 0 ? "card_debit" : "card_credit";
   return amountCents < 0 ? "ach_debit" : "ach_credit";
 }

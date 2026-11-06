@@ -70,3 +70,12 @@ describe("import hunt: amounts and currencies", () => {
     expect(parseAmountCents("1,234,567,890,123.45")).toBe(123456789012345);
   });
 });
+
+describe("import hunt: a card's own payment leg", () => {
+  it("'PAYMENT FROM CHECKING' on the card's export is still the payoff's incoming leg", () => {
+    for (const d of ["ONLINE PAYMENT FROM CHECKING", "E-PAYMENT FROM CHK 1234", "ONLINE PAYMENT FROM ACCT XXXX5678", "AUTOPAY PAYMENT FROM SAVINGS"]) {
+      const r = importCsv(csv([`2026-10-02,${d},9120.00`]), { accountId: "card", resolvePayoffs: false });
+      expect(r.transactions[0]!.transaction_type, d).toBe("credit_repayment");
+    }
+  });
+});
