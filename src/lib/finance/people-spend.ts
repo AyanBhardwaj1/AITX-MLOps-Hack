@@ -39,7 +39,7 @@ export function peopleSpend(txns: readonly EnrichedTxn[], snapshot: Snapshot): P
     if (!countsTowardBurn(t) || !inBurnPeriod(snapshot, t)) continue;
     const who = searchable(t.cardholder ?? "");
     // Shown as typed, tidied the same way (minus the lower-casing).
-    const shown = (t.cardholder ?? "").normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").trim();
+    const shown = (t.cardholder ?? "").normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").replace(/ +/g, " ").trim();
     if (!who) {
       if (t.amountCents < 0) unassigned -= t.amountCents;
       continue;

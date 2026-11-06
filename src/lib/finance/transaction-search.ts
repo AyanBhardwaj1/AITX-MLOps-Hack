@@ -71,7 +71,7 @@ export function searchable(s: string): string {
   // Plain ASCII (nearly every bank row) needs only spaces and case: the fast path.
   if (!/[^\x20-\x7e]/.test(s)) return s.replace(/ +/g, " ").trim().toLowerCase();
   // Tabs and line breaks are spaces; invisible and other control characters go.
-  return s.normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").trim().toLowerCase();
+  return s.normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").replace(/ +/g, " ").trim().toLowerCase();
 }
 
 function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boolean {

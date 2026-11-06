@@ -2,10 +2,10 @@ import type { VendorInfo } from "../types";
 import { VENDOR_CATALOG, type CatalogEntry } from "./catalog";
 
 /** What a bank puts in front of the merchant ("PURCHASE AUTHORIZED ON 10/02 …", "CHECKCARD 0302 …"). */
-const BANK_BOILERPLATE = /^(?:(?:purchase|recurring payment|recurring purchase) authorized on \d{1,2}\/\d{1,2}|checkcard \d{4}|pos (?:debit|purchase)|debit card purchase|card purchase)\s+/;
+const BANK_BOILERPLATE = /^(?:(?:purchase|recurring payment|recurring purchase) authorized on \d{1,2}\/\d{1,2}(?:\/\d{2,4})?|checkcard \d{4}|pos (?:debit|purchase)|debit card purchase|card purchase)\s+/;
 const PROCESSOR_PREFIX = /^(sq|tst|paypal|pp|sp|py|pos|checkcard)\s*\*\s*/;
-/** Amazon Marketplace descriptors end in an order reference, which must not become the vendor. */
-const AMAZON_MARKETPLACE = /^amzn mktp(?: us)?\s*\*\s*\S*/;
+/** Amazon order descriptors carry an order reference (and more), which must not become the vendor. */
+const AMAZON_MARKETPLACE = /^(?:amzn mktp(?: us)?|amazon\.com|amzn\.com)\s*\*.*$/;
 const DOMAIN_SUFFIX = /\.(com|net|io|us|co|ai|app)\b/g;
 const PHONE = /\d{3}[-. ]\d{3}[-. ]\d{4}/g;
 const STORE_NUMBER = /#\s*\d+/g;

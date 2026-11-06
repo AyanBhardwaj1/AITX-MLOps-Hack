@@ -41,7 +41,8 @@ const LATE_BILL_DAYS = 7;
 const PRICE_DROP_SHARE = 0.8;
 const REFUND_SHARE = 0.9;
 /** Refunds can land a little before someone records the decision (used when the charge date is unknown). */
-const REFUND_LOOKBACK_DAYS = 30;
+/** How long after the charge (or acting on it) a refund for it may come. */
+const REFUND_WAIT_DAYS = 90;
 /** With a single past charge the cadence is unknown; annual is the longest we bill on. */
 const UNKNOWN_CADENCE_DAYS = 365;
 /** Floor for a billing cycle, so odd data can never make the expected-date math degenerate. */
@@ -139,11 +140,13 @@ function checkRefund(txns: readonly EnrichedTxn[], f: AcceptedFinding, acceptedO
   const vendorKey = f.vendorKeys[0];
   const chargeId = f.fingerprint.slice(`duplicate_charge:${vendorKey}:`.length);
   const charge = txns.find((t) => t.id === chargeId);
-  // The double charge's first leg can be a few days before the repeat; refunds count from then.
-  const since = charge ? addDays(charge.postedAt, -SAME_EVENT_DAYS) : addDays(acceptedOn, -REFUND_LOOKBACK_DAYS);
+  // Refunds count from the double charge on (never one from before it), and only for a while after
+  // it or after acting on it; without the charge row, only refunds after acting count.
+  const since = charge ? charge.postedAt : acceptedOn;
+  const until = addDays(charge && charge.postedAt > acceptedOn ? charge.postedAt : acceptedOn, REFUND_WAIT_DAYS);
   let alreadyNetted = charge ? Math.max(0, -charge.amountCents - f.oneTimeCents) : 0;
   const refunds = txns
-    .filter((t) => t.status === "posted" && t.amountCents > 0 && t.vendor.key === vendorKey && t.postedAt >= since && !usedRefunds.has(t.id))
+    .filter((t) => t.status === "posted" && t.amountCents > 0 && t.vendor.key === vendorKey && t.postedAt >= since && t.postedAt <= until && !usedRefunds.has(t.id))
     .sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
   let back = 0;
   const used: string[] = [];

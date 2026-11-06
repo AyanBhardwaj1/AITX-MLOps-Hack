@@ -95,3 +95,56 @@ describe("next expected charge on the billing day", () => {
     expect(detectStreams(quarterly, "2025-10-20")[0]!.nextExpected).toBe("2026-01-15");
   });
 });
+
+describe("review of the detector fixes", () => {
+  const charge = (id: string, date: string) => txn("SOMEVENDOR INC", date, -100_00, undefined, id);
+  const dup = (over: Partial<AcceptedFinding> = {}): AcceptedFinding => ({
+    fingerprint: "duplicate_charge:somevendor_inc:Card:x2",
+    kind: "duplicate_charge",
+    title: "charged twice",
+    vendorKeys: ["somevendor_inc"],
+    monthlySavingsCents: 0,
+    oneTimeCents: 100_00,
+    acceptedAt: "2026-10-03T10:00:00Z",
+    ...over,
+  });
+
+  it("never counts a refund from before the double charge", () => {
+    const txns = [txn("SOMEVENDOR INC", "2026-09-29", 100_00, undefined, "before"), charge("Card:x1", "2026-10-01"), charge("Card:x2", "2026-10-02")];
+    expect(verifySavings([dup()], txns, "2026-10-20").checks[0]!.status).toBe("waiting");
+  });
+
+  it("doesn't add up small refunds from months later", () => {
+    const later = ["2026-11-20", "2026-12-20", "2027-01-20", "2027-02-20", "2027-03-20", "2027-04-20", "2027-05-20", "2027-06-20", "2027-07-20"].map((d, i) => txn("SOMEVENDOR INC", d, 10_00, undefined, `r${i}`));
+    expect(verifySavings([dup()], [charge("Card:x1", "2026-10-01"), charge("Card:x2", "2026-10-02"), ...later], "2027-08-01").checks[0]!.status).toBe("waiting");
+  });
+
+  it("with the charge row gone, only counts refunds after accepting", () => {
+    const txns = [txn("SOMEVENDOR INC", "2026-09-29", 100_00, undefined, "before")];
+    expect(verifySavings([dup()], txns, "2026-10-20").checks[0]!.status).toBe("waiting");
+  });
+
+  it("keeps Amazon orders and Apple purchases from looking like double charges", () => {
+    expect(resolveVendor("AMZN Mktp US*X Amzn.com/bill WA").key).toBe("amazon");
+    expect(resolveVendor("Amazon.com*AB12CD34").key).toBe("amazon");
+    expect(resolveVendor("APPLE ONLINE STORE").key).toBe("apple");
+    expect(resolveVendor("APPLE.COM 800-676-2775 CA").key).toBe("apple");
+    expect(resolveVendor("APPLE.COM/BILL 866-712-7753 CA").key).toBe("apple_subscriptions");
+    const txns = [txn("AMZN Mktp US*AA111", "2026-10-01", -49_99), txn("AMZN Mktp US*BB222", "2026-10-03", -49_99), txn("APPLE ONLINE STORE", "2026-10-01", -2_499_00), txn("APPLE ONLINE STORE", "2026-10-02", -2_499_00)];
+    expect(detectFindings(txns, "2026-10-20", detectStreams(txns, "2026-10-20")).filter((f) => f.kind === "duplicate_charge")).toEqual([]);
+  });
+
+  it("strips boilerplate with a year in the date", () => {
+    expect(resolveVendor("PURCHASE AUTHORIZED ON 10/02/26 JOES PIZZA").key).toBe("joes_pizza");
+  });
+
+  it("follows a billing day that moved", () => {
+    const moved = ["2026-04-05", "2026-05-05", "2026-06-05", "2026-07-05", "2026-08-05", "2026-09-05", "2026-10-21"].map((d) => txn("NOTION", d, -100_00));
+    expect(detectStreams(moved, "2026-10-25")[0]!.nextExpected).toBe("2026-11-21");
+  });
+
+  it("searches without leftover double spaces", async () => {
+    const { searchable } = await import("@/lib/finance/transaction-search");
+    expect(searchable("a \u0000 b")).toBe("a b");
+  });
+});

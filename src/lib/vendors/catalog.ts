@@ -68,7 +68,11 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   { key: "doordash", name: "DoorDash", category: "meals", job: null, aliases: ["doordash"] },
   // Apple's subscription billing (App Store, iCloud) is software; the Apple Store is hardware.
   { key: "apple_subscriptions", name: "Apple (App Store, iCloud)", category: "software", job: null, aliases: ["apple.com/bill", "itunes"] },
-  { key: "apple", name: "Apple", category: "hardware", job: null, aliases: ["apple store", "apple.com/us"] },
+  // Generic "apple" last-resort: the longer subscription aliases above win where they match.
+  { key: "apple", name: "Apple", category: "hardware", job: null, aliases: ["apple store", "apple online store", "apple"] },
+  // Amazon orders: supplies and equipment, bought again and again (never a "double charge").
+  { key: "amazon", name: "Amazon", category: "hardware", job: null, aliases: ["amazon"] },
+  { key: "amazon_prime", name: "Amazon Prime", category: "software", job: null, aliases: ["amazon prime", "amzn prime"] },
   // Money in and bank
   { key: "stripe", name: "Stripe payouts", category: "revenue", job: null, aliases: ["stripe"] },
   { key: "bank_fees", name: "Bank fees", category: "fees", job: null, aliases: ["wire fee", "service fee", "foreign transaction fee"] },
