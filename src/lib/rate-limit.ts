@@ -1,6 +1,6 @@
 /**
- * Fixed-window, in-memory rate limiter. Good enough to stop a casual loop against a demo;
- * it is per server instance, so production should move this to a shared store (e.g. Redis).
+ * Fixed-window, in-memory rate limiter, per server instance. Sign-in and signups use the shared one
+ * (server/shared-rate-limit.ts, Postgres-backed) when a database is configured.
  */
 export function createRateLimiter({ limit, windowMs, now = Date.now }: { limit: number; windowMs: number; now?: () => number }) {
   const windows = new Map<string, { start: number; count: number }>();

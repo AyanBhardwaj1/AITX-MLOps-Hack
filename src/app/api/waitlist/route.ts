@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/rate-limit";
+import { createSharedRateLimiter } from "@/lib/server/shared-rate-limit";
 import { getWaitlist } from "@/lib/server/waitlist";
 import { handleSignup } from "@/lib/waitlist/signup";
 
@@ -7,12 +8,12 @@ export const runtime = "nodejs";
 
 const SIGNUPS_PER_MINUTE = 5;
 const MAX_BODY_BYTES = 2_048;
-const allow = createRateLimiter({ limit: SIGNUPS_PER_MINUTE, windowMs: 60_000 });
+const allow = createSharedRateLimiter({ name: "waitlist-ip", limit: SIGNUPS_PER_MINUTE, windowMs: 60_000 });
 const noStore = { "Cache-Control": "no-store" };
 
 /** Early-access signup. Public; cross-site posts are refused by the proxy. */
 export async function POST(request: Request) {
-  if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many tries. Wait a minute and try again." }, { status: 429 });
+  if (!(await allow(clientIp(request)))) return NextResponse.json({ error: "Too many tries. Wait a minute and try again." }, { status: 429 });
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return NextResponse.json({ error: "Request too large" }, { status: 413 });
   const text = await request.text().catch(() => "");

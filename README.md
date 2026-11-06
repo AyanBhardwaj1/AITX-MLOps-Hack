@@ -212,12 +212,12 @@ The eval and two independent code reviews caught real bugs during development, e
   - A magic link only works in the browser that asked for it (PKCE).
 - **Single-company deployments** (no Supabase Auth) keep the shared password: with `APP_PASSWORD` set, the app and its APIs need it, and the app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
 - **Basic abuse protection is in place:**
-  - Agent routes are rate-limited per IP, but per server instance; production needs a shared store.
+  - Sign-in links and early-access signups are rate-limited through Postgres when `DATABASE_URL` is set, so the limits hold across server instances (keys are stored as SHA-256 hashes, never the email or IP). Agent and upload routes are limited per IP per server instance.
   - Copilot accepts only user/assistant text, capped in size, so clients can't inject system prompts or forge tool results.
   - Output tokens are capped.
   - Also set a monthly spend limit on the OpenAI project.
 - **Jira filing checks for an existing issue first**, by the finding's label via `POST /rest/api/3/search/jql`, and fails closed if that check errors. The endpoint name changed in 2025, so verify it against your Atlassian site.
-- **Early-access signups need `DATABASE_URL` to persist.** Without it they live in server memory and are lost on restart. There is no confirmation email yet, and the signup rate limit is per server instance.
+- **Early-access signups need `DATABASE_URL` to persist.** Without it they live in server memory and are lost on restart. There is no confirmation email yet.
 - **Without `DATABASE_URL`, decisions live in the server's memory.** On serverless hosts that memory can reset at any time. Set `DATABASE_URL` for permanent storage.
 - **The LLM paths are built but haven't been run against the live OpenAI API** (no key in the build environment):
   - Copilot

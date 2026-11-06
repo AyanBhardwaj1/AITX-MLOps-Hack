@@ -158,6 +158,26 @@ do $$ begin
 end $$;
 reset role;
 
+-- Rate limits: server only.
+set role anon;
+do $$ begin
+  begin
+    perform count(*) from public.rate_limits;
+    raise exception 'FAIL: anon read rate limits';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set role authenticated;
+do $$ begin
+  begin
+    perform count(*) from public.rate_limits;
+    raise exception 'FAIL: a signed-in user read rate limits';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 -- Vendor corrections: members read their own org's fixes only, and never write them directly.
 insert into public.vendor_corrections (org_id, vendor_key, category, job) values
   ('00000000-0000-0000-0000-00000000000a', 'loom', 'software', 'video_meetings'),
