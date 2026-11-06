@@ -167,8 +167,10 @@ describe("balances in OFX downloads", () => {
     // Statements without an account number are each their own account, in every file.
     const noId = (cents: string) => sgmlChecking.replace("<ACCTID>000123456789", "").replace("<BALAMT>152345.67", `<BALAMT>${cents}`);
     expect(combineBalances([importOfx(noId("100"), { accountId: "a.ofx" }).balances, importOfx(noId("200"), { accountId: "b.ofx" }).balances])).toMatchObject({ cents: 300_00, accounts: 2 });
-    // The grader reads balances without building every transaction.
+    // The grader reads balances without building every transaction, with the same refusals.
     expect(readOfxBalances(sgmlChecking, "x")).toEqual(importOfx(sgmlChecking, { accountId: "x" }).balances);
+    expect(readOfxBalances(sgmlChecking.replace("<CURDEF>USD", "<CURDEF>CAD"), "x")).toEqual([]);
+    expect(readOfxBalances(sgmlChecking.replace("</STMTRS>", ""), "x")).toEqual([]);
     // A balance without a date still counts; it just can't be dated.
     const undated = sgmlChecking.replace("<DTASOF>20261031", "");
     expect(combineBalances([importOfx(undated, { accountId: "x" }).balances])).toEqual({ cents: 152_345_67, asOf: null, accounts: 1 });
@@ -217,6 +219,17 @@ describe("OFX review fixes", () => {
     for (const n of [...names, savings]) expect(n.replace(/\D/g, "").length).toBeLessThanOrEqual(4);
   });
 
+  it("keeps money market and credit lines apart from checking, and refuses to merge two checkings", () => {
+    const second = (type: string, id: string) => sgmlChecking.replace("</BANKMSGSRSV1>", "</BANKMSGSRSV1><BANKMSGSRSV1>" + sgmlChecking.slice(sgmlChecking.indexOf("<STMTTRNRS>"), sgmlChecking.indexOf("</BANKMSGSRSV1>")).replace("<ACCTID>000123456789<ACCTTYPE>CHECKING", `<ACCTID>${id}<ACCTTYPE>${type}`) + "</BANKMSGSRSV1>");
+    const mm = importOfx(second("MONEYMRKT", "9996789"), { accountId: "chase" });
+    expect(new Set(mm.transactions.map((t) => t.account_id))).toEqual(new Set(["chase …6789", "chase …6789 money market"]));
+    // A credit line is borrowing: spend on it is card-like, and its balance is never cash.
+    const line = importOfx(second("CREDITLINE", "5556789"), { accountId: "chase" });
+    expect(new Set(line.transactions.map((t) => `${t.account_id}|${t.account_type}`))).toEqual(new Set(["chase …6789|checking", "chase …6789 credit line|credit"]));
+    expect(line.balances).toHaveLength(1);
+    expect(() => importOfx(second("CHECKING", "9996789"), { accountId: "chase" })).toThrow(/two checking accounts ending 6789/);
+  });
+
   it("treats a card statement's PAYMENT as the payoff, so card spend isn't counted twice", () => {
     const card = xmlCard.replace("<TRNTYPE>CREDIT</TRNTYPE><DTPOSTED>20261020</DTPOSTED><TRNAMT>500.00</TRNAMT><FITID>a3</FITID><NAME>PAYMENT THANK YOU</NAME>", "<TRNTYPE>PAYMENT</TRNTYPE><DTPOSTED>20261020</DTPOSTED><TRNAMT>500.00</TRNAMT><FITID>a3</FITID><NAME>ONLINE PMT - THANKS</NAME>");
     const r = importOfx(card, { accountId: "amex", resolvePayoffs: false });
@@ -229,6 +242,14 @@ describe("OFX review fixes", () => {
     expect(looksLikeOfx('<?xml version="1.0"?>\n<OFX><BANKMSGSRSV1></BANKMSGSRSV1></OFX>')).toBe(true);
     expect(looksLikeOfx('<?xml version="1.0"?>\n<!-- exported by QuickBooks -->\n<?OFX OFXHEADER="200"?>\n<OFX></OFX>')).toBe(true);
     expect(looksLikeOfx('<?xml version="1.0"?>\n<rss></rss>')).toBe(false);
+  });
+
+  it("stays fast on a broken file full of unclosed statements", () => {
+    const broken = "OFXHEADER:100\n\n<OFX>" + "<STMTRS><CURDEF>USD<BANKTRANLIST>\n".repeat(60_000);
+    const started = performance.now();
+    expect(() => importOfx(broken, { accountId: "a" })).toThrow();
+    expect(readOfxBalances(broken, "a")).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 
   it("stays fast when every transaction is unreadable", () => {

@@ -585,7 +585,9 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const org = await orgId();
       await pool.query(
         `insert into public.company_integrations (org_id, slack_webhook_url) values ($1, $2)
-         on conflict (org_id) do update set slack_webhook_url = excluded.slack_webhook_url, updated_at = now()`,
+         on conflict (org_id) do update set slack_webhook_url = excluded.slack_webhook_url, updated_at = now(),
+           -- A different channel hasn't heard any runway alert yet.
+           runway_alert_months = case when company_integrations.slack_webhook_url is not distinct from excluded.slack_webhook_url then company_integrations.runway_alert_months end`,
         [org, url],
       );
     },

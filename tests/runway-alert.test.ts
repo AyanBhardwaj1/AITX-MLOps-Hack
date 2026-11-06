@@ -80,6 +80,21 @@ describe("runway alerts in Slack", () => {
     expect(await store.getSlackWebhook()).toBeNull();
   });
 
+  it("waits for fresh cash: runway from a figure entered weeks ago is old news", async () => {
+    const post = vi.fn(async () => undefined);
+    const store = await connected();
+    const old = await sendRunwayAlert({ store, load: async () => analysisWith(5.5), cashEnteredAt: async () => "2026-09-01T10:00:00.000Z", company: "Acme", now: NOW, post });
+    expect(old).toEqual({ status: "none" });
+    expect(await store.runwayAlertLevel()).toBeNull();
+    const fresh = await sendRunwayAlert({ store, load: async () => analysisWith(5.5), cashEnteredAt: async () => "2026-11-01T10:00:00.000Z", company: "Acme", now: NOW, post });
+    expect(fresh).toEqual({ status: "sent", below: 6 });
+  });
+
+  it("never prints a runway that reads as over the line it's under", () => {
+    expect(runwayAlertText({ company: "A", runwayMonths: 2.96, below: 3, netBurnCents: 1, zeroCashDate: null })).toContain("*2.9 months*, under 3.");
+    expect(runwayAlertText({ company: "A", runwayMonths: 11.97, below: 12, netBurnCents: 1, zeroCashDate: null })).toContain("*11.9 months*, under 12.");
+  });
+
   it("writes the zero-cash date only when there is one", () => {
     expect(runwayAlertText({ company: "Acme", runwayMonths: 2.04, below: 3, netBurnCents: 10_000_00, zeroCashDate: null, link: "https://runway.example/app?mode=company" })).toBe(
       "*Runway alert for Acme*\nRunway is down to *2.0 months*, under 3.\n<https://runway.example/app?mode=company|Open Runway>",

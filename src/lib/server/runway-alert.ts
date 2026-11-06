@@ -1,5 +1,5 @@
 import "server-only";
-import { dataFreshness } from "../freshness";
+import { dataFreshness, STALE_AFTER_DAYS } from "../freshness";
 import { formatDate } from "../format";
 import { nextRunwayAlert } from "../insights/runway-alert";
 import { formatDollars } from "../money";
@@ -12,7 +12,7 @@ const slackEscape = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&
 /** The Slack message for runway crossing a line (server-written text; the company name escaped). */
 export function runwayAlertText({ company, runwayMonths, below, netBurnCents, zeroCashDate, link }: { company: string; runwayMonths: number; below: number; netBurnCents: number; zeroCashDate: string | null; link?: string }): string {
   const when = zeroCashDate ? ` At ${formatDollars(netBurnCents)}/month net burn, cash runs out around ${formatDate(zeroCashDate)}.` : "";
-  return [`*Runway alert for ${slackEscape(company)}*`, `Runway is down to *${runwayMonths.toFixed(1)} months*, under ${below}.${when}`, ...(link ? [`<${link}|Open Runway>`] : [])].join("\n");
+  return [`*Runway alert for ${slackEscape(company)}*`, `Runway is down to *${(Math.floor(runwayMonths * 10) / 10).toFixed(1)} months*, under ${below}.${when}`, ...(link ? [`<${link}|Open Runway>`] : [])].join("\n");
 }
 
 export type RunwayAlertResult = { status: "sent"; below: number } | { status: "none" } | { status: "no_slack" } | { status: "disconnected" };
@@ -20,11 +20,12 @@ export type RunwayAlertResult = { status: "sent"; below: number } | { status: "n
 /**
  * Posts to the company's own Slack the day runway first drops under 12, 6 or 3 months. The level
  * moves only from the value this run read, so overlapping runs post once; a refused post puts it
- * back. Data two weeks old or more says nothing: that runway is old news.
+ * back. Transactions or cash two weeks old or more say nothing: that runway is old news.
  */
 export async function sendRunwayAlert({
   store,
   load,
+  cashEnteredAt,
   company,
   now,
   link,
@@ -32,6 +33,8 @@ export async function sendRunwayAlert({
 }: {
   store: Store;
   load: () => Promise<Analysis>;
+  /** When today's cash was last entered (ISO); runway from a figure weeks old says nothing. */
+  cashEnteredAt?: () => Promise<string | undefined>;
   company: string;
   now: Date;
   link?: string;
@@ -41,6 +44,8 @@ export async function sendRunwayAlert({
   if (!url) return { status: "no_slack" };
   const analysis = await load();
   if (dataFreshness(analysis.asOf, now).stale) return { status: "none" };
+  const entered = await cashEnteredAt?.();
+  if (entered !== undefined && !(Date.parse(entered) > now.getTime() - STALE_AFTER_DAYS * 86_400_000)) return { status: "none" };
   const { runwayMonths, netBurnCents, zeroCashDate } = analysis.snapshot;
   const stored = await store.runwayAlertLevel();
   const next = nextRunwayAlert(runwayMonths, stored);

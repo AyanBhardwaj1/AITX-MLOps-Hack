@@ -33,8 +33,9 @@ demo, the free grader and the public site work exactly as before.
   changing the amount re-arms it).
 - **Runway alerts in Slack.** With the company's Slack connected, the daily job posts the day
   runway first drops under 12, 6 or 3 months, with the burn and the zero-cash date. It re-arms
-  once runway is a full month back above the line, so a runway hovering at 6 doesn't flap, and
-  data two weeks old says nothing.
+  once runway is a full month back above the line, so a runway hovering at 6 doesn't flap.
+  Transactions or cash two weeks old say nothing. The first run after connecting a channel says
+  so if runway is already under a line; a new channel starts afresh.
 - **Plans you can send.** The "default alive" planner keeps its settings in the address, so a
   plan (hires, a raise, growth, cuts) can be bookmarked or sent to a cofounder with "Copy link to
   this plan".

@@ -58,8 +58,33 @@ export function importStatement(text: string, options: ImportOptions): Statement
   return looksLikeOfx(text) ? importOfx(text, options) : importCsv(text, options);
 }
 
-const STATEMENT = /<(STMTRS|CCSTMTRS)>([\s\S]*?)<\/\1>/gi;
-const STATEMENT_OPEN = /<(?:STMTRS|CCSTMTRS)>/gi;
+const STATEMENT_OPEN = /<(STMTRS|CCSTMTRS)>/gi;
+
+interface Statement {
+  kind: string;
+  body: string;
+  /** Where the body starts in the file. */
+  bodyStart: number;
+}
+
+/**
+ * The bank and card statements in a file, in one pass: each must close before the next opens.
+ * "cut_short" when one doesn't (a truncated download), so nothing is read from half a file.
+ */
+function findStatements(text: string): Statement[] | "cut_short" {
+  const upper = text.toUpperCase();
+  const opens = [...text.matchAll(STATEMENT_OPEN)];
+  const statements: Statement[] = [];
+  for (const [i, open] of opens.entries()) {
+    const kind = open[1]!.toUpperCase();
+    const bodyStart = open.index! + open[0].length;
+    const end = upper.indexOf(`</${kind}>`, bodyStart);
+    const next = opens[i + 1]?.index ?? Number.POSITIVE_INFINITY;
+    if (end === -1 || end > next) return "cut_short";
+    statements.push({ kind, body: text.slice(bodyStart, end), bodyStart });
+  }
+  return statements;
+}
 /** Where transactions start and end; a missing </STMTTRN> ends at the next one (SGML files can be sloppy). */
 const TXN_TAGS = /<STMTTRN>|<\/STMTTRN>|<\/BANKTRANLIST>/gi;
 const F_TRNTYPE = /<TRNTYPE>([^<]*)/i;
@@ -130,22 +155,30 @@ function refuseOtherCurrency(code: string) {
 
 interface StatementAccount {
   id: string;
+  /** Borrowing (a card or a credit line): spending on it is card spend, and its balance isn't cash. */
   card: boolean;
-  savings: boolean;
+  /** How the name tells it from a checking account ending alike ("" for checking). */
+  kindName: string;
 }
 
+const ACCOUNT_KINDS: Record<string, string> = { CHECKING: "", SAVINGS: " savings", MONEYMRKT: " money market", CREDITLINE: " credit line", CD: " CD" };
+
 function statementAccount(kind: string, body: string): StatementAccount {
-  return { id: value(body, F.acctid).replace(/\s/g, ""), card: kind.toUpperCase() === "CCSTMTRS", savings: value(body, F_ACCTTYPE).toUpperCase() === "SAVINGS" };
+  const id = value(body, F.acctid).replace(/\s/g, "");
+  if (kind === "CCSTMTRS") return { id, card: true, kindName: " card" };
+  const type = value(body, F_ACCTTYPE).toUpperCase();
+  const kindName = ACCOUNT_KINDS[type] ?? (type ? ` ${type.toLowerCase()}` : "");
+  return { id, card: type === "CREDITLINE", kindName };
 }
 
 /**
  * An account's name from its own statement only, so every download of it agrees whatever else
  * the file holds: the founder's label, the last four digits (never more: the name is sent to the
- * server), and "card" or "savings" so a checking, a savings and a card ending alike stay apart.
+ * server), and its kind, so a checking, a money market and a card ending alike stay apart.
  */
 function accountName(label: string, a: StatementAccount): string {
   if (!a.id) return label;
-  return `${label} …${a.id.slice(-4)}${a.card ? " card" : a.savings ? " savings" : ""}`;
+  return `${label} …${a.id.slice(-4)}${a.kindName}`;
 }
 
 /**
@@ -159,16 +192,23 @@ function statementBalance(body: string, a: StatementAccount, fallback: string): 
   return cents === null ? null : { key: a.id || fallback, cents, asOf: ofxDate(value(ledger!, F_BAL.asOf)) };
 }
 
-/** Just the bank balances in a download, without reading every transaction (the grader's cash hint). */
+const isUsd = (body: string) => ["", "USD"].includes(value(body, F.curdef).toUpperCase());
+
+/**
+ * Just the bank balances in a download, without reading every transaction (the grader's cash hint).
+ * Nothing from a cut-short file, and never a balance in another currency.
+ */
 export function readOfxBalances(text: string, fileKey: string): OfxBalance[] {
-  return [...text.matchAll(STATEMENT)].flatMap((s, i) => statementBalance(s[2]!, statementAccount(s[1]!, s[2]!), `${fileKey}#${i}`) ?? []);
+  const statements = findStatements(text);
+  if (statements === "cut_short") return [];
+  return statements.flatMap((s, i) => (isUsd(s.body) ? (statementBalance(s.body, statementAccount(s.kind, s.body), `${fileKey}#${i}`) ?? []) : []));
 }
 
 /** Parses one OFX file. Throws on another currency or no statement; skips (and reports) unreadable transactions. */
 export function importOfx(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: ImportOptions): StatementImport & { balances: OfxBalance[] } {
-  const statements = [...text.matchAll(STATEMENT)];
+  const statements = findStatements(text);
+  if (statements === "cut_short") throw new Error("This OFX file looks cut short: a statement in it has no end. Download it again.");
   if (statements.length === 0) throw new Error("This OFX file has no bank or card statement in it.");
-  if ((text.match(STATEMENT_OPEN)?.length ?? 0) > statements.length) throw new Error("This OFX file looks cut short: a statement in it has no end. Download it again.");
   // Unreadable transactions are reported by line. Positions only move forward, so count as we go.
   let lineCursor = 0;
   let line = 1;
@@ -179,16 +219,24 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
     }
     return line;
   };
-  const ids = statements.map((s) => statementAccount(s[1]!, s[2]!));
+  const ids = statements.map((s) => statementAccount(s.kind, s.body));
+  // Two accounts of one kind ending alike would share a name and merge: ask for separate files.
+  const names = new Map<string, string>();
+  for (const a of ids) {
+    const name = accountName(accountId, a);
+    if (a.id && names.has(name) && names.get(name) !== a.id)
+      throw new Error(`This file has two${a.kindName || " checking"} accounts ending ${a.id.slice(-4)}. Download each one on its own and upload them with different names.`);
+    names.set(name, a.id);
+  }
   const transactions: RhoTransaction[] = [];
   const skipped: number[] = [];
   const balances: OfxBalance[] = [];
   for (const [i, s] of statements.entries()) {
-    const body = s[2]!;
+    const body = s.body;
     const onCard = ids[i]!.card;
     refuseOtherCurrency(value(body, F.curdef));
     const account = accountName(accountId, ids[i]!);
-    const bodyStart = s.index! + s[0].indexOf(body);
+    const bodyStart = s.bodyStart;
     const balance = statementBalance(body, ids[i]!, `${accountId}#${i}`);
     if (balance) balances.push(balance);
     for (const { block, at } of transactionBlocks(body)) {

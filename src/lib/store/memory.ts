@@ -190,6 +190,8 @@ export function createMemoryStore(): Store {
       return slackWebhook;
     },
     async setSlackWebhook(url) {
+      // A different channel hasn't heard any runway alert yet.
+      if (url !== slackWebhook) runwayAlertMonths = null;
       slackWebhook = url;
     },
     async markDigestSent() {

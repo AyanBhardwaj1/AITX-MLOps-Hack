@@ -272,6 +272,13 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.setRunwayAlertLevel(6, 3)).toBe(true);
       expect(await store.setRunwayAlertLevel(3, null)).toBe(true);
       expect(await store.runwayAlertLevel()).toBeNull();
+      // A different channel starts afresh: it hasn't heard any of it. The same one keeps its level.
+      await store.setRunwayAlertLevel(null, 3);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");
+      expect(await store.runwayAlertLevel()).toBe(3);
+      await store.setSlackWebhook(null);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/y");
+      expect(await store.runwayAlertLevel()).toBeNull();
     });
 
     it("lets one alert per budget per month through, and lets a refused one try again", async () => {
