@@ -46,7 +46,11 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
       // One first sign-in at a time per user, so racing requests can't create two companies.
       return inTransaction(`company:${id}`, async (c) => {
         const existing = await c.query<Row>(select, [id]);
-        if (existing.rows[0]) return toCompany(existing.rows[0]);
+        if (existing.rows[0]) {
+          // Memberships from before teams have no email; record the verified one.
+          if (normalized) await c.query(`update public.memberships set email = $2 where user_id = $1 and email is null`, [id, normalized]);
+          return toCompany(existing.rows[0]);
+        }
         // Invited by a company: join it as a member (the email is the one Supabase verified).
         const invite = normalized
           ? (await c.query<{ id: string; org_id: string }>(`select id, org_id from public.company_invites where email = $1 order by created_at limit 1 for update`, [normalized])).rows[0]

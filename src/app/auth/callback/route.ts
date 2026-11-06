@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { NEXT_COOKIE, safeNextPath } from "@/lib/auth/session";
 import { supabaseForRoute } from "@/lib/auth/supabase-route";
-import { ensureCompanyFor } from "@/lib/server/company";
+import { companyAtSignIn } from "@/lib/server/company";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     return fail;
   }
   try {
-    await ensureCompanyFor({ id: data.user.id, email: data.user.email ?? null });
+    await companyAtSignIn({ id: data.user.id, email: data.user.email ?? null });
   } catch (err) {
     if (err instanceof Error && err.name === "NotInvited") {
       // Signed in, but not invited: end the session rather than leave a useless one behind.

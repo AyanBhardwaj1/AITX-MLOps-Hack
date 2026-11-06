@@ -46,3 +46,15 @@ describe("companies the daily cron reviews", () => {
     expect(scopes.every((s) => s.startsWith("org_"))).toBe(true);
   });
 });
+
+describe("members from before teams existed", () => {
+  it("get their email filled in the next time they sign in", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const user = { id: crypto.randomUUID(), email: "Early@Acme.example" };
+    await accounts.ensureCompanyFor(user);
+    await pool.query(`update public.memberships set email = null where user_id = $1`, [user.id]);
+    await accounts.ensureCompanyFor(user);
+    const team = await accounts.team(user.id);
+    expect(team!.members[0]!.email).toBe("early@acme.example");
+  });
+});

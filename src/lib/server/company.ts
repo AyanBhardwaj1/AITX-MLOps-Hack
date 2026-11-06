@@ -130,3 +130,10 @@ export async function companyForPage(next: string): Promise<{ user: SessionUser;
     throw err;
   }
 }
+
+/** At sign-in: the user's company (invite rules apply), and their verified email recorded on it. */
+export async function companyAtSignIn(user: SessionUser): Promise<Company> {
+  await ensureCompanyFor(user);
+  // Idempotent; also fills in the email on memberships made before teams existed.
+  return getAccounts().ensureCompanyFor(user);
+}
