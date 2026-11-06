@@ -5,6 +5,9 @@ import { categorySpend } from "@/lib/finance/category-spend";
 import { monthlyHistory } from "@/lib/finance/history";
 import { moneyIn } from "@/lib/finance/money-in";
 import { peopleSpend } from "@/lib/finance/people-spend";
+import { uncategorisedSpend } from "@/lib/finance/uncategorised";
+import { suggestBudgets } from "@/lib/finance/budgets";
+import { form1099Year, prep1099 } from "@/lib/finance/form-1099";
 import { analyze } from "@/lib/pipeline";
 import { generateDemoCompany } from "@/lib/seed/demo-company";
 
@@ -44,6 +47,19 @@ describe("the cards agree with each other", () => {
     if (people) expect(people.rows.reduce((x, p) => x + p.monthlyCents, 0) + people.unassignedMonthlyCents).toBeLessThanOrEqual(s.grossBurnCents + people.rows.length + 1);
     const money = moneyIn(a.txns, s);
     if (money) expect(money.monthlyCents).toBeLessThanOrEqual(s.grossBurnCents - s.netBurnCents + 1);
+
+    // Spend Runway can't place is part of gross burn, and suggested budgets cover what was spent.
+    const unplaced = uncategorisedSpend(a.txns, s);
+    if (unplaced) expect(unplaced.monthlyCents).toBeLessThanOrEqual(s.grossBurnCents + 1);
+    const suggested = suggestBudgets(a.txns, a.asOf);
+    if (suggested) for (const cents of Object.values(suggested.byCategory)) expect(cents! % 100_00).toBe(0);
+    // The 1099 list counts bank payments in one tax year: never more than that year's outflows.
+    const year = form1099Year(a.asOf);
+    const prep = prep1099(a.txns, year);
+    if (prep) {
+      const out = a.txns.filter((t) => t.postedAt.startsWith(`${year}-`) && t.amountCents < 0).reduce((x, t) => x - t.amountCents, 0);
+      expect(prep.rows.reduce((x, r) => x + r.paidCents, 0)).toBeLessThanOrEqual(out);
+    }
 
     // "Where the money goes" covers the last 3 complete months, as burn does.
     const cats = categorySpend(a.txns, a.asOf, { maxRows: 99 });
