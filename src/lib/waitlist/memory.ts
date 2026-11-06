@@ -22,5 +22,11 @@ export function createMemoryWaitlist(): WaitlistStore {
     async isInvited(email) {
       return Boolean(entries.get(email)?.invitedAt);
     },
+    async list(limit) {
+      return [...entries.values()]
+        .reverse()
+        .slice(0, limit)
+        .map(({ email, role, bank, source, createdAt, invitedAt }) => ({ email, role, bank, source, createdAt, invited: Boolean(invitedAt) }));
+    },
   };
 }

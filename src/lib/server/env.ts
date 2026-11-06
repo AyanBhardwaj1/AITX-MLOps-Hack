@@ -28,6 +28,11 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20).optional(),
   /** "open": anyone can sign up; "invite" (default): only emails invited from the waitlist. */
   SIGNUPS: z.enum(["open", "invite"]).default("invite"),
+  /**
+   * Comma-separated emails of the people who run this deployment: they get /app/admin to invite
+   * founders from the waitlist. Only a confirmed sign-in email counts.
+   */
+  OPERATOR_EMAILS: z.string().max(2_000).optional(),
   /** Public contact for privacy and support requests, shown on the legal pages. */
   CONTACT_EMAIL: z.email().optional(),
   /** Slack incoming webhook for the Monday digest (https://hooks.slack.com/services/...). */

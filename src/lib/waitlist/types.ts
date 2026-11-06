@@ -37,4 +37,11 @@ export interface WaitlistStore {
   /** Allows this waitlisted email to create an account (invite-only sign-ups). False if it isn't on the list. */
   invite(email: string): Promise<boolean>;
   isInvited(email: string): Promise<boolean>;
+  /** The latest signups, newest first, for the operator's admin page. */
+  list(limit: number): Promise<ListedWaitlistEntry[]>;
+}
+
+export interface ListedWaitlistEntry extends WaitlistEntry {
+  createdAt: string;
+  invited: boolean;
 }

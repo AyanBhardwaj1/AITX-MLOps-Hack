@@ -22,6 +22,7 @@ Never commit `.env.local`; it's gitignored.
 | `DATABASE_URL` | Early-access signups, decisions, Inbox and run history saved permanently (**set this before sharing the site**, or signups are lost on restart) | Supabase → **Connect** → *Transaction pooler* URI (port 6543), with your database password filled in |
 | `DATABASE_CA_CERT` | Verified TLS to Supabase | Supabase → Project Settings → Database → **SSL Configuration → Download certificate**. Paste the whole PEM (including `-----BEGIN CERTIFICATE-----`). |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Accounts:** founders sign in by email link, get their own company, and upload bank exports. Needs `DATABASE_URL`. See [Accounts](#accounts-sign-in-and-uploads). | Supabase → Project Settings → API: the Project URL and the `anon` *public* key. Never use the `service_role` key here. |
+| `OPERATOR_EMAILS` | Who runs the deployment: these sign-in emails get `/app/admin` to see the waitlist and invite founders without SQL (and an "Early access" link in settings). Comma-separated. Only a confirmed sign-in counts; everyone else gets a not-found page. | Your own email(s), e.g. `you@company.com` |
 | `SIGNUPS` | Who can create an account: `invite` (default; emails you invite from the waitlist) or `open` (anyone) | See [Inviting founders](#inviting-founders) |
 | `APP_PASSWORD` | Password prompt on the app (`/app` and its APIs; any username) for a single-company deployment. Ignored once accounts are on. The public site, legal pages, grader and signup stay open. | Pick one, at least 8 characters. **Required before using a real Rho account.** |
 | `RHO_BASE_URL` / `RHO_API_TOKEN` | Your real Rho account instead of the sandbox | Rho → Settings → API. Production URL: `https://rhoapi.rho.co/api/v1`; tokens start with `rhobat_`. |
@@ -77,7 +78,9 @@ Founders invite their own teammates from `/app/settings` (no email is sent; the 
 
 ### Inviting founders
 
-In invite mode, a sign-in link creates an account only for an email you've invited. In Supabase → SQL Editor:
+In invite mode, a sign-in link creates an account only for an email you've invited. The easy way: set `OPERATOR_EMAILS` to your own email, sign in, and open `/app/admin` (also linked from settings). It lists the latest signups with an Invite button each, and invites any other email too. No email is sent; tell the founder to sign in at `/login`.
+
+Or in Supabase → SQL Editor:
 ```sql
 insert into public.waitlist (email, invited_at) values ('founder@company.com', now())
 on conflict (email) do update set invited_at = now();

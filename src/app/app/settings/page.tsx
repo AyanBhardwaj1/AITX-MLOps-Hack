@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { isOperator } from "@/lib/server/operator";
 import { redirect } from "next/navigation";
 import { CompanySettings } from "@/components/company-settings";
 import { TeamPanel } from "@/components/team-panel";
@@ -18,17 +19,25 @@ export default async function SettingsPage() {
   if (!accountsEnabled()) redirect("/app");
   const { user, company } = await companyForPage("/app/settings");
   const invites = await pendingInvitesForMe();
+  const operator = await isOperator();
   return (
     <main id="main" className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link href="/app?mode=company" className="text-muted hover:text-ink">
           ← Dashboard
         </Link>
-        <form action="/api/auth/logout" method="post">
-          <button type="submit" className="text-muted hover:text-ink">
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          {operator && (
+            <Link href="/app/admin" className="text-muted hover:text-ink">
+              Early access
+            </Link>
+          )}
+          <form action="/api/auth/logout" method="post">
+            <button type="submit" className="text-muted hover:text-ink">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Company settings</h1>
       <p className="mt-2 text-muted">

@@ -31,5 +31,23 @@ export function runWaitlistContract(name: string, makeStore: () => Promise<Waitl
       expect(await store.isInvited(`other+${crypto.randomUUID()}@example.com`)).toBe(false);
       expect(await store.invite(`never-signed-up+${crypto.randomUUID()}@example.com`)).toBe(false);
     });
+
+    it("lists who is waiting, newest first, with who is already invited", async () => {
+      const store = await makeStore();
+      const tag = crypto.randomUUID();
+      const first = `first+${tag}@example.com`;
+      const second = `second+${tag}@example.com`;
+      await store.add({ email: first, role: "founder", bank: "rho", source: "hero" });
+      await new Promise((r) => setTimeout(r, 15));
+      await store.add({ email: second, role: null, bank: null, source: null });
+      await store.invite(first);
+      const listed = (await store.list(500)).filter((e) => e.email.includes(tag));
+      expect(listed.map((e) => [e.email, e.role, e.invited])).toEqual([
+        [second, null, false],
+        [first, "founder", true],
+      ]);
+      expect(Date.parse(listed[0]!.createdAt)).toBeGreaterThanOrEqual(Date.parse(listed[1]!.createdAt));
+      expect(await store.list(1)).toHaveLength(1);
+    });
   });
 }

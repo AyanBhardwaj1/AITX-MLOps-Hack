@@ -15,7 +15,7 @@ export interface ProxyDeps {
   getUser: (request: NextRequest) => Promise<{ user: SessionUser | null; setCookies: CookieToSet[] }>;
 }
 
-const COMPANY_PAGES = new Set(["/app/upload", "/app/settings"]);
+const COMPANY_PAGES = new Set(["/app/upload", "/app/settings", "/app/admin"]);
 
 /** Pages that show a signed-in company's own data; the public demo at /app stays open. */
 function needsSignIn(url: URL): boolean {

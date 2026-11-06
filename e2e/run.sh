@@ -30,8 +30,8 @@ done
 
 createdb "$DB"
 cat supabase/tests/local_stub.sql supabase/migrations/*.sql | psql -q -X -v ON_ERROR_STOP=1 -d "$DB"
-# Invited founders; "waiting@" is on the list but not invited.
-psql -q -X -d "$DB" -c "insert into public.waitlist (email, invited_at) values ('founder-a@acme.example', now()), ('founder-b@globex.example', now()), ('uploader@umbrella.example', now()), ('waiting@initech.example', null);"
+# Invited founders (ops@ is the operator); "waiting@" is on the list but not invited.
+psql -q -X -d "$DB" -c "insert into public.waitlist (email, invited_at) values ('founder-a@acme.example', now()), ('founder-b@globex.example', now()), ('uploader@umbrella.example', now()), ('ops@runway.example', now()), ('outsider@stark.example', now()), ('waiting@initech.example', null);"
 
 PORT="$AUTH_PORT" setsid node e2e/fake-gotrue.mjs >"$LOG_DIR/auth.log" 2>&1 &
 PIDS+=($!)
@@ -40,7 +40,7 @@ export NEXT_PUBLIC_SUPABASE_URL="http://localhost:$AUTH_PORT"
 export NEXT_PUBLIC_SUPABASE_ANON_KEY="e2e-anon-key-not-a-secret-000000"
 echo "Building..."
 npx next build >"$LOG_DIR/build.log" 2>&1 || { tail -30 "$LOG_DIR/build.log"; exit 1; }
-DATABASE_URL="$DB_URL" SIGNUPS=invite setsid npx next start -p "$APP_PORT" >"$LOG_DIR/app.log" 2>&1 &
+DATABASE_URL="$DB_URL" SIGNUPS=invite OPERATOR_EMAILS=ops@runway.example setsid npx next start -p "$APP_PORT" >"$LOG_DIR/app.log" 2>&1 &
 PIDS+=($!)
 for _ in $(seq 1 60); do curl -sf "http://localhost:$APP_PORT/api/health" >/dev/null && break; sleep 1; done
 
