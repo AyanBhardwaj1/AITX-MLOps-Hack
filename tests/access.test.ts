@@ -75,7 +75,7 @@ describe("isCrossSiteWrite", () => {
 describe("isPublicPath", () => {
   it("keeps the marketing site, legal pages, grader and signup outside the site password", async () => {
     const { isPublicPath } = await import("@/lib/access");
-    for (const p of ["/", "/grader", "/privacy", "/terms", "/security", "/api/waitlist", "/api/health", "/api/cron/digest", "/robots.txt", "/sitemap.xml", "/s/demo", `/s/${"a".repeat(43)}`]) {
+    for (const p of ["/", "/grader", "/privacy", "/terms", "/security", "/api/waitlist", "/api/health", "/api/cron/digest", "/robots.txt", "/sitemap.xml", "/manifest.webmanifest", "/s/demo", `/s/${"a".repeat(43)}`]) {
       expect(isPublicPath(p), p).toBe(true);
     }
   });

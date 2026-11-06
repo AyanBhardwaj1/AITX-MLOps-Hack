@@ -8,6 +8,10 @@ await suite("accounts", async ({ browser, step }) => {
     await a.goto(`${APP}/app?mode=demo`);
     await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
     for (const path of ["/", "/grader", "/privacy", "/security"]) assert.equal((await a.goto(APP + path)).status(), 200, path);
+    // Installable: the page links the manifest, which opens on the app.
+    const href = await a.locator('link[rel="manifest"]').getAttribute("href");
+    const manifest = await (await fetch(new URL(href, APP))).json();
+    assert.equal(manifest.start_url, "/app");
   });
   await step("company pages send a signed-out visitor to sign in; the APIs answer 401", async () => {
     await a.goto(`${APP}/app?mode=company`);

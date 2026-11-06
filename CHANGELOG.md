@@ -31,6 +31,8 @@ demo, the free grader and the public site work exactly as before.
   budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
   connected, the daily job posts there the day a budget goes over (once per budget per month;
   changing the amount re-arms it).
+- **Add to your home screen.** A web app manifest lets a phone install Runway; it opens on the
+  app. It stays reachable on password-protected deployments.
 - **Spend by person.** Card spend per cardholder per month, over the same months as burn and
   after refunds, with their share of gross burn and biggest vendors; each name opens their
   transactions.
