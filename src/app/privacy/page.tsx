@@ -70,7 +70,7 @@ export default function PrivacyPage() {
                 you ask Copilot a question, the computed figures and the individual transactions it looks up (date, amount, vendor, category and
                 cardholder name); and the context needed to write drafts.
               </li>
-              <li>Slack, only if your company connects its own channel for the Monday digest: it receives the digest text, and a short note the day a budget goes over (the company name, the category, the month, the amount spent and the budget, with a link back to Runway). The webhook address is kept on the server and never shown in full.</li>
+              <li>Slack, only if your company connects its own channel for the Monday digest: it receives the digest text, and a short note the day a budget goes over (the company name, the category, the month, the amount spent and the budget, with a link back to Runway), and one the day runway drops under 12, 6 or 3 months (the runway, net burn and zero-cash date). The webhook address is kept on the server and never shown in full.</li>
             </ul>
           ),
         },

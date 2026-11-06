@@ -66,7 +66,7 @@ describe("the daily Autopilot for every company", () => {
     expect(result.skipped).toBe(waiting);
   });
 
-  it("tells a company's own Slack when a budget goes over this month, once", async () => {
+  it("tells a company's own Slack when a budget goes over this month, and when runway crosses a line, once each", async () => {
     // The sample's data runs to Oct 26; the job runs that day.
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-26T13:00:00Z") });
     const posts: { url: string; text: string }[] = [];
@@ -85,13 +85,18 @@ describe("the daily Autopilot for every company", () => {
       await store.setBudget("payroll", 999_999_999_00);
       const first = await runCompanyAutopilots({ budgetMs: 30_000 });
       expect(first.budgetAlerts).toBeGreaterThanOrEqual(1);
-      const mine = posts.filter((p) => p.url.endsWith("/T1/B1/alerts"));
+      const mine = posts.filter((p) => p.url.endsWith("/T1/B1/alerts") && p.text.startsWith("*Budget alert"));
       expect(mine).toHaveLength(1);
+      // $500,000 at the sample's burn is under a year: the runway line is crossed once too.
+      const runway = posts.filter((p) => p.url.endsWith("/T1/B1/alerts") && p.text.startsWith("*Runway alert"));
+      expect(runway).toHaveLength(1);
+      expect(runway[0]!.text).toMatch(/Runway is down to \*\d+\.\d months\*, under (12|6)\./);
+      expect(first.runwayAlerts).toBeGreaterThanOrEqual(1);
       expect(mine[0]!.text).toContain("*Software* is over budget");
       expect(mine[0]!.text).toContain("in October.");
       expect(mine[0]!.text).not.toContain("Payroll");
       await runCompanyAutopilots({ budgetMs: 30_000 });
-      expect(posts.filter((p) => p.url.endsWith("/T1/B1/alerts"))).toHaveLength(1);
+      expect(posts.filter((p) => p.url.endsWith("/T1/B1/alerts"))).toHaveLength(2);
     } finally {
       vi.useRealTimers();
       vi.unstubAllGlobals();

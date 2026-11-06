@@ -7,8 +7,9 @@ import { writeMemoWithLLM } from "./llm";
 import { scopeFor } from "./scope";
 import { getStore, listCompanyScopesWithUploads } from "./store";
 import { companyName, getAccounts } from "./company";
-import { analyze } from "../pipeline";
+import { analyze, type Analysis } from "../pipeline";
 import { sendBudgetAlerts } from "./budget-alerts";
+import { sendRunwayAlert } from "./runway-alert";
 import { appUrl } from "./digest-service";
 
 export interface PublicRun extends Omit<AutopilotRun, "memoFacts" | "findings" | "tickets"> {
@@ -39,6 +40,8 @@ export interface CompanyRunsResult {
   skipped: number;
   /** Companies told in their own Slack that a budget went over this month. */
   budgetAlerts: number;
+  /** Companies told in their own Slack that runway dropped under 12, 6 or 3 months. */
+  runwayAlerts: number;
 }
 
 /**
@@ -49,7 +52,7 @@ export interface CompanyRunsResult {
 export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): Promise<CompanyRunsResult> {
   const deadline = Date.now() + budgetMs;
   const scopes = await listCompanyScopesWithUploads(MAX_COMPANIES_PER_RUN);
-  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0, budgetAlerts: 0 };
+  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0, budgetAlerts: 0, runwayAlerts: 0 };
   for (const [i, scope] of scopes.entries()) {
     if (Date.now() >= deadline) {
       result.skipped = scopes.length - i;
@@ -59,6 +62,8 @@ export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): 
     // Read once: the review and the budget check look at the same data.
     let data: Promise<LabelledDataset> | undefined;
     const loadData = () => (data ??= loadCompanyLabelled(scope));
+    let analysis: Promise<Analysis> | undefined;
+    const loadAnalysis = () => (analysis ??= loadData().then(analyze));
     let company: string | undefined;
     try {
       company = (await getAccounts().nameForScope(scope)) ?? undefined;
@@ -67,11 +72,18 @@ export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): 
     }
     // Budgets first: quick, and well inside the time limit (the review's AI memo can take many seconds).
     try {
-      const alert = await sendBudgetAlerts({ store, load: async () => analyze(await loadData()), company: company ?? "your company", now: new Date(), link: appUrl("company") });
+      const alert = await sendBudgetAlerts({ store, load: loadAnalysis, company: company ?? "your company", now: new Date(), link: appUrl("company") });
       if (alert.status === "sent") result.budgetAlerts += 1;
     } catch (err) {
       // Claims were given back: tomorrow's run tries again.
       console.error("[budget-alerts] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
+    }
+    try {
+      const alert = await sendRunwayAlert({ store, load: loadAnalysis, company: company ?? "your company", now: new Date(), link: appUrl("company") });
+      if (alert.status === "sent") result.runwayAlerts += 1;
+    } catch (err) {
+      // The level was put back: tomorrow's run tries again.
+      console.error("[runway-alert] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
     }
     try {
       const run = await runAndPersist({ store, loadData, label: scope, trigger: "cron", company });

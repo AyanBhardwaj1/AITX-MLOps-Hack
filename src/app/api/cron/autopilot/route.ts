@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 /**
  * No new company starts after this; the rest leaves room under maxDuration for one more company's
- * budget check and review (vendor labels and an AI memo can take several seconds each) and the response.
+ * budget and runway checks and review (vendor labels and an AI memo can take several seconds each) and the response.
  */
 const COMPANY_BUDGET_MS = 30_000;
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     {
       ...(run ? { status: run.status, runId: run.id, findings: run.findingsCount, drafted: run.tickets.length, persisted: run.persisted } : { skipped: "AUTOPILOT_CRON_MODE=sandbox is off when accounts are on" }),
       // Counts only: which companies ran stays in the server logs.
-      ...(companies ? { companies: { ran: companies.ran.length, failed: companies.failed.length, skipped: companies.skipped, budgetAlerts: companies.budgetAlerts } } : {}),
+      ...(companies ? { companies: { ran: companies.ran.length, failed: companies.failed.length, skipped: companies.skipped, budgetAlerts: companies.budgetAlerts, runwayAlerts: companies.runwayAlerts } } : {}),
     },
     { status: run?.status === "failed" ? 502 : 200 },
   );

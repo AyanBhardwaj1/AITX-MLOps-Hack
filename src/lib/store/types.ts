@@ -134,6 +134,10 @@ export interface Store {
   claimBudgetAlert(category: Category, month: string): Promise<boolean>;
   /** Gives a claim back after the post failed, so the next run tries again. */
   releaseBudgetAlert(category: Category, month: string): Promise<void>;
+  /** The runway line (months) last alerted on in Slack, or null. */
+  runwayAlertLevel(): Promise<number | null>;
+  /** Moves it from `from` to `to` only if it's still `from`; true when this call moved it. */
+  setRunwayAlertLevel(from: number | null, to: number | null): Promise<boolean>;
   /** Appends to the company's activity log (server-written text only). */
   recordActivity(entry: { actorEmail: string | null; kind: ActivityKind; detail: string }): Promise<void>;
   /** The latest activity, newest first. */

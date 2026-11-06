@@ -590,6 +590,22 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       );
     },
 
+    async runwayAlertLevel() {
+      const org = await orgId();
+      const { rows } = await pool.query<{ months: number | null }>(`select runway_alert_months as months from public.company_integrations where org_id = $1`, [org]);
+      return rows[0]?.months ?? null;
+    },
+
+    async setRunwayAlertLevel(from, to) {
+      const org = await orgId();
+      // Compare-and-set in one statement: of two overlapping runs, only one moves it.
+      const { rowCount } = await pool.query(
+        `update public.company_integrations set runway_alert_months = $3 where org_id = $1 and runway_alert_months is not distinct from $2::smallint`,
+        [org, from, to],
+      );
+      return rowCount === 1;
+    },
+
     async markDigestSent() {
       const org = await orgId();
       await pool.query(`update public.company_integrations set last_digest_at = now() where org_id = $1`, [org]);

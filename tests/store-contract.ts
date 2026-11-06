@@ -260,6 +260,20 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.listBudgets()).toEqual([{ category: "software", monthlyCents: 6_000_00 }]);
     });
 
+    it("moves the runway alert level only from the level the caller saw", async () => {
+      const store = await makeStore();
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");
+      expect(await store.runwayAlertLevel()).toBeNull();
+      // Two overlapping runs both saw "none": exactly one moves it.
+      const both = await Promise.all([store.setRunwayAlertLevel(null, 6), store.setRunwayAlertLevel(null, 6)]);
+      expect(both.filter(Boolean)).toHaveLength(1);
+      expect(await store.runwayAlertLevel()).toBe(6);
+      expect(await store.setRunwayAlertLevel(12, 3)).toBe(false);
+      expect(await store.setRunwayAlertLevel(6, 3)).toBe(true);
+      expect(await store.setRunwayAlertLevel(3, null)).toBe(true);
+      expect(await store.runwayAlertLevel()).toBeNull();
+    });
+
     it("lets one alert per budget per month through, and lets a refused one try again", async () => {
       const store = await makeStore();
       // No budget, nothing to alert on.

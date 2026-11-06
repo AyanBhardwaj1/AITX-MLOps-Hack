@@ -241,6 +241,16 @@ do $$ begin
   end;
 end $$;
 update public.company_budgets set alerted_month = '2026-11' where org_id = '00000000-0000-0000-0000-00000000000a' and category = 'software';
+-- Runway alerts remember the line last crossed: 12, 6 or 3 months only.
+insert into public.company_integrations (org_id, runway_alert_months) values ('00000000-0000-0000-0000-00000000000a', 6)
+  on conflict (org_id) do update set runway_alert_months = 6;
+do $$ begin
+  begin
+    update public.company_integrations set runway_alert_months = 5 where org_id = '00000000-0000-0000-0000-00000000000a';
+    raise exception 'FAIL: a runway alert line that isn''t one accepted';
+  exception when check_violation then null;
+  end;
+end $$;
 set role anon;
 do $$ begin
   begin

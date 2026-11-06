@@ -22,6 +22,7 @@ export function createMemoryStore(): Store {
   let cashEnteredAt = new Date(0).toISOString();
   let slackWebhook: string | null = null;
   let lastDigestAt: string | null = null;
+  let runwayAlertMonths: number | null = null;
   const activity: ActivityEntry[] = [];
   const budgets = new Map<Category, Cents>();
   /** The month each budget's alert last went out for; cleared when the amount changes. */
@@ -165,6 +166,14 @@ export function createMemoryStore(): Store {
     async claimBudgetAlert(category, month) {
       if (!budgets.has(category) || alertedMonths.get(category) === month) return false;
       alertedMonths.set(category, month);
+      return true;
+    },
+    async runwayAlertLevel() {
+      return runwayAlertMonths;
+    },
+    async setRunwayAlertLevel(from, to) {
+      if (runwayAlertMonths !== from) return false;
+      runwayAlertMonths = to;
       return true;
     },
     async releaseBudgetAlert(category, month) {
