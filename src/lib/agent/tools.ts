@@ -13,6 +13,7 @@ import { burnBridge } from "../finance/burn-bridge";
 import { peopleSpend } from "../finance/people-spend";
 import { committedSpend } from "../finance/committed";
 import { form1099Year, prep1099 } from "../finance/form-1099";
+import { moneyIn } from "../finance/money-in";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -246,6 +247,12 @@ export const form1099Input = z.object({});
 /** Contractors, lawyers and landlords paid by bank this year (last year to the end of March) who may need a 1099 (cents). */
 export function get1099Prep(a: Analysis) {
   return prep1099(a.txns, form1099Year(a.asOf));
+}
+
+export const moneyInInput = z.object({});
+/** Money in per payer per month over burn's months (cents), shares, and runway without the biggest customer. */
+export function getMoneyIn(a: Analysis) {
+  return moneyIn(a.txns, a.snapshot);
 }
 
 export const peopleSpendInput = z.object({});

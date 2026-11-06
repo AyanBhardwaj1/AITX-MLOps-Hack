@@ -19,6 +19,10 @@ await suite("accounts", async ({ browser, step }) => {
     const wide = await a.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
     assert.equal(wide[0], wide[1], `page ${wide[0]}px wide at ${wide[1]}px`);
     await a.setViewportSize({ width: 1280, height: 720 });
+    // Who pays you: the demo's money comes through Stripe, which is many customers, not one.
+    const payers = a.getByRole("region", { name: "Who pays you" });
+    await payers.getByText("payouts: many customers").waitFor();
+    assert.equal(await payers.getByText(/If it stopped paying/).count(), 0);
     // 1099s: the demo's law firm and landlord, paid by bank; the CSV lists them.
     const prep = a.getByRole("region", { name: /^1099s for \d{4}$/ });
     await prep.getByRole("link", { name: "Wilson Sonsini (legal)" }).waitFor();

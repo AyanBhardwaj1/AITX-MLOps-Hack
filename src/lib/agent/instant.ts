@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { categoryName, formatDate, formatMoney } from "../format";
+import { burnBasis, categoryName, formatDate, formatMoney } from "../format";
 import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { get1099Prep, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { get1099Prep, getMoneyIn, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -196,6 +196,26 @@ function whoSpends(a: Analysis): InstantAnswer {
   };
 }
 
+function moneyInAnswer(a: Analysis): InstantAnswer {
+  const m = getMoneyIn(a);
+  const tools = ["get_money_in"];
+  if (!m) return { question: INSTANT_QUESTIONS.money_in, tools, text: "No money came in over the months burn averages, apart from transfers between your accounts and refunds." };
+  const pct = (share: number) => `${Math.round(share * 100)}%`;
+  const months = (n: number) => (Number.isFinite(n) ? `${n.toFixed(1)} months` : "no end in sight");
+  const top = m.topCustomer;
+  return {
+    question: INSTANT_QUESTIONS.money_in,
+    tools,
+    text: [
+      `**${formatDollars(m.monthlyCents)}** a month comes in (${burnBasis(m.months)}). By who sent it:`,
+      m.payers.map((p) => `- ${p.name}: ${formatDollars(p.monthlyCents)} (${pct(p.share)})${p.processor ? ", payouts from many customers" : ""}`).join("\n"),
+      top
+        ? `The biggest customer is **${top.name}** at ${pct(top.share)} of money in. If it stopped paying, runway would be **${months(top.runwayWithoutMonths)}** instead of ${months(a.snapshot.runwayMonths)}.`
+        : "All of it comes through payment processors, so no single customer stands out.",
+    ].join("\n\n"),
+  };
+}
+
 function form1099Answer(a: Analysis): InstantAnswer {
   const prep = get1099Prep(a);
   const tools = ["get_1099_prep"];
@@ -265,6 +285,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   people: whoSpends,
   committed: committedAnswer,
   form_1099: form1099Answer,
+  money_in: moneyInAnswer,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */

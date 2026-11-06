@@ -30,6 +30,8 @@ import { BurnBridgeCard } from "./burn-bridge-card";
 import { PeopleSpendCard } from "./people-spend-card";
 import { CommittedCard } from "./committed-card";
 import { Form1099Card } from "./form-1099-card";
+import { MoneyInCard } from "./money-in-card";
+import type { MoneyIn } from "@/lib/finance/money-in";
 import type { Prep1099 } from "@/lib/finance/form-1099";
 import type { CommittedSpend } from "@/lib/finance/committed";
 import type { PeopleSpend } from "@/lib/finance/people-spend";
@@ -109,6 +111,8 @@ export interface DashboardData {
   burnBridge: BurnBridge | null;
   /** Card spend per cardholder over burn's months (null: no row names a cardholder). */
   people: PeopleSpend | null;
+  /** Money in per payer over burn's months (null: nothing came in). */
+  moneyIn: MoneyIn | null;
   /** Recurring charges scheduled over the next 30 days. */
   committed: CommittedSpend;
   /** Who may need a 1099 (null: no contractor, lawyer or landlord paid by bank near the line). */
@@ -398,6 +402,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         <BurnBridgeCard bridge={data.burnBridge} mode={data.mode} />
         <CategorySpendCard rows={data.categorySpend} mode={data.mode} />
         <PeopleSpendCard people={data.people} mode={data.mode} burnMonths={data.snapshot.burnMonths} />
+        <MoneyInCard money={data.moneyIn} mode={data.mode} runwayMonths={data.snapshot.runwayMonths} />
         {data.budgets && <BudgetsCard budgets={data.budgets} mode={data.mode} />}
         <div id="section-plans" className="scroll-mt-4" />
         <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />

@@ -139,3 +139,29 @@ describe("who needs a 1099", () => {
     expect(ans).toMatch(/Contractors/);
   });
 });
+
+describe("who pays us", () => {
+  it("answers from the money-in tool; Stripe's payouts aren't one customer", () => {
+    const ans = instantAnswer(a, "money_in");
+    expect(ans.tools).toEqual(["get_money_in"]);
+    expect(ans.text).toContain("Stripe payouts");
+    expect(ans.text).toMatch(/many customers/);
+  });
+
+  it("names a big customer's share and runway without them", () => {
+    const acme = [0, 1, 2, 3].map((i) => ({
+      ...a.txns[0]!,
+      id: `acme${i}`,
+      postedAt: a.snapshot.burnPeriod!.from.slice(0, 8) + String(10 + i).padStart(2, "0"),
+      amountCents: 500_000_00,
+      type: "ach" as const,
+      status: "posted" as const,
+      vendor: { key: "acme_corp", name: "Acme Corp", category: "other" as const, job: null, source: "fallback" as const },
+    }));
+    // The snapshot is left as it was: the answer reads money in from the transactions.
+    const withAcme = { ...a, txns: [...a.txns, ...acme] };
+    const ans = instantAnswer(withAcme, "money_in").text;
+    expect(ans).toContain("Acme Corp");
+    expect(ans).toMatch(/If it stopped paying/);
+  });
+});

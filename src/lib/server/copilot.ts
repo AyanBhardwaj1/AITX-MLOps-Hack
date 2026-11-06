@@ -13,6 +13,8 @@ import {
   getCommitted,
   form1099Input,
   get1099Prep,
+  moneyInInput,
+  getMoneyIn,
   changesInput,
   getChanges,
   runScenario,
@@ -54,6 +56,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 - For "what changed" or "anything I should know" questions, call get_recent_changes.
 - For "what's going out soon" or "what's due this month" questions, call get_committed_spend.
 - For "who spends the most" or card-holder questions, call get_people_spend.
+- For "who pays us", customer or revenue-concentration questions, call get_money_in; a payment processor's payouts are many customers, never one.
 - For 1099 or contractor tax-form questions, call get_1099_prep, and say it's a list to check with their accountant (W-9s settle who needs one), not tax advice.
 - For "why did burn go up/down" questions, call get_burn_bridge: drivers' changeCents plus otherCents minus revenueChangeCents equals changeCents exactly.
 - For budget questions ("are we over budget?"), call get_budgets. "heading for" adds recurring bills still due this month and one-off spend at its pace from day 7.
@@ -136,6 +139,12 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
           "Recurring charges already scheduled over the next 30 days from today: items (date, vendorName, category, amountCents), totalCents and cashAfterCents. A floor: one-off and usage spend aren't included. Integer cents.",
         inputSchema: committedInput,
         execute: async () => getCommitted(a),
+      }),
+      get_money_in: tool({
+        description:
+          "Money in per payer per month over the same months as burn (transfers and refunds from vendors paid left out): monthlyCents, payers (name, monthlyCents, share 0-1, processor = a payment processor's payouts from many customers) and topCustomer (biggest non-processor payer, its share, and runwayWithoutMonths if it stopped paying, spending unchanged; null = no end). null when nothing came in. Integer cents.",
+        inputSchema: moneyInInput,
+        execute: async () => getMoneyIn(a),
       }),
       get_1099_prep: tool({
         description:

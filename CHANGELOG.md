@@ -34,6 +34,11 @@ demo, the free grader and the public site work exactly as before.
 - **Already scheduled: next 30 days.** Every recurring charge expected over the next 30 days
   (payroll, rent, subscriptions) from its billing day and usual amount, the total, and the cash
   left after them.
+- **Who pays you.** Money in per payer per month over the same months as burn, with each one's
+  share. When one customer is a big share, the card says what runway would be if they stopped
+  paying. A payment processor's payouts (Stripe) are many customers, so they're never called the
+  biggest one; refunds from vendors you pay don't count as customers. Copilot answers "Who pays
+  us the most?".
 - **1099 prep.** A dashboard card lists the contractors, lawyers and landlords paid by ACH, wire
   or check this year (last year until the end of March) who may need a 1099 from you: $600 or more
   for 2025 payments, $2,000 from 2026. Refunds are netted, card payments (which the card network
