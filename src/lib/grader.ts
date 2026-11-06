@@ -53,7 +53,8 @@ const HISTORY_MONTHS = 12;
 /** Shared rows that make two files one account (or half the smaller file, for short ones). */
 const SAME_ACCOUNT_ROWS = 5;
 
-function accountsOf(files: readonly { name: string; label: string; keys: string[] }[]): Map<string, string[]> {
+/** Each file's account, as the index of one file in its group. */
+function accountGroups(files: readonly { name: string; label: string; keys: string[] }[]): number[] {
   const parent = files.map((_, i) => i);
   const root = (i: number): number => (parent[i] === i ? i : (parent[i] = root(parent[i]!)));
   const join = (a: number, b: number) => void (parent[root(a)] = root(b));
@@ -78,6 +79,12 @@ function accountsOf(files: readonly { name: string; label: string; keys: string[
       else join(i, j);
     }
   });
+  return files.map((_, i) => root(i));
+}
+
+function accountsOf(files: readonly { name: string; label: string; keys: string[] }[]): Map<string, string[]> {
+  const roots = accountGroups(files);
+  const root = (i: number) => roots[i]!;
   // Named by the account any of its files point to, or else by its first file's own name.
   const groups = new Map<number, { name: string; named: boolean; keys: Set<string> }>();
   files.forEach((f, i) => {
@@ -100,7 +107,8 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   const errors: string[] = [];
   const inverted: string[] = [];
   const seenTexts = new Set<string>();
-  const seenRows = new Set<string>();
+  /** Each read file's transactions, deduplicated once the files are grouped into accounts. */
+  const read: RhoTransaction[][] = [];
   let skipped = 0;
   let duplicateFiles = 0;
   let duplicateRows = 0;
@@ -115,24 +123,36 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     try {
       // Card payoffs are decided over all files together below, never per file.
       const r = importStatement(f.text, { accountId: `upload_${i + 1}`, resolvePayoffs: false });
-      // Overlapping exports repeat rows; a row already seen in an earlier file is the same transaction.
-      const fileRows = new Set<string>();
-      for (const t of r.transactions) {
-        const key = `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`;
-        if (seenRows.has(key)) {
-          duplicateRows += 1;
-          continue;
-        }
-        fileRows.add(key);
-        raw.push(t);
-      }
-      for (const k of fileRows) seenRows.add(k);
+      read.push(r.transactions);
       fileKeys.push({ name: f.name, label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {
       errors.push(`${f.name}: ${err instanceof Error ? err.message : "couldn't read this file"}`);
     }
+  });
+  // Overlapping exports of one account repeat rows: the nth copy of a row (same day, description
+  // and amount) an earlier file of the same account already has is the same transaction. Other
+  // accounts' rows are never merged (the same $8.75 seat on two people's cards is two charges).
+  const roots = accountGroups(fileKeys);
+  const seenRows = new Map<number, Set<string>>();
+  read.forEach((txns, i) => {
+    const seen = seenRows.get(roots[i]!) ?? new Set<string>();
+    const copies = new Map<string, number>();
+    const fileRows: string[] = [];
+    for (const t of txns) {
+      const key = `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`;
+      const n = copies.get(key) ?? 0;
+      copies.set(key, n + 1);
+      if (seen.has(`${key}#${n}`)) {
+        duplicateRows += 1;
+        continue;
+      }
+      fileRows.push(`${key}#${n}`);
+      raw.push(t);
+    }
+    for (const k of fileRows) seen.add(k);
+    seenRows.set(roots[i]!, seen);
   });
   if (raw.length === 0) throw new Error(errors[0] ?? "No readable transactions in these files");
   const { transactions, cardSpendAsPayoffs: payoffsAsSpend } = resolveCardPayoffs(raw);

@@ -34,6 +34,8 @@ export interface CsvImport {
 
 /** Paying off the company's own card. A transfer only when the card's rows are also uploaded. */
 const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT\W+THANK YOU|ONLINE PAYMENT)\b/i;
+/** Money a customer sends ("ONLINE PAYMENT FROM ACME CORP") reads like a payoff but is money in. */
+const PAYMENT_FROM = /\bPAYMENT\W+FROM\b/i;
 /** Moving money between the company's own accounts: never burn. */
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
 /** Mercury statuses for money that never moved. */
@@ -80,7 +82,11 @@ export function parseCsv(text: string): string[][] {
  * the ends is refused rather than guessed.
  */
 export function parseAmountCents(raw: string): number | null {
-  let s = raw.replace(/[$\s]/g, "");
+  // Spaces (any kind) only around the "$", sign and parentheses, or as a thousands group ("1 234.56"):
+  // "12 50" has no safe reading.
+  const spaced = raw.replace(/\s+/g, " ").trim().replace(/ ?([$()+-]) ?/g, "$1");
+  if (/\d \d/.test(spaced) && !/(^|[^\d ])\d{1,3}( \d{3})+(\.\d{1,2})?([^\d ]|$)/.test(spaced)) return null;
+  let s = spaced.replace(/[$ ]/g, "");
   let negative = false;
   if (/^\(.*\)$/.test(s)) {
     negative = true;
@@ -97,7 +103,8 @@ export function parseAmountCents(raw: string): number | null {
   // Commas only as thousands separators: "12,50" (a decimal comma) would otherwise read as 1,250.
   if (s.includes(",") && !/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(s)) return null;
   s = s.replaceAll(",", "");
-  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+  // Thirteen digits of dollars at most, so every amount is exact in cents.
+  if (!/^\d{1,13}(\.\d{1,2})?$/.test(s)) return null;
   const cents = Math.round(Number(s) * 100);
   return negative ? -cents : cents;
 }
@@ -278,7 +285,7 @@ function rowAmount(cells: readonly string[], m: Mapping): number | null {
 /** A bank row's type from its text and sign: own-account moves, card payoffs, then card or bank spend. */
 export function inferTransactionType(description: string, amountCents: number, onCard: boolean): string {
   if (!isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)) return "internal_transfer";
-  if (CARD_PAYOFF_PATTERN.test(description)) return "credit_repayment";
+  if (CARD_PAYOFF_PATTERN.test(description) && !(amountCents > 0 && PAYMENT_FROM.test(description))) return "credit_repayment";
   if (onCard) return amountCents < 0 ? "card_debit" : "card_credit";
   return amountCents < 0 ? "ach_debit" : "ach_credit";
 }
@@ -338,7 +345,7 @@ export function resolveCardPayoffs(transactions: readonly RhoTransaction[]): { t
 function assertUsd(header: readonly string[], data: readonly string[][]) {
   const cols = header.map(norm);
   const named = cols.map((c) => /\b(amount|debit|credit|gross|net|withdrawals?|deposits?)\s*\(([a-z]{3})\)$/.exec(c)?.[2]).find((code) => code && code !== "usd");
-  const col = cols.indexOf("currency");
+  const col = cols.findIndex((c) => /^(?:transaction |original |settlement )?(?:currency|ccy)(?: code)?$/.test(c));
   const other = col >= 0 ? data.map((r) => (r[col] ?? "").trim().toUpperCase()).find((v) => v && v !== "USD") : undefined;
   if (named || other) throw new Error(`Runway works in US dollars; this file has ${(named ?? other)!.toUpperCase()} amounts.`);
 }
