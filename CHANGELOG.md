@@ -117,9 +117,9 @@ demo, the free grader and the public site work exactly as before.
 - **Scheduled payments wait for their date.** Uploaded rows dated after today aren't counted
   until then (the dashboard says how many), so a payment due on the 1st can't turn the month
   early or quiet the alerts.
-- **Safer approvals.** Dismissing a finding rejects its drafts still in the Inbox, and a dismissed
-  finding's draft can't be approved; Copilot won't draft for one either. On the public demo,
-  Inbox decisions show for the visitor but aren't saved for everyone.
+- **Safer approvals.** A dismissed finding's drafts leave the Inbox and can't be approved
+  (reopening the finding brings them back); Copilot won't draft for one either. On the public
+  demo, Inbox decisions show for the visitor but aren't saved for everyone.
 - **One digest a week.** A repeated or retried cron call doesn't post the Monday digest twice.
   Budget alerts are claimed only for the amount the run read, and a new Slack channel hears
   them afresh.
