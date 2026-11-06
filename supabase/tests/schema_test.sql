@@ -217,6 +217,15 @@ do $$ begin
   end;
 end $$;
 reset role;
+-- The server records cash updates; it can't record kinds it doesn't know.
+insert into public.company_activity (org_id, actor_email, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'a@acme.example', 'cash', 'Set today''s cash to $1');
+do $$ begin
+  begin
+    insert into public.company_activity (org_id, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'anything', 'x');
+    raise exception 'FAIL: unknown activity kind accepted';
+  exception when check_violation then null;
+  end;
+end $$;
 
 -- Vendor corrections: members read their own org's fixes only, and never write them directly.
 insert into public.vendor_corrections (org_id, vendor_key, category, job) values

@@ -43,17 +43,23 @@ export async function POST(request: Request) {
   if (!allowWrite(clientIp(request))) return NextResponse.json({ error: "Too many requests. Wait a minute." }, { status: 429 });
   const body = await request.json().catch(() => null);
   try {
+    // The company checked once, then reused: the link must reach its creator whatever happens next.
+    let companyScope: string | null = null;
     const result = await handleShare(body, {
       // A company's investor links are the owner's to create and revoke.
-      storeFor: async (mode) => getStore(mode === "company" ? (await ownerCompany()).scope : await scopeFor(mode)),
+      storeFor: async (mode) => {
+        if (mode !== "company") return getStore(await scopeFor(mode));
+        companyScope = (await ownerCompany()).scope;
+        return getStore(companyScope);
+      },
       snapshotFor: (mode, company) => snapshotFor(mode, company),
       canWrite: canWriteRealData,
       now: () => new Date(),
       newToken: newShareToken,
       storageReady: persistentStorageReady,
     });
-    if (result.status === 200 && body?.mode === "company" && (body.action === "create" || body.action === "revoke")) {
-      await logActivity((await ownerCompany()).scope, "share_link", body.action === "create" ? "Created an investor link" : "Revoked an investor link");
+    if (result.status === 200 && companyScope && result.changed !== false && (body.action === "create" || body.action === "revoke")) {
+      await logActivity(companyScope, "share_link", body.action === "create" ? "Created an investor link" : "Revoked an investor link");
     }
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   } catch (err) {

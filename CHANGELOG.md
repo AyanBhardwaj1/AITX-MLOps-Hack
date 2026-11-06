@@ -16,14 +16,16 @@ demo, the free grader and the public site work exactly as before.
   charges as positive (detected, or flip a file by hand), trailing minus signs, day-first dates.
   Amounts in other currencies are refused rather than guessed. Re-uploading an overlapping export
   adds nothing twice. No data yet? "Fill in a sample export" shows how it works.
+- **Update today's cash without a file.** Cash moves daily and exports don't; anyone on the team can
+  type the new balance on the upload page and the runway uses it at once.
 - **Your data, your call.** See what's stored per account, delete one account's rows or everything,
   and download it all as a CSV that uploads back cleanly.
 - **Teams.** Invite up to nine teammates by email; they see and work on the same data. The owner can
   hand the company to a teammate; members can leave. Every accepted or dismissed finding shows who
   decided it and when.
 - **Company settings.** Rename or delete the company (deletion removes everything in it).
-- **Activity log.** Settings shows who uploaded, deleted, invited, changed settings or handed the
-  company on, and when.
+- **Activity log.** Settings shows who uploaded, deleted, invited, changed settings, updated the cash
+  or handed the company on, and when.
 - **Monday digest in your own Slack.** Connect an incoming webhook in settings (a test message is sent
   first; the address is never shown in full). The digest says up front when your data is two weeks
   old or more.
@@ -38,7 +40,7 @@ demo, the free grader and the public site work exactly as before.
 - New settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (accounts), `SIGNUPS`
   (`invite` or `open`). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
 - New migrations (run `npm run db:migrate`): accounts, teams, decision actor, rate limits, company
-  Slack, digest order, company activity.
+  Slack, digest order, company activity, activity cash.
 - `npm run verify:live` now checks the Supabase Auth settings (email sign-in on, sign-ups allowed,
   Confirm email on) and that every migration is applied.
 - `npm run test:e2e` runs browser suites for sign-in, isolation, settings, teams and uploads against

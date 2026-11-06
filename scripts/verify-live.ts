@@ -105,6 +105,11 @@ await check("Database: migrations applied and read/write works", async () => {
     const found = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
     const missing = required.map(([t, c]) => `${t}.${c}`).filter((k) => !found.has(k));
     if (missing.length) throw new Error(`Missing ${missing.join(", ")}: run npm run db:migrate (see DEPLOY.md)`);
+    // Migrations that only widen a CHECK add no column; read the constraint itself.
+    const { rows: checks } = await pool.query<{ def: string }>(
+      `select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'company_activity_kind_check' and conrelid = 'public.company_activity'::regclass`,
+    );
+    if (!checks[0]?.def.includes("'cash'")) throw new Error("company_activity can't record cash updates yet: run npm run db:migrate (see DEPLOY.md)");
     const store = createPostgresStore(pool, scope);
     const [draft] = await store.saveDrafts([
       { fingerprint: "verify", findingFingerprint: null, kind: "jira_ticket", title: "verify", body: "verify", createdBy: "autopilot" },

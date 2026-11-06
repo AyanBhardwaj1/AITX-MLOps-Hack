@@ -15,6 +15,8 @@ import { getWaitlist } from "./waitlist";
 
 const KEY = Symbol.for("runway.accounts");
 const holder = globalThis as Record<symbol, AccountsStore | undefined>;
+/** How long an action waits for its activity-log entry before carrying on without it. */
+const ACTIVITY_TIMEOUT_MS = 1_500;
 
 export function getAccounts(): AccountsStore {
   holder[KEY] ??= hasDatabase() ? createPostgresAccounts(getPool()) : createMemoryAccounts();
@@ -241,10 +243,18 @@ export async function transferCompany(memberUserId: string): Promise<boolean> {
  * action it describes. `detail` is written by the server (counts and names, never file contents).
  */
 export async function logActivity(scope: string, kind: ActivityKind, detail: string, actorEmail?: string | null): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const email = actorEmail !== undefined ? actorEmail : ((await sessionUser())?.email ?? null);
-    await getStore(scope).recordActivity({ actorEmail: email, kind, detail });
+    const write = getStore(scope).recordActivity({ actorEmail: email, kind, detail });
+    // A slow database delays the log entry, never the action it describes.
+    const late = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("timed out")), ACTIVITY_TIMEOUT_MS);
+    });
+    await Promise.race([write, late]);
   } catch (err) {
     console.error("[activity] couldn't record", err instanceof Error ? err.message : "unknown error");
+  } finally {
+    clearTimeout(timer);
   }
 }

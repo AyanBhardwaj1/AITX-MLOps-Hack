@@ -36,7 +36,7 @@ export interface ShareDeps {
 }
 
 export type ShareResult =
-  | { status: 200; body: { url: string; id?: string; expiresAt?: string; sample?: true } | { ok: true } }
+  | { status: 200; body: { url: string; id?: string; expiresAt?: string; sample?: true } | { ok: true }; /** False when nothing changed (a link already revoked). */ changed?: boolean }
   | { status: 400 | 403 | 404 | 409 | 503; body: { error: string } };
 
 export async function handleShare(raw: unknown, deps: ShareDeps): Promise<ShareResult> {
@@ -50,8 +50,8 @@ export async function handleShare(raw: unknown, deps: ShareDeps): Promise<ShareR
   const store = await deps.storeFor(req.mode);
   if (req.action === "revoke") {
     try {
-      await store.revokeShareLink(req.id);
-      return { status: 200, body: { ok: true } };
+      const changed = await store.revokeShareLink(req.id);
+      return { status: 200, body: { ok: true }, changed };
     } catch (err) {
       if (isStoreError(err, "not_found")) return { status: 404, body: { error: "That link doesn't exist." } };
       throw err;

@@ -22,3 +22,17 @@ describe("display formatting", () => {
     expect(categoryName("software")).toBe("software");
   });
 });
+
+describe("typed cash amounts", () => {
+  it("reads dollars as exact integer cents, never through a float", async () => {
+    const { parseDollarsToCents } = await import("@/lib/money");
+    expect(parseDollarsToCents("1,234,567.89")).toBe(123_456_789);
+    expect(parseDollarsToCents(" $ 0.29 ")).toBe(29);
+    expect(parseDollarsToCents("482000")).toBe(48_200_000);
+    expect(parseDollarsToCents("10.5")).toBe(1_050);
+    expect(parseDollarsToCents("99999999999.99")).toBe(9_999_999_999_999);
+    // Past what a number holds exactly: refused rather than rounded.
+    expect(parseDollarsToCents("90071992547409.93")).toBeNull();
+    for (const bad of ["", "-5", "1.234", "abc", "1e6", "1.2.3", "."]) expect(parseDollarsToCents(bad)).toBeNull();
+  });
+});

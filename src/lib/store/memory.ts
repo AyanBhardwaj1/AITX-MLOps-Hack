@@ -132,6 +132,11 @@ export function createMemoryStore(): Store {
       uploadCash = cashCents;
       return { inserted: fresh.length, duplicates: rows.length - fresh.length };
     },
+    async setUploadCash(cashCents) {
+      if (uploads.size === 0 || uploadCash === null) return "no_uploads";
+      uploadCash = cashCents;
+      return "saved";
+    },
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
       return { cashCents: uploadCash, rows: [...uploads.values()].map((r) => structuredClone(r)) };
@@ -181,7 +186,9 @@ export function createMemoryStore(): Store {
     async revokeShareLink(id) {
       const l = shareLinks.find((x) => x.id === id);
       if (!l) throw new StoreError("Share link not found", "not_found");
-      l.revokedAt ??= new Date().toISOString();
+      if (l.revokedAt) return false;
+      l.revokedAt = new Date().toISOString();
+      return true;
     },
   };
 }

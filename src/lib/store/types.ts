@@ -110,13 +110,15 @@ export interface Store {
   findShareLink(tokenHash: string): Promise<StoredShareLink | null>;
   /** This scope's links, newest first. */
   listShareLinks(): Promise<StoredShareLink[]>;
-  /** Revokes one of this scope's links; StoreError("not_found") otherwise. */
-  revokeShareLink(id: string): Promise<void>;
+  /** Revokes one of this scope's links: true if this call revoked it, false if it already was; StoreError("not_found") otherwise. */
+  revokeShareLink(id: string): Promise<boolean>;
   /**
    * Adds uploaded bank transactions (ids are content-derived, so repeats are skipped) and sets
    * today's cash. Refused whole ("limit") if the stored total would pass `maxTotal`; atomic.
    */
   saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
+  /** Sets today's cash without adding rows; "no_uploads" when nothing has been uploaded to attach it to. */
+  setUploadCash(cashCents: number): Promise<"saved" | "no_uploads">;
   /** Everything uploaded for this scope, or null when nothing has been. */
   loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
   /** Appends to the company's activity log (server-written text only). */
@@ -161,7 +163,7 @@ export interface FindingDecision {
   at: string;
 }
 
-export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link";
+export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link" | "cash";
 
 export interface ActivityEntry {
   at: string;

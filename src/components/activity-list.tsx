@@ -16,8 +16,12 @@ export function ActivityList({ entries }: { entries: ActivityEntry[] }) {
           {entries.map((e, i) => (
             <li key={`${e.at}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2">
               <span className="min-w-0">
-                {e.detail}
-                <span className="text-muted"> · {e.actorEmail ?? "unknown"}</span>
+                {/* Isolated, so a right-to-left character in an account name can't reorder the rest of the line. */}
+                <bdi>{e.detail}</bdi>
+                <span className="text-muted">
+                  {" · "}
+                  <bdi>{e.actorEmail ?? "unknown"}</bdi>
+                </span>
               </span>
               <time dateTime={e.at} className="tabular shrink-0 text-xs text-muted">
                 {WHEN.format(new Date(e.at))} UTC

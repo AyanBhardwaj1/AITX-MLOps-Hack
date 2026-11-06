@@ -474,6 +474,20 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       });
     },
 
+    async setUploadCash(cashCents) {
+      const org = await orgId();
+      const connectionId = await csvConnection(pool, org, false);
+      if (!connectionId) return "no_uploads";
+      // Only alongside stored rows: cash on its own has no dashboard to feed.
+      const { rowCount } = await pool.query(
+        `update public.accounts set balance_minor = $3, synced_at = now()
+          where connection_id = $1 and provider_account_id = $2
+            and exists (select 1 from public.transactions t where t.connection_id = $1 and t.removed_at is null)`,
+        [connectionId, CASH_ACCOUNT_ID, cashCents],
+      );
+      return (rowCount ?? 0) > 0 ? "saved" : "no_uploads";
+    },
+
     async loadUploads() {
       const org = await orgId();
       const connectionId = await csvConnection(pool, org, false);
@@ -558,8 +572,11 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
     async revokeShareLink(id) {
       const org = await orgId();
       if (!/^[0-9a-f-]{36}$/i.test(id)) throw new StoreError("Share link not found", "not_found");
-      const { rowCount } = await pool.query(`update public.share_links set revoked_at = coalesce(revoked_at, now()) where org_id = $1 and id = $2`, [org, id]);
-      if (!rowCount) throw new StoreError("Share link not found", "not_found");
+      const { rowCount } = await pool.query(`update public.share_links set revoked_at = now() where org_id = $1 and id = $2 and revoked_at is null`, [org, id]);
+      if (rowCount) return true;
+      const { rowCount: exists } = await pool.query(`select 1 from public.share_links where org_id = $1 and id = $2`, [org, id]);
+      if (!exists) throw new StoreError("Share link not found", "not_found");
+      return false;
     },
   };
 }

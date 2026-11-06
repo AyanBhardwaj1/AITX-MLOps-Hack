@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { importCsv } from "@/lib/csv/import";
 import { formatDate } from "@/lib/format";
-import { formatDollars } from "@/lib/money";
+import { formatDollars, parseDollarsToCents } from "@/lib/money";
+import { CashUpdate } from "./cash-update";
 import {
   fileAccountLabel,
   MAX_CHUNK_ROWS,
@@ -122,12 +123,6 @@ async function send(
   return { inserted: body.inserted, duplicates: body.duplicates ?? 0 };
 }
 
-function dollarsToCents(text: string): number | null {
-  const cleaned = text.replace(/[$,\s]/g, "");
-  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
-  return Math.round(Number(cleaned) * 100);
-}
-
 /** `owner`: only the owner may delete everything (it also removes the team's findings and share links). */
 export function UploadForm({
   summary,
@@ -152,7 +147,7 @@ export function UploadForm({
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    const cashCents = dollarsToCents(cash);
+    const cashCents = parseDollarsToCents(cash);
     if (cashCents === null)
       return setState({
         kind: "error",
@@ -295,6 +290,7 @@ export function UploadForm({
               </dd>
             </div>
           </dl>
+          {storageReady && <CashUpdate cashCents={summary.cashCents} />}
           {summary.accounts.length > 0 && (
             <table className="mt-4 w-full text-left text-sm">
               <caption className="sr-only">Uploaded accounts</caption>

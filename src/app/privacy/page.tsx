@@ -27,7 +27,7 @@ export default function PrivacyPage() {
                 <strong>Your account:</strong> the email you sign in with, the company created for you (named from your email’s domain), and a session
                 cookie set only once you sign in. If you invite teammates, their email addresses, so they can join when they sign in; the owner can
                 withdraw an invite or remove a teammate at any time. Decisions on findings, and the company&apos;s activity log (uploads,
-                deletions, team and settings changes), show the email of whoever made them, and stay with the company&apos;s records after
+                cash updates, deletions, team and settings changes), show the email of whoever made them, and stay with the company&apos;s records after
                 that person leaves.
               </li>
               <li>

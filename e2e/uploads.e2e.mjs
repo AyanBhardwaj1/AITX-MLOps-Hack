@@ -42,4 +42,13 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Upload and analyse" }).click();
     await p.getByText(/Saved 0 new transactions; 10 were already stored/).waitFor({ timeout: 20_000 });
   });
+  await step("today's cash updates without a file, and the activity log says who", async () => {
+    await p.getByText("Update today's cash").click();
+    await p.getByLabel(/Total cash across your bank accounts today/).fill("$612,345.50");
+    await p.getByRole("button", { name: "Update cash" }).click();
+    await p.getByText("Saved: $612,346. Your runway uses it now.").waitFor();
+    await p.locator("dd", { hasText: "$612,346" }).waitFor();
+    await p.goto(`${APP}/app/settings`);
+    await p.getByText("Set today's cash to $612,346").waitFor();
+  });
 });

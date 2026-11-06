@@ -162,8 +162,12 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.findShareLink(hash(9))).toBeNull();
       const listed = await store.listShareLinks();
       expect(listed.map((l) => l.label)).toEqual([null, "Seed investors"]);
-      await store.revokeShareLink((first as { id: string }).id);
-      expect((await store.findShareLink(hash(1)))!.revokedAt).not.toBeNull();
+      expect(await store.revokeShareLink((first as { id: string }).id)).toBe(true);
+      const revokedAt = (await store.findShareLink(hash(1)))!.revokedAt;
+      expect(revokedAt).not.toBeNull();
+      // A repeat changes nothing, not even the time it was revoked.
+      expect(await store.revokeShareLink((first as { id: string }).id)).toBe(false);
+      expect((await store.findShareLink(hash(1)))!.revokedAt).toBe(revokedAt);
       await expect(store.revokeShareLink("00000000-0000-0000-0000-000000000000")).rejects.toBeInstanceOf(StoreError);
       expect(second).not.toBe("limit");
     });
@@ -201,6 +205,25 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.saveUploads(1, [row("u_d", -1), row("u_e", -1)], 4)).toBe("limit");
       expect((await store.loadUploads())!.rows).toHaveLength(3);
       await store.clearUploads();
+      expect(await store.loadUploads()).toBeNull();
+    });
+
+    it("updates today's cash without an upload, only once something is uploaded", async () => {
+      const store = await makeStore();
+      expect(await store.setUploadCash(50_000_00)).toBe("no_uploads");
+      expect(await store.loadUploads()).toBeNull();
+      const row = {
+        id: "u_cash", money_movement_id: null, account_id: "uploaded", account_name: "uploaded", account_type: "checking" as const,
+        amount: { amount: -100, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "VENDOR",
+        initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null,
+      };
+      await store.saveUploads(100_000_00, [row], 10);
+      expect(await store.setUploadCash(75_000_00)).toBe("saved");
+      const loaded = await store.loadUploads();
+      expect(loaded!.cashCents).toBe(75_000_00);
+      expect(loaded!.rows).toHaveLength(1);
+      await store.clearUploads();
+      expect(await store.setUploadCash(1)).toBe("no_uploads");
       expect(await store.loadUploads()).toBeNull();
     });
 
