@@ -131,6 +131,15 @@ async function withLabels(dataset: Dataset, corrections: ReadonlyMap<string, Ven
   return vendorLabels.size ? { ...withCorrections, vendorLabels } : withCorrections;
 }
 
+/**
+ * The findings recorded in a store, which everyone using it reads (savings, the Inbox, the investor
+ * update). On the demo that's the shared data's findings, never a visitor's own fixes: a fix can
+ * add a finding, or change one that keeps its id (a job or cardholder fix).
+ */
+export function storedFindings(mode: DataMode, dataset: LabelledDataset, analysis: Analysis): Analysis["findings"] {
+  return mode === "demo" && dataset.corrections ? analyze({ ...dataset, corrections: undefined }).findings : analysis.findings;
+}
+
 export async function loadAnalysis(mode: DataMode, options: LoadOptions = {}): Promise<{ dataset: LabelledDataset; analysis: Analysis }> {
   const dataset = await loadLabelledDataset(mode, options);
   return { dataset, analysis: analyze(dataset) };

@@ -6,10 +6,9 @@ import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
 import { sanitizeChatMessages } from "@/lib/agent/chat-input";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { createCopilot, type CopilotBudgets, type SaveDraft } from "@/lib/server/copilot";
+import { copilotAnalyses, createCopilot, type CopilotBudgets, type SaveDraft } from "@/lib/server/copilot";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
-import { loadAnalysis } from "@/lib/server/data";
 import { hasOpenAI } from "@/lib/server/env";
 import { readBodyCapped } from "@/lib/http-body";
 
@@ -46,10 +45,11 @@ export async function POST(request: Request) {
   const messages = sanitizeChatMessages(parsed.data.messages);
   if (!messages.ok) return NextResponse.json({ error: messages.error }, { status: 400 });
 
-  let analysis: Awaited<ReturnType<typeof loadAnalysis>>["analysis"];
+  let analysis: Awaited<ReturnType<typeof copilotAnalyses>>["view"];
+  let drafts: Awaited<ReturnType<typeof copilotAnalyses>>["drafts"];
   let store: ReturnType<typeof getStore>;
   try {
-    ({ analysis } = await loadAnalysis(parsed.data.mode));
+    ({ view: analysis, drafts } = await copilotAnalyses(parsed.data.mode));
     store = getStore(await scopeFor(parsed.data.mode));
   } catch (err) {
     const known = accessErrorResponse(err);
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     throw err;
   }
   // Findings must exist in the store so drafts can link to them; a database hiccup shouldn't block chat.
-  const statuses = await store.syncFindings(analysis.findings).catch((err) => {
+  const statuses = await store.syncFindings(drafts.findings).catch((err) => {
     console.error("[copilot] finding sync failed", err);
     return new Map<string, string>();
   });
@@ -68,12 +68,11 @@ export async function POST(request: Request) {
     ]);
     return { id: saved!.id, status: saved!.status };
   };
-  // The demo's fixed sample (measured with this visitor's own category fixes, as the card is), or
-  // the company's own; a storage hiccup means no budgets, not a failed chat.
+  // The demo's fixed sample, or the company's own; a storage hiccup means no budgets, not a failed chat.
   const mode = parsed.data.mode;
   const budgets: CopilotBudgets =
     mode === "demo"
-      ? { list: DEMO_BUDGETS, analysis: async () => (await loadAnalysis("demo", { visitorFixes: true })).analysis }
+      ? { list: DEMO_BUDGETS }
       : mode === "company"
         ? await store.listBudgets().then(
             (list): CopilotBudgets => ({ list }),
@@ -83,5 +82,5 @@ export async function POST(request: Request) {
             },
           )
         : { list: [], emptyNote: "Budgets are for a signed-in company's own data; the Rho sandbox has none." };
-  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed, budgets), uiMessages: messages.messages });
+  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed, budgets, drafts), uiMessages: messages.messages });
 }

@@ -5,7 +5,6 @@ import { forecastCash } from "@/lib/finance/forecast";
 import { monthlyHistory } from "@/lib/finance/history";
 import { upcomingRenewals } from "@/lib/finance/renewals";
 import { detectChanges } from "@/lib/insights/changes";
-import { analyze } from "@/lib/pipeline";
 import { redirect } from "next/navigation";
 import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
@@ -14,7 +13,7 @@ import { parseScenarioParams, scenarioParams } from "@/lib/finance/scenario-link
 import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, suggestBudgets, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
-import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
+import { loadAnalysis, parseMode, storedFindings, type DataMode } from "@/lib/server/data";
 import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { KNOWN_JOBS } from "@/lib/vendors/catalog";
@@ -113,13 +112,17 @@ async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["b
   };
 }
 
+/** What makes two versions of a finding the same one to act on. */
+const sameFinding = (f: { title: string; vendorKeys: readonly string[]; monthlySavingsCents: number; oneTimeCents: number }) =>
+  JSON.stringify([f.title, f.vendorKeys, f.monthlySavingsCents, f.oneTimeCents]);
+
 async function buildData(mode: DataMode): Promise<DashboardData> {
   const { dataset, analysis: a } = await loadAnalysis(mode, { visitorFixes: true });
-  // A demo visitor's own fixes can surface findings nobody else has. They're shown as a preview, but
-  // only findings from the shared data are recorded in the shared store (and can be acted on).
-  const visitorOnly = mode === "demo" && dataset.corrections;
-  const shared = visitorOnly ? new Set(analyze({ ...dataset, corrections: undefined }).findings.map((f) => f.id)) : null;
-  const { statuses, storeOk } = await findingStatuses(mode, shared ? a.findings.filter((f) => shared.has(f.id)) : a.findings);
+  // A demo visitor's own fixes can surface findings nobody else has, or change one that keeps its
+  // id. Those show as a preview; only the shared data's findings are recorded (and can be acted on).
+  const stored = storedFindings(mode, dataset, a);
+  const shared = stored === a.findings ? null : new Map(stored.map((f) => [f.id, sameFinding(f)]));
+  const { statuses, storeOk } = await findingStatuses(mode, stored);
   const savings = await savingsFor(mode, dataset, a);
   // Who decided each finding: shown to a company's team, never on the anonymous demo.
   const decisions =
@@ -148,7 +151,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     findings: a.findings.map((f) => ({
       ...f,
       status: statuses.get(f.id) ?? "open",
-      preview: shared ? !shared.has(f.id) : false,
+      preview: shared ? shared.get(f.id) !== sameFinding(f) : false,
       decidedBy: decisions.get(f.id)?.by ?? null,
       decidedAt: decisions.get(f.id)?.at ?? null,
       evidence: f.evidenceTxnIds

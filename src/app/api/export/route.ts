@@ -8,7 +8,7 @@ import { cashPnl } from "@/lib/finance/cash-pnl";
 import { streamChunks } from "@/lib/http-stream";
 import { matchingTransactions, parseTxnQuery } from "@/lib/finance/transaction-search";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { loadAnalysis, loadTransactions, type DataMode } from "@/lib/server/data";
+import { loadAnalysis, loadTransactions, storedFindings, type DataMode } from "@/lib/server/data";
 import { companyDataExport } from "@/lib/server/company-data";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
@@ -89,14 +89,15 @@ export async function GET(request: Request) {
     }
     if (kind === "matches") return await matchesExport(mode, params);
     if (kind === "calendar") return await calendarExport(mode);
-    const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
+    const { dataset, analysis } = await loadAnalysis(mode, { visitorFixes: true });
     let body: string;
     if (kind === "recurring") body = recurringCsv(analysis);
     else if (kind === "pnl") body = cashPnlCsv(cashPnl(analysis.txns, analysis.asOf));
     else if (kind === "1099") body = form1099Csv(prep1099(analysis.txns, form1099Year(analysis.asOf)));
     else {
       const statuses = await getStore(await scopeFor(mode))
-        .syncFindings(analysis.findings)
+        // Only the shared data's findings are recorded; a demo visitor's own come out as "open".
+        .syncFindings(storedFindings(mode, dataset, analysis))
         .catch((err) => {
           console.error("[export] statuses unavailable; exporting findings as open", err);
           return new Map<string, string>();

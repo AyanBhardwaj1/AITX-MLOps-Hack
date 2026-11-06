@@ -47,6 +47,7 @@ import type { Analysis } from "../pipeline";
 import type { Budget } from "../finance/budgets";
 import type { ActionDraft } from "../agent/tools";
 import { env } from "./env";
+import { loadAnalysis, storedFindings, type DataMode } from "./data";
 
 const MAX_STEPS = 8;
 const MAX_OUTPUT_TOKENS = 1_200;
@@ -83,7 +84,24 @@ export interface CopilotBudgets {
   emptyNote?: string;
 }
 
-export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: ReadonlySet<string> = new Set(), budgets: CopilotBudgets = { list: [] }) {
+/**
+ * What a chat works from: `view` is what this person sees (a demo visitor's own category fixes
+ * included, as on the dashboard and in instant answers); `drafts` holds only the findings recorded
+ * in the store, the only ones a draft may be for (the Inbox is shared).
+ */
+export async function copilotAnalyses(mode: DataMode): Promise<{ view: Analysis; drafts: Analysis }> {
+  const { dataset, analysis } = await loadAnalysis(mode, { visitorFixes: true });
+  return { view: analysis, drafts: { ...analysis, findings: storedFindings(mode, dataset, analysis) } };
+}
+
+export function createCopilot(
+  a: Analysis,
+  saveDraft: SaveDraft,
+  dismissed: ReadonlySet<string> = new Set(),
+  budgets: CopilotBudgets = { list: [] },
+  /** The findings a draft may be for; defaults to `a`'s. */
+  draftable: Analysis = a,
+) {
   return new ToolLoopAgent({
     model: openai(env().OPENAI_MODEL_AGENT),
     instructions: INSTRUCTIONS,
@@ -199,7 +217,7 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
         description: "Draft (never send) a cancellation email, downgrade request, card-limit checklist or Jira ticket for a finding.",
         inputSchema: draftActionInput,
         execute: async (input) => {
-          const draft = draftAction(a, input, dismissed);
+          const draft = draftAction(draftable, input, dismissed);
           if ("error" in draft) return draft;
           const saved = await saveDraft(draft);
           return { ...draft, id: saved.id, status: saved.status, note: "Saved to the Inbox. A person must approve it before anything is sent." };
