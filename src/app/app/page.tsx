@@ -61,8 +61,9 @@ async function findingStatuses(mode: DataMode, findings: Parameters<ReturnType<t
 async function companyProgress(mode: DataMode, decidedFindings: number): Promise<DashboardData["gettingStarted"]> {
   if (mode !== "company") return undefined;
   try {
-    const [team, links] = await Promise.all([currentTeam(), getStore(await scopeFor(mode)).listShareLinks()]);
-    return gettingStarted({ uploaded: true, decidedFindings, teamSize: team.members.length + team.invites.length, shareLinks: links.length });
+    const store = getStore(await scopeFor(mode));
+    const [team, links, budgets] = await Promise.all([currentTeam(), store.listShareLinks(), store.listBudgets()]);
+    return gettingStarted({ uploaded: true, decidedFindings, teamSize: team.members.length + team.invites.length, shareLinks: links.length, budgets: budgets.length });
   } catch (err) {
     console.error("[page] couldn't work out getting-started progress", err instanceof Error ? err.message : "unknown error");
     return undefined;

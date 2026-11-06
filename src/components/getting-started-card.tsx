@@ -14,7 +14,7 @@ export function GettingStartedCard({ steps, remaining }: { steps: GettingStarted
           {steps.length - remaining} of {steps.length} done
         </p>
       </div>
-      <ol className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-5 sm:[&>li:last-child:nth-child(odd)]:col-span-2 lg:[&>li:last-child:nth-child(odd)]:col-span-1">
         {steps.map((s) => (
           <li key={s.key} className="bg-panel px-5 py-3">
             <p className="flex items-center gap-2 text-sm font-medium">

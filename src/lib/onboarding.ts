@@ -7,10 +7,11 @@ export interface GettingStartedInput {
   /** People in the company, counting pending invites. */
   teamSize: number;
   shareLinks: number;
+  budgets: number;
 }
 
 export interface GettingStartedStep {
-  key: "upload" | "review" | "team" | "share";
+  key: "upload" | "review" | "budget" | "team" | "share";
   title: string;
   detail: string;
   href: string;
@@ -21,6 +22,7 @@ export function gettingStarted(input: GettingStartedInput): { steps: GettingStar
   const steps: GettingStartedStep[] = [
     { key: "upload", title: "Upload your bank exports", detail: "Bank and card CSVs plus today's cash.", href: "/app/upload", done: input.uploaded },
     { key: "review", title: "Review a finding", detail: "Accept or dismiss what Runway found.", href: "#waste-found", done: input.decidedFindings > 0 },
+    { key: "budget", title: "Set a budget", detail: "Pick a category; the digest flags it before it runs over.", href: "#budgets-title", done: input.budgets > 0 },
     { key: "team", title: "Invite a teammate", detail: "Your cofounder or finance lead.", href: "/app/settings", done: input.teamSize > 1 },
     { key: "share", title: "Share with investors", detail: "A read-only link to cash, burn and runway.", href: "#share-with-investors", done: input.shareLinks > 0 },
   ];

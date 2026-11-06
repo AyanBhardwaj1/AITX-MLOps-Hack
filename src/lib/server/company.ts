@@ -178,7 +178,8 @@ export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no
   const result = await getAccounts().acceptInvite(user, orgId);
   if (result === "joined") {
     const joined = await getAccounts().companyFor(user.id);
-    if (joined) await logActivity(joined.scope, "join", "Joined the team", user.email);
+    // Only into the company accepted: a second accept racing this one mustn't put it in the wrong log.
+    if (joined?.orgId === orgId) await logActivity(joined.scope, "join", "Joined the team", user.email);
   }
   // The old company is gone: drop anything an in-memory store still holds for it.
   if (result === "joined" && current?.role === "owner") {
