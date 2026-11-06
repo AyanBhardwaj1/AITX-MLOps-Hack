@@ -26,9 +26,6 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
     const mode = parseMode(parsed.data.mode);
-    // The public demo is one company every visitor shares: a decision shows for whoever made it
-    // (the page keeps it) but isn't saved, so the next visitor sees the demo as it ships.
-    if (mode === "demo") return NextResponse.json({ ok: true, saved: false });
     // Who decided, from the verified session: only on a company's own data (the demo is anonymous).
     const actor = mode === "company" ? ((await sessionUser()) ?? undefined) : undefined;
     // A dismissed finding's drafts aren't changed: the Inbox hides them and refuses to approve

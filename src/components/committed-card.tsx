@@ -11,7 +11,7 @@ export function CommittedCard({ committed }: { committed: CommittedSpend }) {
     <section aria-labelledby="committed-title" className="mb-6 rounded-xl border border-line bg-panel p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="committed-title" className="font-semibold">
-          Already scheduled: next 30 days
+          Already scheduled: 30 days ahead
         </h2>
         <span className="tabular text-sm text-muted">
           {formatDollars(committed.totalCents)} going out ·{" "}

@@ -25,7 +25,7 @@ await suite("settings", async ({ browser, step }) => {
     // Why burn moved: last whole month against the one before, adding up to the change.
     await p.getByRole("heading", { name: "Why burn moved" }).waitFor();
     await p.getByRole("rowheader", { name: "Change in net burn" }).waitFor();
-    await p.getByRole("heading", { name: "Already scheduled: next 30 days" }).waitFor();
+    await p.getByRole("heading", { name: "Already scheduled: 30 days ahead" }).waitFor();
     // Spend by person: the sample's cardholders, each linked to their transactions.
     await p.getByRole("heading", { name: "Spend by person" }).waitFor();
     await p.getByRole("region", { name: "Spend by person table" }).getByRole("link").first().waitFor();

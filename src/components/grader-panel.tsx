@@ -209,7 +209,11 @@ export function GraderPanel() {
               {result.findingsCount > result.topFindings.length && (
                 <p className="mt-2 text-xs text-muted">
                   The {result.topFindings.length} biggest of {result.findingsCount}; the other {result.findingsCount - result.topFindings.length} add{" "}
-                  {formatDollars(result.wasteMonthlyCents - result.topFindings.reduce((x, f) => x + f.monthlySavingsCents, 0))}/mo to the total.
+                  {formatDollars(result.wasteMonthlyCents - result.topFindings.reduce((x, f) => x + f.monthlySavingsCents, 0))}/mo
+                  {result.oneTimeCents - result.topFindings.reduce((x, f) => x + f.oneTimeCents, 0) > 0
+                    ? ` and ${formatMoney(result.oneTimeCents - result.topFindings.reduce((x, f) => x + f.oneTimeCents, 0))} to claim back`
+                    : ""}{" "}
+                  to the total.
                 </p>
               )}
             </div>
