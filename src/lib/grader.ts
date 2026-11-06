@@ -137,10 +137,14 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   // Overlapping exports of one account repeat rows: the nth copy of a row (same day, description
   // and amount) an earlier file of the same account already has is the same transaction. Other
   // accounts' rows are never merged (the same $8.75 seat on two people's cards is two charges).
+  // Files whose names don't say the account ("transactions.csv", "transactions (1).csv") may be
+  // one account's overlapping exports however few rows they share, so they're checked together.
   const roots = accountGroups(fileKeys);
+  const unnamed = -1;
+  const bucket = (i: number) => (fileKeys[i]!.label === DEFAULT_ACCOUNT_LABEL && fileKeys.filter((f, j) => roots[j] === roots[i] && f.label !== DEFAULT_ACCOUNT_LABEL).length === 0 ? unnamed : roots[i]!);
   const seenRows = new Map<number, Set<string>>();
   read.forEach((txns, i) => {
-    const seen = seenRows.get(roots[i]!) ?? new Set<string>();
+    const seen = seenRows.get(bucket(i)) ?? new Set<string>();
     const copies = new Map<string, number>();
     const fileRows: string[] = [];
     for (const t of txns) {
@@ -155,7 +159,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
       raw.push(t);
     }
     for (const k of fileRows) seen.add(k);
-    seenRows.set(roots[i]!, seen);
+    seenRows.set(bucket(i), seen);
   });
   if (raw.length === 0) throw new Error(errors[0] ?? "No readable transactions in these files");
   const { transactions, cardSpendAsPayoffs: payoffsAsSpend } = resolveCardPayoffs(raw);

@@ -234,3 +234,10 @@ describe("month-end bills", () => {
     expect(detectStreams(m, "2026-12-01")[0]!.nextExpected).toBe("2026-12-30");
   });
 });
+
+describe("month-end bills, second review", () => {
+  it("a 30th bill posted once on a 31st stays on the 30th", () => {
+    const m = ["2026-06-30", "2026-07-30", "2026-08-31", "2026-09-30", "2026-10-30", "2026-11-30"].map((d) => txn("FIGMA", d, -100_00));
+    expect(detectStreams(m, "2026-12-01")[0]!.nextExpected).toBe("2026-12-30");
+  });
+});

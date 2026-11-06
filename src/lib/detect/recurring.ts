@@ -99,9 +99,10 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   const months = MONTHS_PER_CYCLE[rule.cadence];
   if (!months) return addDays(last, rule.nominalDays);
   const posted = events.map((e) => Number(e.postedAt.slice(8, 10)));
-  // A bill on the 31st posts on the 30th (or 28th) in shorter months: once any charge landed on a
-  // 31st, a charge on its month's last day is that same month-end bill.
-  const monthEnd = posted.includes(31);
+  // A bill on the 31st posts on the 30th (or 28th) in shorter months: when the 31-day months show
+  // more charges on the 31st than the 30th, a charge on its month's last day is that month-end bill.
+  const in31 = events.filter((e) => daysInMonth(e.postedAt) === 31).map((e) => Number(e.postedAt.slice(8, 10)));
+  const monthEnd = in31.filter((d) => d === 31).length > in31.filter((d) => d === 30).length;
   const days = events.map((e, i) => (monthEnd && posted[i]! === daysInMonth(e.postedAt) ? 31 : posted[i]!));
   // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
   const usual = mostCommon(days, (a, b) => b - a);

@@ -88,7 +88,8 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
     if (first === null || t.postedAt < first) first = t.postedAt;
     if (t.status !== "posted" || !t.postedAt.startsWith(prefix)) continue;
     if (!BANK_PAID.has(t.type)) continue;
-    if (t.vendor.category === "other") {
+    // Known spend Runway names itself (card payoffs standing in for card spend) isn't a payee.
+    if (t.vendor.category === "other" && t.vendor.source !== "catalog") {
       const u = unplaced.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, paidCents: 0 };
       u.paidCents -= t.amountCents;
       unplaced.set(t.vendor.key, u);

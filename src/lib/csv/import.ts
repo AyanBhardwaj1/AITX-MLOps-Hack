@@ -40,7 +40,8 @@ const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT\W+THANK 
  * card's side of a payoff.
  */
 const PAYMENT_FROM = /\bPAYMENT\W+FROM\b/i;
-const FROM_OWN_ACCOUNT = /\bFROM\W+(?:CHECKING|CHECK|CHK|SAVINGS|SAV|ACCOUNT|ACCT|DDA|BANK|[X*]+|\d)/i;
+const FROM_OWN_ACCOUNT =
+  /\bFROM\W+(?:(?:BUSINESS|OPERATING|PRIMARY)\s+)?(?:(?:CHECKING|CHK|SAVINGS|SAV|ACCOUNT|ACCT|DDA|MERCURY|RHO|BREX|SVB|CHASE|CITI|PNC|TD BANK|US BANK|WELLS FARGO|BANK OF AMERICA|BOFA|CAPITAL ONE|FIRST REPUBLIC|SILICON VALLEY BANK)\b|[X*]{2,}|\d{4}\b)/i;
 /** Moving money between the company's own accounts: never burn. */
 const INTERNAL_TRANSFER_PATTERN = /\b(TRANSFER (TO|FROM)|INTERNAL TRANSFER|SWEEP|BOOK TRANSFER)\b/i;
 /** Mercury statuses for money that never moved. */
@@ -350,7 +351,8 @@ export function resolveCardPayoffs(transactions: readonly RhoTransaction[]): { t
 function assertUsd(header: readonly string[], data: readonly string[][]) {
   const cols = header.map(norm);
   const named = cols.map((c) => /\b(amount|debit|credit|gross|net|withdrawals?|deposits?)\s*\(([a-z]{3})\)$/.exec(c)?.[2]).find((code) => code && code !== "usd");
-  const col = cols.findIndex((c) => /^(?:transaction |original |settlement )?(?:currency|ccy)(?: code)?$/.test(c));
+  // The amount's own currency: "Original Currency" (a foreign purchase's, beside a USD amount) isn't it.
+  const col = cols.findIndex((c) => /^(?:transaction )?(?:currency|ccy)(?: code)?$/.test(c));
   const other = col >= 0 ? data.map((r) => (r[col] ?? "").trim().toUpperCase()).find((v) => v && v !== "USD") : undefined;
   if (named || other) throw new Error(`Runway works in US dollars; this file has ${(named ?? other)!.toUpperCase()} amounts.`);
 }

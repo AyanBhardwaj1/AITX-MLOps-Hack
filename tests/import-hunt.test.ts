@@ -49,7 +49,7 @@ describe("import hunt: grader dedupe", () => {
 
 describe("import hunt: amounts and currencies", () => {
   it("refuses other currencies whatever the column is called", () => {
-    for (const col of ["Currency Code", "Transaction Currency", "CCY", "Original Currency"]) {
+    for (const col of ["Currency Code", "Transaction Currency", "CCY"]) {
       expect(() => importCsv(`Date,Description,Amount,${col}\n2026-10-01,TESCO,-100.00,GBP`, { accountId: "a" }), col).toThrow(/US dollars/);
     }
     expect(importCsv("Date,Description,Amount,Currency Code\n2026-10-01,FIGMA,-15.00,USD", { accountId: "a" }).transactions).toHaveLength(1);
@@ -77,5 +77,35 @@ describe("import hunt: a card's own payment leg", () => {
       const r = importCsv(csv([`2026-10-02,${d},9120.00`]), { accountId: "card", resolvePayoffs: false });
       expect(r.transactions[0]!.transaction_type, d).toBe("credit_repayment");
     }
+  });
+});
+
+describe("import hunt, second review", () => {
+  it("a USD file with an 'Original Currency' column for foreign purchases still imports", () => {
+    const r = importCsv("Date,Description,Amount,Original Amount,Original Currency\n2026-10-01,HOTEL PARIS,-220.00,-200.00,EUR\n2026-10-02,FIGMA,-15.00,-15.00,USD", { accountId: "a" });
+    expect(r.transactions).toHaveLength(2);
+  });
+
+  it("customer names that start like account words are money in; a card leg from 'business checking' or a named bank is a payoff", () => {
+    for (const d of ["ONLINE PAYMENT FROM SAVANNAH COFFEE CO", "ONLINE PAYMENT FROM 3M COMPANY", "ONLINE PAYMENT FROM CHECKMATE INC", "ONLINE PAYMENT FROM ACCOUNTABLE HQ", "ONLINE PAYMENT FROM BANKSY LTD"]) {
+      expect(importCsv(csv([`2026-10-02,${d},8000.00`]), { accountId: "chk", resolvePayoffs: false }).transactions[0]!.transaction_type, d).toBe("ach_credit");
+    }
+    for (const d of ["E-PAYMENT FROM BUSINESS CHECKING", "AUTOPAY PAYMENT FROM MERCURY", "ONLINE PAYMENT FROM CHASE CHECKING", "ONLINE PAYMENT FROM WELLS FARGO"]) {
+      expect(importCsv(csv([`2026-10-02,${d},9120.00`]), { accountId: "card", resolvePayoffs: false }).transactions[0]!.transaction_type, d).toBe("credit_repayment");
+    }
+  });
+
+  it("the grader still merges overlapping exports a bank names generically, even with few shared rows", () => {
+    // June and early July, then early July (two rows overlap) and the rest of July.
+    const first = [...Array.from({ length: 10 }, (_, i) => `2026-06-${String(i + 10).padStart(2, "0")},VENDOR ${i},-${i + 1}0.00`), "2026-07-03,GUSTO PAYROLL,-5000.00", "2026-07-10,AWS,-200.00"];
+    const second = ["2026-07-03,GUSTO PAYROLL,-5000.00", "2026-07-10,AWS,-200.00", ...Array.from({ length: 10 }, (_, i) => `2026-07-${String(i + 12).padStart(2, "0")},SHOP ${i},-${i + 1}5.00`)];
+    const g = gradeCsvFiles(
+      [
+        { name: "transactions.csv", text: csv(first) },
+        { name: "transactions (1).csv", text: csv(second) },
+      ],
+      100_000_00,
+    );
+    expect(g.transactions).toBe(22);
   });
 });

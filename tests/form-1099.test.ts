@@ -148,3 +148,13 @@ describe("payees Runway can't place", () => {
     expect(prep.unplaced.map((u) => [u.name, u.paidCents])).toEqual([["Jane Doe Design", 10_000_00]]);
   });
 });
+
+describe("1099 unplaced: known spend isn't a payee", () => {
+  it("card payoffs standing in for card spend aren't named as uncategorised payees", () => {
+    const t = [
+      txn("s", "2026-01-01", -1_00, "Start", { category: "software" }),
+      txn("p", "2026-02-01", -15_000_00, "Card spend (line items not uploaded)", { category: "other", source: "catalog", key: "unitemized_card_spend" }),
+    ];
+    expect(prep1099(t, 2026)).toBeNull();
+  });
+});

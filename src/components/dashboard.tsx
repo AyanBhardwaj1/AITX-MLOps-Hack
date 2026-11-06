@@ -124,6 +124,16 @@ const KIND_LABEL: Record<Finding["kind"], string> = {
   duplicate_charge: "Double charge",
 };
 
+/** The dashboard's sections, for the jump links under the headline numbers. */
+const SECTIONS = [
+  ["section-spending", "Spending"],
+  ["section-plans", "Plans"],
+  ["share-with-investors", "Investors"],
+  ["section-bills", "Bills & taxes"],
+  ["waste-found", "Waste found"],
+  ["section-copilot", "Copilot"],
+] as const;
+
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 const STRESS_REVENUE_DROP = 0.3;
 const TABS = ["copilot", "autopilot", "inbox"] as const;
@@ -305,6 +315,18 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </div>
         </section>
 
+        <nav aria-label="Dashboard sections" className="mb-4 overflow-x-auto print:hidden">
+          <ul className="flex gap-2 whitespace-nowrap text-sm">
+            {SECTIONS.map(([id, label]) => (
+              <li key={id}>
+                <a href={`#${id}`} className="inline-block rounded-full border border-line bg-panel px-3 py-1 text-muted transition-colors hover:border-brand hover:text-ink">
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
         {data.freshness?.stale && (
           <p role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
             Your transactions end on {formatDate(data.asOf)}, {data.freshness.daysOld} days ago, so runway may have drifted.{" "}
@@ -371,11 +393,13 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           )}
         </section>
 
+        <div id="section-spending" className="scroll-mt-4" />
         <RunwayTrendCard points={data.runwayHistory} />
         <BurnBridgeCard bridge={data.burnBridge} mode={data.mode} />
         <CategorySpendCard rows={data.categorySpend} mode={data.mode} />
         <PeopleSpendCard people={data.people} mode={data.mode} burnMonths={data.snapshot.burnMonths} />
         {data.budgets && <BudgetsCard budgets={data.budgets} mode={data.mode} />}
+        <div id="section-plans" className="scroll-mt-4" />
         <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />
         <ScenarioPlanner
           history={data.history}
@@ -391,6 +415,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           <ShareLinksPanel mode={data.mode} canManage={data.capabilities.manage} />
         </div>
 
+        <div id="section-bills" className="scroll-mt-4" />
         <CommittedCard committed={data.committed} />
         <Form1099Card prep={data.form1099} mode={data.mode} asOf={data.asOf} />
         <div className="mb-6 grid gap-6 md:grid-cols-2">
@@ -529,7 +554,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             </section>
           </div>
 
-          <aside className="min-w-0 lg:col-span-2">
+          <aside id="section-copilot" className="min-w-0 scroll-mt-4 lg:col-span-2">
             <div className="sticky top-4 rounded-xl border border-line bg-panel">
               <div role="tablist" aria-label="Agents" className="flex border-b border-line text-sm" onKeyDown={onTabKey}>
                 {TABS.map((t) => (

@@ -8,6 +8,17 @@ await suite("accounts", async ({ browser, step }) => {
   await step("the demo works without signing in, and the public pages stay public", async () => {
     await a.goto(`${APP}/app?mode=demo`);
     await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
+    // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.
+    const nav = a.getByRole("navigation", { name: "Dashboard sections" });
+    for (const href of await nav.getByRole("link").evaluateAll((ls) => ls.map((l) => l.getAttribute("href")))) assert.equal(await a.locator(href).count(), 1, `${href} found`);
+    await nav.getByRole("link", { name: "Waste found" }).click();
+    assert.match(a.url(), /#waste-found$/);
+    await a.setViewportSize({ width: 390, height: 844 });
+    // Charts re-measure after a resize; give them a moment to settle.
+    await a.waitForFunction(() => document.documentElement.scrollWidth === document.documentElement.clientWidth, null, { timeout: 5000 }).catch(() => {});
+    const wide = await a.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+    assert.equal(wide[0], wide[1], `page ${wide[0]}px wide at ${wide[1]}px`);
+    await a.setViewportSize({ width: 1280, height: 720 });
     // 1099s: the demo's law firm and landlord, paid by bank; the CSV lists them.
     const prep = a.getByRole("region", { name: /^1099s for \d{4}$/ });
     await prep.getByRole("link", { name: "Wilson Sonsini (legal)" }).waitFor();
