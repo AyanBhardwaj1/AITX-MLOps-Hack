@@ -20,6 +20,8 @@ export function InvestorUpdateCard({ mode }: { mode: DataMode }) {
       const res = await fetch(`/api/investor-update?mode=${mode}`);
       const json = (await res.json()) as { subject?: string; markdown?: string; error?: string };
       setState(res.ok && json.markdown && json.subject ? { status: "ready", subject: json.subject, text: json.markdown } : { status: "error", message: json.error ?? "Couldn't draft the update." });
+      // The button that was pressed goes away with the draft: focus moves to the draft itself.
+      if (res.ok) setTimeout(() => document.getElementById(`${id}-text`)?.focus(), 0);
     } catch {
       setState({ status: "error", message: "Couldn't reach the server. Try again." });
     }
@@ -50,9 +52,9 @@ export function InvestorUpdateCard({ mode }: { mode: DataMode }) {
         {state.status !== "ready" && (
           <button
             type="button"
-            onClick={() => void draft()}
-            disabled={state.status === "loading"}
-            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand disabled:cursor-wait disabled:opacity-60"
+            onClick={() => state.status !== "loading" && void draft()}
+            aria-disabled={state.status === "loading"}
+            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand aria-disabled:cursor-wait aria-disabled:opacity-60"
           >
             {state.status === "loading" ? "Drafting…" : "Draft this month's update"}
           </button>

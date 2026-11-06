@@ -80,6 +80,8 @@ export function InboxPanel({
       const body = (await res.json()) as { action?: StoredAction; error?: string; warning?: string };
       if (!res.ok || !body.action) throw new Error(body.error ?? `Couldn't save (${res.status})`);
       setActions((prev) => prev?.map((a) => (a.id === id ? body.action! : a)) ?? null);
+      // Approve and Reject go away with the decision: focus stays on the same item.
+      setTimeout(() => document.getElementById(`inbox-${id}`)?.focus(), 0);
       if (mode === "demo") setDemoDecided((prev) => ({ ...prev, [id]: body.action! }));
       setError(body.warning ?? null);
     } catch (err) {
@@ -110,6 +112,7 @@ export function InboxPanel({
             <div className="flex items-start justify-between gap-2">
               <button
                 type="button"
+                id={`inbox-${a.id}`}
                 aria-expanded={open === a.id}
                 onClick={() => setOpen(open === a.id ? null : a.id)}
                 className="min-w-0 rounded text-left transition-colors hover:text-brand"

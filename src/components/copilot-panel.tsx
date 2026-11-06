@@ -68,6 +68,8 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
     if (busy) return;
     setBusy(true);
     setEntries((e) => [...e, { id, question }]);
+    // The question's button leaves the list: focus goes to the conversation, where the answer lands.
+    setTimeout(() => scroller.current?.focus(), 0);
     const settle = (patch: Partial<InstantEntry>) => setEntries((e) => e.map((x, i) => (i === e.length - 1 ? { ...x, ...patch } : x)));
     try {
       const res = await fetch("/api/copilot/instant", {
@@ -124,9 +126,9 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
           <button
             key={q.id}
             type="button"
-            disabled={busy}
+            aria-disabled={busy}
             onClick={() => void ask(q.id, q.text)}
-            className="block w-full rounded-lg border border-line px-3 py-2 text-left text-sm transition-colors hover:border-brand hover:bg-brand-soft/40 active:translate-y-px disabled:cursor-wait disabled:opacity-50"
+            className="block w-full rounded-lg border border-line px-3 py-2 text-left text-sm transition-colors hover:border-brand hover:bg-brand-soft/40 active:translate-y-px aria-disabled:cursor-wait aria-disabled:opacity-50"
           >
             {q.text}
           </button>

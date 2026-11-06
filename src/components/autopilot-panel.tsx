@@ -43,6 +43,7 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: DataMode; llm
   }, [mode, historyVersion]);
 
   async function start() {
+    if (running) return;
     setRunning(true);
     setFailed(null);
     try {
@@ -78,8 +79,9 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: DataMode; llm
         <button
           type="button"
           onClick={start}
-          disabled={running}
-          className="shrink-0 rounded-lg bg-brand px-4 py-2 font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:cursor-wait disabled:opacity-60"
+          // aria-disabled, not disabled: a disabled button drops keyboard focus to the page.
+          aria-disabled={running}
+          className="shrink-0 rounded-lg bg-brand px-4 py-2 font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px aria-disabled:cursor-wait aria-disabled:opacity-60"
         >
           {running ? "Running…" : "Run now"}
         </button>
