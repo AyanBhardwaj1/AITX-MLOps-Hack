@@ -84,6 +84,13 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        # The download or apt step sometimes stalls with no error; give each try two minutes.
+        timeout-minutes: 8
+        run: |
+          for attempt in 1 2 3; do
+            timeout -k 10 120 npx playwright install --with-deps chromium && exit 0
+            echo "Chromium install attempt $attempt stalled or failed; trying again"
+          done
+          exit 1
       - name: Sign-in, isolation, settings, teams and uploads in a real browser
         run: npm run test:e2e
