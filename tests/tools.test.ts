@@ -105,5 +105,15 @@ describe("planToTarget with dismissals", () => {
     const plan = planToTarget(a, { targetRunwayMonths: 24 }, new Set([top.id]));
     expect(plan.chosenFindings.map((f) => f.id)).not.toContain(top.id);
   });
+
+  it("reports budgets for the month from the same math as the dashboard card, in cents", async () => {
+    const { getBudgets } = await import("@/lib/agent/tools");
+    const { budgetStatus } = await import("@/lib/finance/budgets");
+    const budgets = [{ category: "software" as const, monthlyCents: 8_500_00 }];
+    const out = getBudgets(a, budgets);
+    expect(out.month).toBe(a.asOf.slice(0, 7));
+    expect(out.budgets).toEqual(budgetStatus(a.txns, a.asOf, budgets, a.streams));
+    expect(getBudgets(a, [])).toMatchObject({ budgets: [], note: expect.stringMatching(/no budgets/i) });
+  });
 });
 

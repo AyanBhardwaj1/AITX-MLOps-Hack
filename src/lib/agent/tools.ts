@@ -8,6 +8,7 @@ import { detectChanges } from "../insights/changes";
 import { goalSeek, simulateSavings, stressRunway, countsTowardBurn } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
+import { budgetStatus, type Budget } from "../finance/budgets";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -217,4 +218,15 @@ export const changesInput = z.object({});
 /** Recent alerts: burn spikes, large one-offs, price changes, new vendors, renewals due, low runway. */
 export function getChanges(a: Analysis) {
   return detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths });
+}
+
+export const budgetsInput = z.object({});
+/** This month's budgets: spent so far, heading for, last month and status, all in cents (same math as the dashboard card). */
+export function getBudgets(a: Analysis, budgets: readonly Budget[]) {
+  return {
+    month: a.asOf.slice(0, 7),
+    asOf: a.asOf,
+    budgets: budgetStatus(a.txns, a.asOf, budgets, a.streams),
+    ...(budgets.length === 0 ? { note: "No budgets are set. The team can add them on the dashboard's Budgets card." } : {}),
+  };
 }

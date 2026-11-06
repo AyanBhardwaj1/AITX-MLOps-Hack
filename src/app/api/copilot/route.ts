@@ -1,5 +1,6 @@
 import { createAgentUIStreamResponse } from "ai";
 import { NextResponse } from "next/server";
+import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
@@ -65,5 +66,15 @@ export async function POST(request: Request) {
     ]);
     return { id: saved!.id, status: saved!.status };
   };
-  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed), uiMessages: messages.messages });
+  // The demo's fixed sample, or the company's own; a storage hiccup means no budgets, not a failed chat.
+  const budgets =
+    parsed.data.mode === "demo"
+      ? DEMO_BUDGETS
+      : parsed.data.mode === "company"
+        ? await store.listBudgets().catch((err) => {
+            console.error("[copilot] budgets unavailable", err instanceof Error ? err.message : "unknown error");
+            return [];
+          })
+        : [];
+  return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed, budgets), uiMessages: messages.messages });
 }
