@@ -53,7 +53,7 @@ export function EarlyAccessForm() {
           <a href="/grader" className="text-link font-medium text-brand">
             free grader
           </a>{" "}
-          works with any CSV export.
+          works with any bank’s CSV or OFX download.
         </p>
       </div>
     );

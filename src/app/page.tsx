@@ -37,7 +37,7 @@ type Shot = { kind: "image"; src: string; w: number; h: number; alt: string } | 
 const STEPS: { name: string; text: string; shot: Shot }[] = [
   {
     name: "Read",
-    text: "Connects to Rho through its read endpoints, or takes a CSV export from any bank. Accounts and transactions; nothing else.",
+    text: "Connects to Rho through its read endpoints, or takes any bank’s CSV, OFX, Quicken or QuickBooks download. Accounts and transactions; nothing else.",
     shot: { kind: "image", src: "/shots/runway-summary.jpg", w: 1344, h: 496, alt: "Runway’s summary card: 12.2 months of runway, cash runs out Nov 3, 2027" },
   },
   {
@@ -47,7 +47,7 @@ const STEPS: { name: string; text: string; shot: Shot }[] = [
   },
   {
     name: "Report",
-    text: "Monday morning, Slack gets what changed. Cancellation emails arrive as drafts, and nothing is sent until you approve it.",
+    text: "Monday morning, Slack gets what changed, and hears the same day a budget goes over or runway drops under 12, 6 or 3 months. Cancellation emails arrive as drafts, and nothing is sent until you approve it.",
     shot: { kind: "image", src: "/shots/this-week.jpg", w: 1344, h: 470, alt: "This week: a $14,500 legal payment and a new AI vendor, flagged with amounts" },
   },
 ];
@@ -55,7 +55,7 @@ const STEPS: { name: string; text: string; shot: Shot }[] = [
 const FAQ = [
   {
     q: "Which banks does it work with?",
-    a: "Any bank, through CSV exports: once you’re invited, you upload exports from your bank and card accounts, and add fresh ones as the weeks go by. Most layouts are read as they come, including debit and credit columns and files with no header row. The free grader takes the same files. Direct connections, starting with Rho’s read-only API, come next, in the order people on the list ask for them.",
+    a: "Any bank, through its CSV exports or its OFX, Quicken (QFX) or QuickBooks (QBO) downloads: once you’re invited, you upload them from your bank and card accounts, and add fresh ones as the weeks go by. Most layouts are read as they come, including debit and credit columns and files with no header row. The free grader takes the same files. Direct connections, starting with Rho’s read-only API, come next, in the order people on the list ask for them.",
   },
   {
     q: "Can Runway move money or cancel anything?",
