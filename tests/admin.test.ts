@@ -55,4 +55,28 @@ describe("operator invites from the waitlist", () => {
     as("ops", "ops@runway.example");
     expect((await POST(post({ email: "x@example.com" }))).status).toBe(404);
   });
+
+  it("lets an operator sign in and start a company without being on the waitlist", async () => {
+    const { isInvited, currentCompany } = await import("@/lib/server/company");
+    expect(await isInvited("ops@runway.example")).toBe(true);
+    expect(await isInvited("someone@else.example")).toBe(false);
+    as("ops-fresh", "ops@runway.example");
+    expect((await currentCompany())?.role).toBe("owner");
+  });
+
+  it("reads OPERATOR_EMAILS however long it is, without taking the app down, and ignores what isn't an email", async () => {
+    vi.stubEnv("OPERATOR_EMAILS", [...Array.from({ length: 60 }, (_, i) => `person-with-a-long-name-${i}@runway.example`), "Ops <ops@x.example>", "second@runway.example"].join(","));
+    const { operatorEmails } = await import("@/lib/server/operator-emails");
+    const { env } = await import("@/lib/server/env");
+    expect(() => env()).not.toThrow();
+    const set = operatorEmails();
+    expect(set.has("person-with-a-long-name-0@runway.example")).toBe(true);
+    expect(set.has("second@runway.example")).toBe(true);
+    expect([...set].some((e) => e.includes("<"))).toBe(false);
+  });
+
+  it("answers a GET like a page that doesn't exist, too", async () => {
+    const { GET } = await import("@/app/api/admin/invite/route");
+    expect((await GET()).status).toBe(404);
+  });
 });

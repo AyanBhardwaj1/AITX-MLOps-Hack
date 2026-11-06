@@ -82,7 +82,7 @@ describe("proxy with accounts configured", () => {
 
   it("sends a signed-out visitor to sign in before rendering a company page, and leaves the demo open", async () => {
     const proxy = createProxy({ authConfigured: () => true, appPassword: () => undefined, getUser: async () => ({ user: null, setCookies: [] }) });
-    for (const path of ["/app?mode=company", "/app/upload", "/app/upload/", "/app/settings", "/app/admin", "/app/transactions?mode=company&q=zoom"]) {
+    for (const path of ["/app?mode=company", "/app/upload", "/app/upload/", "/app/settings", "/admin", "/app/transactions?mode=company&q=zoom"]) {
       const res = await proxy(req(path));
       expect(res.status, path).toBe(307);
       const to = new URL(res.headers.get("location")!);

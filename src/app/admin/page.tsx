@@ -8,14 +8,17 @@ import { isOperator } from "@/lib/server/operator";
 import { getWaitlist } from "@/lib/server/waitlist";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Early access", robots: { index: false, follow: false } };
+/** Outside /app (and its loading screen) so not-found is a real 404; the title only names it for operators. */
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await isOperator()) ? "Early access" : undefined, robots: { index: false, follow: false } };
+}
 
 const SHOWN = 200;
 
 /** For the people who run this deployment (OPERATOR_EMAILS): who's waiting, and inviting them. */
 export default async function AdminPage() {
   if (!accountsEnabled()) notFound();
-  if (!(await sessionUser())) redirect(`/login?next=${encodeURIComponent("/app/admin")}`);
+  if (!(await sessionUser())) redirect(`/login?next=${encodeURIComponent("/admin")}`);
   if (!(await isOperator())) notFound();
   const waitlist = getWaitlist();
   const entries = waitlist ? await waitlist.list(SHOWN) : [];

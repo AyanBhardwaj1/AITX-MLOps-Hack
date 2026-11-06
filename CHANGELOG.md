@@ -45,8 +45,8 @@ demo, the free grader and the public site work exactly as before.
 ### For whoever runs it
 
 - New settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (accounts), `SIGNUPS`
-  (`invite` or `open`), `OPERATOR_EMAILS` (who gets `/app/admin` to invite founders from the
-  waitlist with a button instead of SQL). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
+  (`invite` or `open`), `OPERATOR_EMAILS` (who gets `/admin` to invite founders from the
+  waitlist with a button instead of SQL; operators need no invite themselves). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
 - New migrations (run `npm run db:migrate`): accounts, teams, decision actor, rate limits, company
   Slack, digest order, company activity, activity cash, company budgets.
 - `npm run verify:live` now checks the Supabase Auth settings (email sign-in on, sign-ups allowed,

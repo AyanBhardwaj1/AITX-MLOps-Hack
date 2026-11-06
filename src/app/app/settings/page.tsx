@@ -28,7 +28,7 @@ export default async function SettingsPage() {
         </Link>
         <div className="flex items-center gap-4">
           {operator && (
-            <Link href="/app/admin" className="text-muted hover:text-ink">
+            <Link href="/admin" className="text-muted hover:text-ink">
               Early access
             </Link>
           )}

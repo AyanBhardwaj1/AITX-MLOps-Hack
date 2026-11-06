@@ -1,4 +1,5 @@
 import "server-only";
+import { operatorEmails } from "./operator-emails";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -43,14 +44,17 @@ export async function ensureCompanyFor(user: SessionUser): Promise<Company> {
   const existing = await accounts.companyFor(user.id);
   if (existing) return existing;
   // A company invite is honoured inside the store's transaction; here only the right to start a new one.
-  const mayStartCompany = env().SIGNUPS === "open" || (user.email !== null && (await getWaitlist()?.isInvited(user.email)) === true);
+  // Operators run the deployment, so they never need inviting.
+  const mayStartCompany =
+    env().SIGNUPS === "open" || (user.email !== null && (operatorEmails().has(user.email.toLowerCase()) || (await getWaitlist()?.isInvited(user.email)) === true));
   const company = await accounts.ensureCompanyFor(user, { allowNew: mayStartCompany });
   if (company.role === "member") await logActivity(company.scope, "join", "Joined the team", user.email);
   return company;
 }
 
-/** Invited to Runway: from the waitlist, or by a company that wants them on its team. */
+/** Invited to Runway: an operator, from the waitlist, or by a company that wants them on its team. */
 export async function isInvited(email: string): Promise<boolean> {
+  if (operatorEmails().has(email.toLowerCase())) return true;
   return (await getAccounts().hasCompanyInvite(email)) || (await getWaitlist()?.isInvited(email)) === true;
 }
 

@@ -9,6 +9,11 @@ export const runtime = "nodejs";
 const allow = createRateLimiter({ limit: 60, windowMs: 60_000 });
 const body = waitlistInput.pick({ email: true });
 
+/** Same answer as any address that doesn't exist. */
+export function GET() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}
+
 /** An operator lets one email create an account: waiting on the list, or added to it now. */
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
