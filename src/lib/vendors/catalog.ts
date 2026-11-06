@@ -74,6 +74,7 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   // Amazon orders (supplies and equipment, bought again and again; never a "double charge"):
   // matched from the order descriptors in normalize.ts. Subscriptions are their own vendor.
   { key: "amazon", name: "Amazon", category: "hardware", job: null, aliases: [] },
+  { key: "audible", name: "Audible", category: "software", job: null, aliases: ["audible"] },
   { key: "amazon_prime", name: "Amazon Prime", category: "software", job: null, aliases: ["amazon prime", "amzn prime", "amazon music", "amazon kindle", "kindle svcs", "prime member", "amazon business prime"] },
   // Money in and bank
   { key: "stripe", name: "Stripe payouts", category: "revenue", job: null, aliases: ["stripe"] },

@@ -6,8 +6,9 @@ const BANK_BOILERPLATE = /^(?:(?:purchase|recurring payment|recurring purchase) 
 const PROCESSOR_PREFIX = /^(sq|tst|paypal|pp|sp|py|pos|checkcard)\s*\*\s*/;
 /** Amazon order descriptors carry an order reference (and more), which must not become the vendor. */
 const AMAZON_ORDER = /^(?:amzn mktp(?: us)?|amazon\.com|amzn\.com)\s*\*(.*)$/;
-/** Amazon's subscriptions, which also bill through "AMAZON.COM*…" descriptors. */
-const AMAZON_SUBSCRIPTION = /\b(?:prime|music|kindle|video|audible)\b/;
+/** Amazon's subscriptions, which also bill through "AMAZON.COM*…" descriptors; marketplace orders only as "prime". */
+const AMAZON_SUBSCRIPTION = /\b(?:prime|music|kindle|video)\b/;
+const MARKETPLACE = /^amzn mktp/;
 const US_STATES =
   "al|ak|az|ar|ca|co|ct|de|dc|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy";
 /** A descriptor that is just the brand, maybe with "US" and a state: "APPLE", "APPLE.COM/US … CA". */
@@ -25,7 +26,9 @@ export function cleanDescriptor(raw: string): string {
     .toLowerCase()
     .trim()
     .replace(BANK_BOILERPLATE, "")
-    .replace(AMAZON_ORDER, (_, rest: string) => (AMAZON_SUBSCRIPTION.test(rest) ? "amazon prime" : "amazon"))
+    .replace(AMAZON_ORDER, (whole: string, rest: string) =>
+      /\baudible\b/.test(rest) ? "audible" : (MARKETPLACE.test(whole) ? /\bprime\b/ : AMAZON_SUBSCRIPTION).test(rest) ? "amazon prime" : "amazon",
+    )
     .replace(PROCESSOR_PREFIX, "")
     .replace(PHONE, " ")
     .replace(STORE_NUMBER, " ")

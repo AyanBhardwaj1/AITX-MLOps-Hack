@@ -29,6 +29,8 @@ import { AiSpendCard, RenewalsCard } from "./insight-cards";
 import { BurnBridgeCard } from "./burn-bridge-card";
 import { PeopleSpendCard } from "./people-spend-card";
 import { CommittedCard } from "./committed-card";
+import { Form1099Card } from "./form-1099-card";
+import type { Prep1099 } from "@/lib/finance/form-1099";
 import type { CommittedSpend } from "@/lib/finance/committed";
 import type { PeopleSpend } from "@/lib/finance/people-spend";
 import type { BurnBridge } from "@/lib/finance/burn-bridge";
@@ -109,6 +111,8 @@ export interface DashboardData {
   people: PeopleSpend | null;
   /** Recurring charges scheduled over the next 30 days. */
   committed: CommittedSpend;
+  /** Who may need a 1099 (null: no contractor, lawyer or landlord paid by bank near the line). */
+  form1099: Prep1099 | null;
   savings: SavingsSummary;
   capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean; accounts: boolean; signedIn: boolean; manage: boolean };
 }
@@ -388,6 +392,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
         </div>
 
         <CommittedCard committed={data.committed} />
+        <Form1099Card prep={data.form1099} mode={data.mode} asOf={data.asOf} />
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <RenewalsCard renewals={data.renewals} calendarHref={`/api/export?mode=${data.mode}&kind=calendar`} />
           <AiSpendCard trend={data.aiSpend} grossBurnCents={data.snapshot.grossBurnCents} />

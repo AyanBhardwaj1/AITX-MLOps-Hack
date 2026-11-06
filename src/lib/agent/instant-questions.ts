@@ -10,5 +10,6 @@ export const INSTANT_QUESTIONS = {
   burn_moved: "Why did burn change last month?",
   people: "Who spends the most on cards?",
   committed: "What's going out in the next 30 days?",
+  form_1099: "Who needs a 1099 from us?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;

@@ -4,7 +4,7 @@ import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { get1099Prep, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -196,6 +196,32 @@ function whoSpends(a: Analysis): InstantAnswer {
   };
 }
 
+function form1099Answer(a: Analysis): InstantAnswer {
+  const prep = get1099Prep(a);
+  const tools = ["get_1099_prep"];
+  if (!prep) return { question: INSTANT_QUESTIONS.form_1099, tools, text: "No contractor, lawyer or landlord paid by bank is near the 1099 line in the data." };
+  const over = prep.rows.filter((r) => r.overThreshold);
+  const close = prep.rows.filter((r) => !r.overThreshold);
+  const line = (r: (typeof prep.rows)[number]) => `- ${r.name}: ${formatDollars(r.paidCents)} (${r.form})`;
+  const threshold = formatDollars(prep.thresholdCents);
+  return {
+    question: INSTANT_QUESTIONS.form_1099,
+    tools,
+    text: [
+      over.length > 0
+        ? `**${over.length}** ${over.length === 1 ? "payee was" : "payees were"} paid ${threshold} or more by bank in ${prep.year} and may need a 1099 from you (due Jan 31, ${prep.year + 1}):`
+        : `No one paid by bank has reached ${threshold} in ${prep.year} yet.`,
+      over.map(line).join("\n"),
+      close.length > 0 ? `Getting close:\n${close.map((r) => `- ${r.name}: ${formatDollars(r.paidCents)}`).join("\n")}` : "",
+      `Corporations usually don't need one (law firms do), so ask each payee for a W-9. Card payments are reported by the card network and aren't listed.${
+        prep.partialFrom ? ` The data starts ${formatDate(prep.partialFrom)}, so earlier payments aren't counted.` : ""
+      } A list to check with your accountant, not tax advice.`,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  };
+}
+
 function committedAnswer(a: Analysis): InstantAnswer {
   const c = getCommitted(a);
   const tools = ["get_committed_spend"];
@@ -235,6 +261,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   burn_moved: burnMoved,
   people: whoSpends,
   committed: committedAnswer,
+  form_1099: form1099Answer,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */

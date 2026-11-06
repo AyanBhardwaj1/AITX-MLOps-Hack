@@ -112,3 +112,22 @@ describe("what's going out", () => {
     expect(ans.text).toContain(formatDollars(c.totalCents));
   });
 });
+
+describe("who needs a 1099", () => {
+  it("lists the demo's law firm and landlord from the 1099 tool, with the threshold and the caveat", async () => {
+    const { get1099Prep } = await import("@/lib/agent/tools");
+    const prep = get1099Prep(a)!;
+    expect(prep.rows.filter((r) => r.overThreshold).map((r) => r.form).sort()).toEqual(["1099-MISC", "1099-NEC"]);
+    const ans = instantAnswer(a, "form_1099");
+    expect(ans.tools).toEqual(["get_1099_prep"]);
+    expect(ans.text).toContain("Wilson Sonsini");
+    expect(ans.text).toContain("Brazos Properties");
+    expect(ans.text).toContain(formatDollars(prep.thresholdCents));
+    expect(ans.text).toContain("W-9");
+  });
+
+  it("says so when no one is near the line", () => {
+    const empty = { ...a, txns: a.txns.filter((t) => !["wilson_sonsini", "brazos_properties"].includes(t.vendor.key)) };
+    expect(instantAnswer(empty, "form_1099").text).toMatch(/No contractor, lawyer or landlord/);
+  });
+});

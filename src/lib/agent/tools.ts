@@ -12,6 +12,7 @@ import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budge
 import { burnBridge } from "../finance/burn-bridge";
 import { peopleSpend } from "../finance/people-spend";
 import { committedSpend } from "../finance/committed";
+import { form1099Year, prep1099 } from "../finance/form-1099";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -239,6 +240,12 @@ export const committedInput = z.object({});
 /** Recurring charges scheduled over the next 30 days from today (cents), the total and the cash left after them. */
 export function getCommitted(a: Analysis, today: string = new Date().toISOString().slice(0, 10)) {
   return committedSpend(a.streams, { from: today, days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf });
+}
+
+export const form1099Input = z.object({});
+/** Contractors, lawyers and landlords paid by bank this year (last year to the end of March) who may need a 1099 (cents). */
+export function get1099Prep(a: Analysis) {
+  return prep1099(a.txns, form1099Year(a.asOf));
 }
 
 export const peopleSpendInput = z.object({});

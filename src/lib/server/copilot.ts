@@ -11,6 +11,8 @@ import {
   peopleSpendInput,
   committedInput,
   getCommitted,
+  form1099Input,
+  get1099Prep,
   changesInput,
   getChanges,
   runScenario,
@@ -52,6 +54,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 - For "what changed" or "anything I should know" questions, call get_recent_changes.
 - For "what's going out soon" or "what's due this month" questions, call get_committed_spend.
 - For "who spends the most" or card-holder questions, call get_people_spend.
+- For 1099 or contractor tax-form questions, call get_1099_prep, and say it's a list to check with their accountant (W-9s settle who needs one), not tax advice.
 - For "why did burn go up/down" questions, call get_burn_bridge: drivers' changeCents plus otherCents minus revenueChangeCents equals changeCents exactly.
 - For budget questions ("are we over budget?"), call get_budgets. "heading for" adds recurring bills still due this month and one-off spend at its pace from day 7.
 - Offer to draft actions with draft_action. Drafts go to the Inbox; nothing is sent until a person approves it there.
@@ -133,6 +136,12 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
           "Recurring charges already scheduled over the next 30 days from today: items (date, vendorName, category, amountCents), totalCents and cashAfterCents. A floor: one-off and usage spend aren't included. Integer cents.",
         inputSchema: committedInput,
         execute: async () => getCommitted(a),
+      }),
+      get_1099_prep: tool({
+        description:
+          "Who may need a Form 1099 from the company: contractors, lawyers and landlords paid by ACH, wire or check in a tax year (this year, or last year through March). rows: name, form (1099-NEC or 1099-MISC for rent), paidCents after refunds, payments, overThreshold; thresholdCents ($600 through 2025, $2,000 from 2026); cardPaidCents left out (card networks report it); partialFrom when the data starts after Jan 1. null when no one is near the line. Integer cents.",
+        inputSchema: form1099Input,
+        execute: async () => get1099Prep(a),
       }),
       get_people_spend: tool({
         description:

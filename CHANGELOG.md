@@ -34,6 +34,12 @@ demo, the free grader and the public site work exactly as before.
 - **Already scheduled: next 30 days.** Every recurring charge expected over the next 30 days
   (payroll, rent, subscriptions) from its billing day and usual amount, the total, and the cash
   left after them.
+- **1099 prep.** A dashboard card lists the contractors, lawyers and landlords paid by ACH, wire
+  or check this year (last year until the end of March) who may need a 1099 from you: $600 or more
+  for 2025 payments, $2,000 from 2026. Refunds are netted, card payments (which the card network
+  reports) left out, known corporations and payroll platforms skipped (law firms kept), and those
+  getting close are listed under the line. It downloads as a CSV for the accountant, and Copilot
+  answers "Who needs a 1099 from us?". A list to check with W-9s, not tax advice.
 - **Upload reminder in Slack.** When a company's data is two weeks old (when the alerts go
   quiet), the daily job reminds its Slack once for that export to upload a fresh one.
 - **Add to your home screen.** A web app manifest lets a phone install Runway; it opens on the

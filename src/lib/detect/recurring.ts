@@ -86,6 +86,8 @@ function matchCadence(gaps: readonly number[], occurrences: number): CadenceRule
 
 /** Calendar months per cycle, for cadences billed on a day of the month. */
 const MONTHS_PER_CYCLE: Partial<Record<RecurringStream["cadence"], number>> = { monthly: 1, quarterly: 3, annual: 12 };
+/** A posting this many days either side of its billing date is early or late; further off, the billing day moved. */
+const MAX_BILLING_SHIFT_DAYS = 7;
 
 /**
  * The next charge after `last`: for monthly, quarterly and annual bills, the same day of the month
@@ -97,24 +99,37 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   const months = MONTHS_PER_CYCLE[rule.cadence];
   if (!months) return addDays(last, rule.nominalDays);
   const days = events.map((e) => Number(e.postedAt.slice(8, 10)));
-  const counts = new Map<number, number>();
-  for (const d of days) counts.set(d, (counts.get(d) ?? 0) + 1);
   // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
-  const usual = [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]![0];
-  // A billing day that moved: the last charge's day, when it's more than a week from the usual one
-  // (a holiday or weekend posting a few days off, either side of a month end, isn't a move).
-  const lastDay = days.at(-1)!;
-  const apart = Math.abs(lastDay - usual);
-  const billingDay = Math.min(apart, 31 - apart) > 7 ? lastDay : usual;
-  const on = (month: string) => {
+  const usual = mostCommon(days, (a, b) => b - a);
+  // Quarterly and annual bills fall in some months only: the months most charges were in, by phase.
+  const monthIndex = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1;
+  const phase = mostCommon(
+    events.map((e) => monthIndex(e.postedAt) % months),
+    () => 0,
+  );
+  const on = (month: string, day: number) => {
     const [y, m] = month.split("-").map(Number) as [number, number];
-    return `${month}-${String(Math.min(billingDay, new Date(Date.UTC(y, m, 0)).getUTCDate())).padStart(2, "0")}`;
+    return `${month}-${String(Math.min(day, new Date(Date.UTC(y, m, 0)).getUTCDate())).padStart(2, "0")}`;
   };
-  // Which billing date the last charge was for: the nearest one around it (a 30th bill posted on
-  // Oct 1 was September's; a 1st bill charged on Sep 30 was October's). The next is a cycle on.
+  // Which billing date the last charge was for: the nearest one around it, in a billing month (a
+  // 30th bill posted on Oct 1 was September's; a 1st bill charged on Sep 30 was October's). Within
+  // a week it's that date's, posted early or late, and the next is a cycle on. Further off, the
+  // billing day moved: the next is a cycle on from the last charge, on its day.
   const lastMonth = last.slice(0, 7);
-  const forDate = [-1, 0, 1].map((k) => on(shiftMonth(lastMonth, k))).sort((a, b) => Math.abs(daysBetween(last, a)) - Math.abs(daysBetween(last, b)))[0]!;
-  return on(shiftMonth(forDate.slice(0, 7), months));
+  const [forDate] = [-1, 0, 1]
+    .map((k) => shiftMonth(lastMonth, k))
+    .filter((m) => monthIndex(m) % months === phase)
+    .map((m) => on(m, usual))
+    .sort((a, b) => Math.abs(daysBetween(last, a)) - Math.abs(daysBetween(last, b)));
+  if (forDate !== undefined && Math.abs(daysBetween(last, forDate)) <= MAX_BILLING_SHIFT_DAYS) return on(shiftMonth(forDate.slice(0, 7), months), usual);
+  return on(shiftMonth(lastMonth, months), days.at(-1)!);
+}
+
+/** The most frequent value; ties go to the first by `tieOrder`, then to the latest seen. */
+function mostCommon(values: readonly number[], tieOrder: (a: number, b: number) => number): number {
+  const counts = new Map<number, { n: number; at: number }>();
+  values.forEach((v, i) => counts.set(v, { n: (counts.get(v)?.n ?? 0) + 1, at: i }));
+  return [...counts].sort((a, b) => b[1].n - a[1].n || tieOrder(a[0], b[0]) || b[1].at - a[1].at)[0]![0];
 }
 
 function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate, workspace?: "#2"): RecurringStream {

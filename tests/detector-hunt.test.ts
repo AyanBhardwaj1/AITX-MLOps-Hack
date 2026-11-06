@@ -191,3 +191,28 @@ describe("third review of the detector fixes", () => {
     expect(resolveVendor("AMAZON GO").key).not.toBe("amazon");
   });
 });
+
+describe("fourth review of the detector fixes", () => {
+  it("a quarterly bill far off its day stays on its quarter (moved, not pinned to a month with no bill)", () => {
+    const moved = ["2026-01-25", "2026-04-25", "2026-07-25", "2026-10-01"].map((d) => txn("GUSTO", d, -900_00));
+    expect(detectStreams(moved, "2026-10-02")[0]!.nextExpected).toBe("2027-01-01");
+    const later = ["2026-01-01", "2026-04-01", "2026-07-01", "2026-10-25"].map((d) => txn("GUSTO", d, -900_00));
+    expect(detectStreams(later, "2026-10-26")[0]!.nextExpected).toBe("2027-01-25");
+  });
+
+  it("a week early is early in any month, February included", () => {
+    const feb = ["2026-11-01", "2026-12-01", "2027-01-01", "2027-02-22"].map((d) => txn("FIGMA", d, -100_00));
+    expect(detectStreams(feb, "2027-02-23")[0]!.nextExpected).toBe("2027-04-01");
+    const jul = ["2026-04-01", "2026-05-01", "2026-06-01", "2026-07-25"].map((d) => txn("FIGMA", d, -100_00));
+    expect(detectStreams(jul, "2026-07-26")[0]!.nextExpected).toBe("2026-09-01");
+  });
+
+  it("Audible is one vendor however it bills; marketplace orders need 'prime' to be Prime", () => {
+    expect(resolveVendor("AMAZON.COM*AB12 AUDIBLE").key).toBe("audible");
+    expect(resolveVendor("AUDIBLE*AB12").key).toBe("audible");
+    expect(resolveVendor("AMZN MKTP US*MUSIC").key).toBe("amazon");
+    expect(resolveVendor("AMZN Mktp US*AB12 VIDEO").key).toBe("amazon");
+    expect(resolveVendor("AMZN Mktp US*PRIME VIDEO").key).toBe("amazon_prime");
+    expect(resolveVendor("AMAZON.COM*AB12 KINDLE UNLTD").key).toBe("amazon_prime");
+  });
+});

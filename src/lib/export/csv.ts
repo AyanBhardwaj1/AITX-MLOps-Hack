@@ -1,6 +1,7 @@
 import type { Analysis } from "../pipeline";
 import type { RhoTransaction } from "../rho/schema";
 import type { EnrichedTxn, Finding } from "../types";
+import type { Prep1099 } from "../finance/form-1099";
 
 /**
  * CSV downloads for spreadsheets and board prep. Vendor names and details come from bank
@@ -35,6 +36,14 @@ export function toCsv(header: readonly string[], rows: readonly (readonly Cell[]
 }
 
 const dollars = (cents: number) => Math.round(cents) / 100;
+
+/** The 1099 prep list, for the accountant: who, which form, and what was paid. */
+export function form1099Csv(prep: Prep1099 | null): string {
+  return toCsv(
+    ["Payee", "Form", "Tax year", "Paid (USD)", "Over threshold", "Payments", "First paid", "Last paid"],
+    (prep?.rows ?? []).map((r) => [r.name, r.form, prep!.year, dollars(r.paidCents), r.overThreshold ? "yes" : "no", r.payments, r.firstPaid, r.lastPaid]),
+  );
+}
 
 export function recurringCsv(a: Analysis): string {
   return toCsv(

@@ -28,6 +28,7 @@ import type { FindingDecision, FindingStatus } from "@/lib/store/types";
 import { burnBridge } from "@/lib/finance/burn-bridge";
 import { peopleSpend } from "@/lib/finance/people-spend";
 import { committedSpend } from "@/lib/finance/committed";
+import { form1099Year, prep1099 } from "@/lib/finance/form-1099";
 
 export const dynamic = "force-dynamic";
 
@@ -190,6 +191,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     people: peopleSpend(a.txns, a.snapshot),
     // From today (data can stop a while back): what the schedules say is still to go out.
     committed: committedSpend(a.streams, { from: new Date().toISOString().slice(0, 10), days: 30, cashCents: a.snapshot.cashCents, cashAsOf: a.asOf }),
+    form1099: prep1099(a.txns, form1099Year(a.asOf)),
     capabilities: {
       copilot: hasOpenAI(),
       jira: canFileJiraFromApp(),

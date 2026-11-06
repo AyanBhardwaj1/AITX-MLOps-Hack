@@ -7,6 +7,11 @@ await suite("accounts", async ({ browser, step }) => {
   await step("the demo works without signing in, and the public pages stay public", async () => {
     await a.goto(`${APP}/app?mode=demo`);
     await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
+    // 1099s: the demo's law firm and landlord, paid by bank; the CSV lists them.
+    const prep = a.getByRole("region", { name: /^1099s for \d{4}$/ });
+    await prep.getByRole("link", { name: "Wilson Sonsini (legal)" }).waitFor();
+    const csv = await (await a.request.get(`${APP}/api/export?mode=demo&kind=1099`)).text();
+    assert.match(csv, /Brazos Properties \(rent\),1099-MISC,\d{4},/);
     for (const path of ["/", "/grader", "/privacy", "/security"]) assert.equal((await a.goto(APP + path)).status(), 200, path);
     // Installable: the page links the manifest, which opens on the app.
     const href = await a.locator('link[rel="manifest"]').getAttribute("href");
