@@ -70,6 +70,10 @@ const FAQ = [
     a: "On a synthetic company with planted waste, the detectors find every planted problem with no false alarms. Real ledgers are messier, so every finding shows the transactions behind it and how sure Runway is.",
   },
   {
+    q: "What else does it show?",
+    a: "Why burn moved last month, vendor by vendor. Spend by person and by category, and budgets that start from your recent spend. A calendar of renewals worth deciding on. Who pays you, and your runway if the biggest customer stopped. A monthly cash P&L for your accountant, and a list of who may need a 1099 from you. The free grader shows why burn moved and builds the P&L in your browser too.",
+  },
+  {
     q: "What does it cost?",
     a: "Nothing during early access. Pricing will be set before early access ends, and people on the list hear first, with time to decide.",
   },
