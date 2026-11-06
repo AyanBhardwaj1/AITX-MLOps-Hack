@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { importCsv } from "@/lib/csv/import";
 import { analyze } from "@/lib/pipeline";
@@ -58,12 +59,18 @@ describe("upload rows", () => {
   });
 });
 
-describe("a re-upload with corrected signs", () => {
-  it("gets the same row ids whatever the sign, so it can replace the stored rows instead of adding to them", () => {
+describe("row ids", () => {
+  it("keep the sign, so ids stored before stay the same and nothing already stored is duplicated", () => {
     const csv = (amount: string) => ["Date,Description,Amount", `2026-10-02,LINEAR,${amount}`].join("\n");
     const pos = storedRowsFrom(toUploadRows(parse(csv("96.00"))));
     const neg = storedRowsFrom(toUploadRows(parse(csv("-96.00"))));
-    expect(neg[0]!.id).toBe(pos[0]!.id);
-    expect(neg[0]!.amount.amount).toBe(-9600);
+    expect(neg[0]!.id).not.toBe(pos[0]!.id);
+    // Pinned: the id scheme rows were first stored with.
+    expect(neg[0]!.id).toBe("u_" + createHash("sha256").update(JSON.stringify(["2026-10-02", "LINEAR", -9600, "uploaded", 0])).digest("hex").slice(0, 32));
+  });
+
+  it("keep a same-day charge and refund apart", () => {
+    const rows = storedRowsFrom(toUploadRows(parse(["Date,Description,Amount", "2026-10-02,AMAZON,-50.00", "2026-10-02,AMAZON,50.00"].join("\n"))));
+    expect(new Set(rows.map((r) => r.id)).size).toBe(2);
   });
 });

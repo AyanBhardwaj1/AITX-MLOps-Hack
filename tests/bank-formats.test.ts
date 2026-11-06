@@ -131,4 +131,29 @@ describe("importer review fixes", () => {
     const bank = ["Date,Description,Amount", "10/02/2026,'=X,-1.00"].join("\n");
     expect(read(bank).transactions[0]!.counterparty_name).toBe("'=X");
   });
+
+  it("refuses a comma used as the decimal point instead of reading it as thousands", () => {
+    const csv = ["Date,Description,Amount", '25/10/2026,A,"-12,50"', '26/10/2026,B,"-1,234.50"', '27/10/2026,C,"1,234,567.00"'].join("\n");
+    const r = read(csv);
+    expect(r.transactions.map((t) => t.amount.amount)).toEqual([-123450, 123456700]);
+    expect(r.skipped).toEqual([2]);
+  });
+
+  it("refuses a double negative like (-12.00)", () => {
+    expect(read(["Date,Description,Amount", "10/02/2026,A,(-12.00)", "10/03/2026,B,-1.00"].join("\n")).skipped).toEqual([2]);
+  });
+
+  it("tells a running balance from the amount in a file with no header row, even when the balance dips below zero", () => {
+    // Each balance is the one before plus that row's amount.
+    const csv = ["10/01/2026,OPENING,120.00,120.00", "10/02/2026,RENT,-880.00,-760.00", "10/03/2026,CUSTOMER,2000.00,1240.00", "10/04/2026,AWS,-100.00,1140.00"].join("\n");
+    expect(amounts(csv).map((r) => r[2])).toEqual([12000, -88000, 200000, -10000]);
+    const swapped = ["10/01/2026,OPENING,120.00,120.00", "10/02/2026,RENT,-760.00,-880.00", "10/03/2026,CUSTOMER,1240.00,2000.00", "10/04/2026,AWS,1140.00,-100.00"].join("\n");
+    expect(amounts(swapped).map((r) => r[2])).toEqual([12000, -88000, 200000, -10000]);
+  });
+
+  it("reads a header-less card export of positive charges when told charges are positive", () => {
+    const csv = ["10/01/2026,FIGMA,45.00", "10/02/2026,LINEAR,96.00"].join("\n");
+    expect(() => read(csv)).toThrow(/Unrecognised columns/);
+    expect(amounts(csv, true).map((r) => r[2])).toEqual([-4500, -9600]);
+  });
 });

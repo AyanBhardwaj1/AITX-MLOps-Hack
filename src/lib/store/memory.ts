@@ -125,11 +125,9 @@ export function createMemoryStore(): Store {
     async saveUploads(cashCents, rows, maxTotal) {
       const fresh = [...new Map(rows.filter((r) => !uploads.has(r.id)).map((r) => [r.id, r])).values()];
       if (uploads.size + fresh.length > maxTotal) return "limit";
-      // Ids ignore the sign, so the same row re-uploaded with its sign corrected replaces the old one.
-      const changed = rows.filter((r) => uploads.has(r.id) && uploads.get(r.id)!.amount.amount !== r.amount.amount);
-      for (const r of [...fresh, ...changed]) uploads.set(r.id, structuredClone(r));
+      for (const r of fresh) uploads.set(r.id, structuredClone(r));
       uploadCash = cashCents;
-      return { inserted: fresh.length, updated: changed.length, duplicates: rows.length - fresh.length - changed.length };
+      return { inserted: fresh.length, duplicates: rows.length - fresh.length };
     },
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;

@@ -80,11 +80,12 @@ export function parseCsv(text: string): string[][] {
  * the ends is refused rather than guessed.
  */
 export function parseAmountCents(raw: string): number | null {
-  let s = raw.replace(/[$,\s]/g, "");
+  let s = raw.replace(/[$\s]/g, "");
   let negative = false;
   if (/^\(.*\)$/.test(s)) {
     negative = true;
     s = s.slice(1, -1);
+    if (/^[+-]|-$/.test(s)) return null; // "(-12.00)": two signs, no safe reading
   }
   if (/^[+-]/.test(s)) {
     negative = negative !== s.startsWith("-");
@@ -93,6 +94,9 @@ export function parseAmountCents(raw: string): number | null {
     negative = !negative;
     s = s.slice(0, -1);
   }
+  // Commas only as thousands separators: "12,50" (a decimal comma) would otherwise read as 1,250.
+  if (s.includes(",") && !/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(s)) return null;
+  s = s.replaceAll(",", "");
   if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
   const cents = Math.round(Number(s) * 100);
   return negative ? -cents : cents;
@@ -209,8 +213,8 @@ function mappingFromHeader(headers: readonly string[], headerRow: number): Mappi
   };
 }
 
-/** A file without a header row: the date column, the first amount column, and the wordiest text column. */
-function headerlessMapping(rows: readonly string[][]): Mapping | null {
+/** A file without a header row: the date column, the amount column, and the wordiest text column. */
+function headerlessMapping(rows: readonly string[][], flipSigns: boolean): Mapping | null {
   const sample = rows.slice(0, 200);
   if (sample.length === 0) return null;
   const width = Math.max(...sample.map((r) => r.length));
@@ -222,29 +226,39 @@ function headerlessMapping(rows: readonly string[][]): Mapping | null {
   if (parseDate(sample[0]![date] ?? "") === null) return null;
   const cents = (c: number) => sample.map((r) => parseAmountCents(r[c] ?? ""));
   const amountLike = (c: number) => share(c, (v) => parseAmountCents(v) !== null && /\d\.\d{2}\)?-?$/.test(v.trim())) >= HEADERLESS_MIN_SHARE;
-  // Spending is negative in a file read this way, so the amount column has both signs (a balance rarely does).
-  const amount = cols.find((c) => c !== date && amountLike(c) && cents(c).some((v) => v !== null && v < 0));
-  if (amount === undefined || isRunningBalance(cents(amount))) return null;
+  const numeric = cols.filter((c) => c !== date && amountLike(c));
+  // A running balance moves by the amount on each row: never take it as the amount.
+  const balances = new Set(numeric.filter((b) => numeric.some((a) => a !== b && isBalanceOf(cents(b), cents(a)))));
+  const candidates = numeric.filter((c) => !balances.has(c));
+  // Spending is negative in a file read this way, so the amount column has both signs, unless the
+  // founder said charges are listed as positive.
+  const amount = candidates.find((c) => flipSigns || cents(c).some((v) => v !== null && v < 0));
+  if (amount === undefined) return null;
   const wordiness = (c: number) => sample.reduce((n, r) => n + ((r[c] ?? "").match(/[A-Za-z]/g)?.length ?? 0), 0);
   const description = cols.filter((c) => c !== date && c !== amount).sort((a, b) => wordiness(b) - wordiness(a))[0];
   if (description === undefined || wordiness(description) === 0) return null;
   return { layout: "headerless", headerRow: -1, date, description, amount, debit: null, credit: null, cardholder: null, account: null, type: null, status: null, invert: false };
 }
 
-/** Values that move by roughly the same step each row, like a balance column, aren't amounts. */
-function isRunningBalance(values: readonly (number | null)[]): boolean {
-  const v = values.filter((x): x is number => x !== null);
-  if (v.length < 3) return false;
-  const steps = new Set(v.slice(1).map((x, i) => x - v[i]!));
-  return steps.size <= 2 && v.every((x) => x > 0);
+/** Whether `balance` moves by `amount` on (nearly) every row, as a running balance does. */
+function isBalanceOf(balance: readonly (number | null)[], amount: readonly (number | null)[]): boolean {
+  let checked = 0;
+  let matched = 0;
+  for (let i = 1; i < balance.length; i++) {
+    const [prev, cur, a] = [balance[i - 1], balance[i], amount[i]];
+    if (prev == null || cur == null || a == null) continue;
+    checked += 1;
+    if (cur - prev === a || prev - cur === a) matched += 1;
+  }
+  return checked >= 2 && matched / checked >= 0.8;
 }
 
-function findMapping(rows: readonly string[][]): Mapping | null {
+function findMapping(rows: readonly string[][], flipSigns: boolean): Mapping | null {
   for (let i = 0; i < Math.min(rows.length, HEADER_SEARCH_ROWS); i++) {
     const m = mappingFromHeader(rows[i]!, i);
     if (m) return m;
   }
-  return headerlessMapping(rows);
+  return headerlessMapping(rows, flipSigns);
 }
 
 export function detectLayout(headers: readonly string[]): CsvLayout | null {
@@ -335,7 +349,7 @@ function assertUsd(header: readonly string[], data: readonly string[][]) {
 
 export function importCsv(text: string, { accountId, resolvePayoffs = true, flipSigns = false }: { accountId: string; resolvePayoffs?: boolean; flipSigns?: boolean }): CsvImport {
   const rows = parseCsv(text);
-  const m = findMapping(rows);
+  const m = findMapping(rows, flipSigns);
   if (!m) throw new Error("Unrecognised columns: expected at least Date, Description and Amount (or Debit and Credit)");
   const data = rows.slice(m.headerRow + 1);
   assertUsd(rows[m.headerRow] ?? [], data);
