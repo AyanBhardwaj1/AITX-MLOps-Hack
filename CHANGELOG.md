@@ -22,6 +22,8 @@ demo, the free grader and the public site work exactly as before.
   hand the company to a teammate; members can leave. Every accepted or dismissed finding shows who
   decided it and when.
 - **Company settings.** Rename or delete the company (deletion removes everything in it).
+- **Activity log.** Settings shows who uploaded, deleted, invited, changed settings or handed the
+  company on, and when.
 - **Monday digest in your own Slack.** Connect an incoming webhook in settings (a test message is sent
   first; the address is never shown in full). The digest says up front when your data is two weeks
   old or more.
@@ -36,11 +38,11 @@ demo, the free grader and the public site work exactly as before.
 - New settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (accounts), `SIGNUPS`
   (`invite` or `open`). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
 - New migrations (run `npm run db:migrate`): accounts, teams, decision actor, rate limits, company
-  Slack, digest order.
+  Slack, digest order, company activity.
 - `npm run verify:live` now checks the Supabase Auth settings (email sign-in on, sign-ups allowed,
   Confirm email on) and that every migration is applied.
 - `npm run test:e2e` runs browser suites for sign-in, isolation, settings, teams and uploads against
-  a local stand-in for Supabase Auth and a throwaway Postgres.
+  a local stand-in for Supabase Auth and a throwaway Postgres. CI runs them on every push.
 - With accounts on, the operator's own Slack and Jira are never used for a company's data, and the
   env Rho feed is off (companies connect by uploading exports).
 
@@ -48,10 +50,11 @@ demo, the free grader and the public site work exactly as before.
 
 - Every company read and write is scoped by the company from the verified session; the proxy strips
   any client-sent identity header. Only an email Supabase has confirmed is trusted.
-- Owner-only: rename, delete, clear all data, manage the team, connect Slack. Ownership changes are
+- Owner-only: rename, delete, delete uploaded data, manage the team, investor links, choose the Slack
+  channel. Ownership changes are
   race-safe (tested with concurrent requests on Postgres).
 - Sign-in and signup rate limits are shared across server instances, keyed by HMAC (no email or IP
   stored).
 - Uploaded file contents never appear in logs (checked by the browser suites).
-- Seven independent security reviews ran during this release; every critical, high and medium
+- Nine independent security reviews ran during this release; every critical, high and medium
   finding was fixed with a regression test.
