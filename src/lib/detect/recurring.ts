@@ -102,7 +102,10 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   // A bill on the 31st posts on the 30th (or 28th) in shorter months: when the 31-day months show
   // more charges on the 31st than the 30th, a charge on its month's last day is that month-end bill.
   const in31 = events.filter((e) => daysInMonth(e.postedAt) === 31).map((e) => Number(e.postedAt.slice(8, 10)));
-  const monthEnd = in31.filter((d) => d === 31).length > in31.filter((d) => d === 30).length;
+  const [on31, on30] = [in31.filter((d) => d === 31).length, in31.filter((d) => d === 30).length];
+  // On a tie, a month-end bill is one most charges landed on their month's last day for.
+  const lastDays = events.filter((e) => Number(e.postedAt.slice(8, 10)) === daysInMonth(e.postedAt)).length;
+  const monthEnd = on31 > on30 || (on31 > 0 && on31 === on30 && lastDays * 2 > events.length);
   const days = events.map((e, i) => (monthEnd && posted[i]! === daysInMonth(e.postedAt) ? 31 : posted[i]!));
   // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
   const usual = mostCommon(days, (a, b) => b - a);

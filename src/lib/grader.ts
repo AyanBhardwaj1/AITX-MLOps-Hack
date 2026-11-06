@@ -57,12 +57,14 @@ const HISTORY_MONTHS = 12;
  * The account a file's name points to. Banks' default names carry the account's last four digits
  * ("Chase1234_Activity2026….CSV"), which upload labels drop; here they tell two cards apart.
  */
+const BANK_FILE_PREFIX = /^(?:chase|amex|citi|discover|capitalone|bofa|wellsfargo|usbank|pnc|truist|mercury|brex|svb)$/i;
+
 function graderAccountLabel(name: string): string {
   const label = fileAccountLabel(name);
   const lastFour = /^([a-z]+)(\d{4})(?=[^\d]|$)/i.exec(name);
-  // "Activity2025.csv" (a year) and "activity0401.csv" (a date) aren't accounts: the letters must
-  // name one ("Chase"), not be a word banks put in every file name.
-  const account = lastFour && !/^(?:19|20)\d{2}$/.test(lastFour[2]!) && fileAccountLabel(lastFour[1]!) !== DEFAULT_ACCOUNT_LABEL;
+  // Only a bank's own naming carries an account number ("Chase1234_Activity…"); digits after any
+  // other word are usually a date ("checking0401.csv", "Activity2025.csv").
+  const account = lastFour !== null && BANK_FILE_PREFIX.test(lastFour[1]!);
   return label === DEFAULT_ACCOUNT_LABEL && account ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
 }
 

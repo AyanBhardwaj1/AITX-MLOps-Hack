@@ -241,3 +241,10 @@ describe("month-end bills, second review", () => {
     expect(detectStreams(m, "2026-12-01")[0]!.nextExpected).toBe("2026-12-30");
   });
 });
+
+describe("month-end bills, branch review", () => {
+  it("a month-end bill whose 31-day months tie between the 30th and 31st stays month-end", () => {
+    const m = ["2026-01-31", "2026-02-28", "2026-03-30", "2026-04-30"].map((d) => txn("FIGMA", d, -100_00));
+    expect(detectStreams(m, "2026-05-01")[0]!.nextExpected).toBe("2026-05-31");
+  });
+});

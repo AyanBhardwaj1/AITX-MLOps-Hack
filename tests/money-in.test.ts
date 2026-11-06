@@ -117,3 +117,10 @@ describe("who pays you: real names that look like bank words", () => {
     }
   });
 });
+
+describe("who pays you: cash below zero", () => {
+  it("runway without the top customer is never negative", () => {
+    const t = months.flatMap((m) => [txn(`p${m}`, `${m}-01`, -40_000_00, "Gusto", { category: "payroll", source: "catalog" }), txn(`a${m}`, `${m}-10`, 30_000_00, "Acme Corp")]);
+    expect(moneyIn(t, computeSnapshot({ cashCents: -5_000_00, txns: t, asOf: "2026-11-12" }))!.topCustomer!.runwayWithoutMonths).toBe(0);
+  });
+});

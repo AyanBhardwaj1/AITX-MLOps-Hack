@@ -76,7 +76,8 @@ export function moneyIn(txns: readonly EnrichedTxn[], snapshot: Snapshot): Money
       name: top.name,
       share: top.share,
       monthlyCents: top.monthlyCents,
-      runwayWithoutMonths: burnWithout > 0 ? snapshot.cashCents / burnWithout : Number.POSITIVE_INFINITY,
+      // As runway itself: cash already below zero is no runway, not a negative one.
+      runwayWithoutMonths: burnWithout > 0 ? Math.max(0, snapshot.cashCents / burnWithout) : Number.POSITIVE_INFINITY,
     },
   };
 }

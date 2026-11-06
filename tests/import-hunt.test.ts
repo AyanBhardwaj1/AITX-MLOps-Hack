@@ -195,3 +195,23 @@ describe("import hunt, fifth review", () => {
     }
   });
 });
+
+describe("import hunt, branch review", () => {
+  it("dated file names of one account still deduplicate", () => {
+    const shared = Array.from({ length: 12 }, (_, i) => `2026-03-${String(i + 10).padStart(2, "0")},VENDOR ${i},-${i + 1}0.00`);
+    const g = gradeCsvFiles(
+      [
+        { name: "checking0401.csv", text: csv(["2026-01-05,GUSTO PAYROLL,-5000.00", ...shared]) },
+        { name: "checking0701.csv", text: csv([...shared, "2026-06-05,GUSTO PAYROLL,-5000.00"]) },
+      ],
+      100_000_00,
+    );
+    expect(g.transactions).toBe(14);
+  });
+
+  it("an account with a card's own payment legs ('THANK YOU') never has customers read off it", () => {
+    const rows = ["2026-10-01,GUSTO PAYROLL,-20000.00", "2026-10-02,AMEX AUTOPAY,-3000.00", "2026-10-05,PAYMENT THANK YOU,1500.00", "2026-10-20,ONLINE PAYMENT FROM WELLS FARGO,1500.00"];
+    const r = resolveCardPayoffs(importCsv(csv(rows), { accountId: "uploaded", resolvePayoffs: false }).transactions);
+    expect(r.transactions.find((t) => t.counterparty_name.includes("WELLS"))!.transaction_type).toBe("credit_repayment");
+  });
+});

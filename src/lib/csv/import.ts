@@ -357,7 +357,10 @@ export function resolveCardPayoffs(input: readonly RhoTransaction[]): { transact
     // Own-account and thank-you legs first, so a customer can't take their match.
     // Only on an account that itself pays card bills (checking): a card's own payment rows are
     // payoff legs however they're worded, matched or not.
-    const paying = new Set(out.map((o) => o.account_id));
+    // An account showing a card's own payment legs ("PAYMENT THANK YOU") is (also) a card's: none
+    // of its payment rows are customers.
+    const cardish = new Set(input.filter((t) => t.transaction_type === "credit_repayment" && t.amount.amount > 0 && !(PAYMENT_FROM.test(t.counterparty_name) && !FROM_OWN_ACCOUNT.test(t.counterparty_name))).map((t) => t.account_id));
+    const paying = new Set(out.map((o) => o.account_id).filter((id) => !cardish.has(id)));
     const customerLike = (t: RhoTransaction) =>
       paying.has(t.account_id) && t.account_type !== "credit" && PAYMENT_FROM.test(t.counterparty_name) && !FROM_OWN_ACCOUNT.test(t.counterparty_name);
     for (const t of legs.filter((l) => !customerLike(l))) matches(t);
