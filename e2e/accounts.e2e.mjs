@@ -12,6 +12,12 @@ await suite("accounts", async ({ browser, step }) => {
     await prep.getByRole("link", { name: "Wilson Sonsini (legal)" }).waitFor();
     const csv = await (await a.request.get(`${APP}/api/export?mode=demo&kind=1099`)).text();
     assert.match(csv, /Brazos Properties \(rent\),1099-MISC,\d{4},/);
+    // The monthly cash P&L: a year of whole months, revenue first, a net row last.
+    const pnl = (await (await a.request.get(`${APP}/api/export?mode=demo&kind=pnl`)).text()).trim().split("\r\n");
+    assert.equal(pnl[0].split(",").length, 14);
+    assert.match(pnl[1], /^Revenue,/);
+    assert.match(pnl.at(-1), /^Net cash flow,/);
+    await a.getByRole("link", { name: "Monthly cash P&L (CSV)" }).waitFor();
     for (const path of ["/", "/grader", "/privacy", "/security"]) assert.equal((await a.goto(APP + path)).status(), 200, path);
     // Installable: the page links the manifest, which opens on the app.
     const href = await a.locator('link[rel="manifest"]').getAttribute("href");

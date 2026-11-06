@@ -2,6 +2,8 @@ import type { Analysis } from "../pipeline";
 import type { RhoTransaction } from "../rho/schema";
 import type { EnrichedTxn, Finding } from "../types";
 import type { Prep1099 } from "../finance/form-1099";
+import type { CashPnl } from "../finance/cash-pnl";
+import { categoryName } from "../format";
 
 /**
  * CSV downloads for spreadsheets and board prep. Vendor names and details come from bank
@@ -36,6 +38,22 @@ export function toCsv(header: readonly string[], rows: readonly (readonly Cell[]
 }
 
 const dollars = (cents: number) => Math.round(cents) / 100;
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthLabel = (m: string) => `${MONTH_NAMES[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+const capitalised = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Net cash per category per month (money in positive), with a net row: a cash-basis P&L. */
+export function cashPnlCsv(pnl: CashPnl | null): string {
+  if (!pnl) return toCsv(["Category", "Total"], []);
+  return toCsv(
+    ["Category", ...pnl.months.map(monthLabel), "Total"],
+    [
+      ...pnl.rows.map((r) => [capitalised(categoryName(r.category)), ...r.cents.map(dollars), dollars(r.totalCents)]),
+      ["Net cash flow", ...pnl.netCents.map(dollars), dollars(pnl.netTotalCents)],
+    ],
+  );
+}
 
 /** The 1099 prep list, for the accountant: who, which form, and what was paid. */
 export function form1099Csv(prep: Prep1099 | null): string {

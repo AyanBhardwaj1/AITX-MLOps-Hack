@@ -36,7 +36,12 @@ export function CategorySpendCard({ rows, mode }: { rows: CategorySpendRow[]; mo
           <h2 id="category-spend-title" className="font-semibold">
             Where the money goes
           </h2>
-          <p className="text-xs text-muted">Average spend per month by category: the last 3 complete months against the 3 before.</p>
+          <p className="text-xs text-muted">
+            Average spend per month by category: the last 3 complete months against the 3 before.{" "}
+            <a href={`/api/export?mode=${mode}&kind=pnl`} download className="font-medium text-brand hover:underline">
+              Monthly cash P&amp;L (CSV)
+            </a>
+          </p>
         </div>
         <ul className="flex gap-4 text-xs text-muted" aria-label="Legend">
           <li className="flex items-center gap-1.5">

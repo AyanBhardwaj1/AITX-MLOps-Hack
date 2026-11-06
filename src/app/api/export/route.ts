@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { accessErrorResponse, NoCompanyData } from "@/lib/server/errors";
 import { z } from "zod";
 import { dataModeSchema } from "@/lib/modes";
-import { findingsCsv, form1099Csv, matchesCsvLines, recurringCsv, uploadsCsvLines } from "@/lib/export/csv";
+import { cashPnlCsv, findingsCsv, form1099Csv, matchesCsvLines, recurringCsv, uploadsCsvLines } from "@/lib/export/csv";
 import { form1099Year, prep1099 } from "@/lib/finance/form-1099";
+import { cashPnl } from "@/lib/finance/cash-pnl";
 import { streamChunks } from "@/lib/http-stream";
 import { matchingTransactions, parseTxnQuery } from "@/lib/finance/transaction-search";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
@@ -20,7 +21,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions", "matches", "everything", "calendar", "1099"]) });
+const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions", "matches", "everything", "calendar", "1099", "pnl"]) });
 
 /** The transactions a search on /app/transactions matched, with the same filters from the address. */
 async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<NextResponse> {
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const params = new URL(request.url).searchParams;
   const parsed = query.safeParse({ mode: params.get("mode") ?? undefined, kind: params.get("kind") });
-  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings, transactions, matches, everything, calendar or 1099" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings, transactions, matches, everything, calendar, 1099 or pnl" }, { status: 400 });
   const { mode, kind } = parsed.data;
   if ((kind === "transactions" || kind === "everything") && mode !== "company") return NextResponse.json({ error: "This download is only for your company's own data." }, { status: 400 });
   try {
@@ -88,6 +89,7 @@ export async function GET(request: Request) {
     const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     let body: string;
     if (kind === "recurring") body = recurringCsv(analysis);
+    else if (kind === "pnl") body = cashPnlCsv(cashPnl(analysis.txns, analysis.asOf));
     else if (kind === "1099") body = form1099Csv(prep1099(analysis.txns, form1099Year(analysis.asOf)));
     else {
       const statuses = await getStore(await scopeFor(mode))
