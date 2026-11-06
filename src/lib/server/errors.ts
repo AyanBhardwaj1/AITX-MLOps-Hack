@@ -33,10 +33,19 @@ export class NotInvited extends Error {
   }
 }
 
+/** Only the company's owner can do this. */
+export class OwnerOnly extends Error {
+  constructor() {
+    super("Only the company's owner can do that.");
+    this.name = "OwnerOnly";
+  }
+}
+
 /** Maps the expected access errors to a response; null for anything else (a real failure). Checked by name: route bundles each carry their own copy of these classes. */
 export function accessErrorResponse(err: unknown): NextResponse | null {
   if (!(err instanceof Error)) return null;
   if (err.name === "SignInRequired") return NextResponse.json({ error: err.message }, { status: 401 });
+  if (err.name === "OwnerOnly") return NextResponse.json({ error: err.message }, { status: 403 });
   if (err.name === "NotInvited") return NextResponse.json({ error: err.message }, { status: 403 });
   if (err.name === "ModeUnavailable") return NextResponse.json({ error: err.message }, { status: 403 });
   if (err.name === "NoCompanyData") return NextResponse.json({ error: err.message }, { status: 409 });

@@ -15,10 +15,12 @@ export interface ProxyDeps {
   getUser: (request: NextRequest) => Promise<{ user: SessionUser | null; setCookies: CookieToSet[] }>;
 }
 
+const COMPANY_PAGES = new Set(["/app/upload", "/app/settings"]);
+
 /** Pages that show a signed-in company's own data; the public demo at /app stays open. */
 function needsSignIn(url: URL): boolean {
   const path = url.pathname.replace(/\/+$/, "");
-  return path === "/app/upload" || (path === "/app" && url.searchParams.get("mode") === "company");
+  return COMPANY_PAGES.has(path) || (path === "/app" && url.searchParams.get("mode") === "company");
 }
 
 /**

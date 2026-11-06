@@ -77,8 +77,8 @@ export default function PrivacyPage() {
             <p>
               Early-access entries are kept until early access ends or you ask us to remove yours. Uploaded transactions are kept until you delete them:
               the upload page deletes every row, the cash you entered, and everything worked out from them (findings, drafts, fixes and share links) at
-              once. Connected bank data is kept while your account is active and deleted when you disconnect and ask for deletion. To close your account
-              entirely, ask us.
+              once. The owner can also delete the whole company from its settings page. Connected bank data is kept while your account is active and
+              deleted when you disconnect and ask for deletion. To remove your sign-in email as well, ask us.
             </p>
           ),
         },

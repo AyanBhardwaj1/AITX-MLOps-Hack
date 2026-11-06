@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { handleLoginRequest } from "@/lib/auth/login";
+import { DEFAULT_AFTER_SIGN_IN, NEXT_COOKIE, NEXT_COOKIE_MAX_AGE, safeNextPath } from "@/lib/auth/session";
 import { supabaseForRoute } from "@/lib/auth/supabase-route";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { env } from "@/lib/server/env";
@@ -32,5 +34,13 @@ export async function POST(request: Request) {
       if (error) throw error;
     },
   });
+  if (result.status === 200) await rememberNext(body);
   return NextResponse.json(result.body, { status: result.status, headers: { "Cache-Control": "no-store" } });
+}
+
+/** Keeps the page that asked for sign-in, so the link brings the founder back to it. */
+async function rememberNext(body: unknown) {
+  const next = body && typeof body === "object" && "next" in body && typeof body.next === "string" ? safeNextPath(body.next) : DEFAULT_AFTER_SIGN_IN;
+  if (next === DEFAULT_AFTER_SIGN_IN) return;
+  (await cookies()).set(NEXT_COOKIE, next, { httpOnly: true, sameSite: "lax", secure: Boolean(process.env.VERCEL), path: "/auth/callback", maxAge: NEXT_COOKIE_MAX_AGE });
 }

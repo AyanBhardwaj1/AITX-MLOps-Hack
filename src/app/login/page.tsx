@@ -10,8 +10,8 @@ const ERRORS: Record<string, string> = {
   setup: "You're signed in, but we couldn't set up your company. Try again in a minute.",
 };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string | string[] }> }) {
+  const { error, next } = await searchParams;
   return (
     <main id="main" className="mx-auto flex min-h-[80vh] max-w-sm flex-col justify-center px-6">
       <Link href="/" className="text-sm text-muted hover:text-ink">
@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           {ERRORS[error]}
         </p>
       )}
-      <LoginForm />
+      <LoginForm next={typeof next === "string" ? next.slice(0, 512) : undefined} />
       <p className="mt-6 text-xs text-muted">
         New here? Runway is invite-only while in early access.{" "}
         <Link href="/#early-access" className="font-medium text-brand hover:underline">

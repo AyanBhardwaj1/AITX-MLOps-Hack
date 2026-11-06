@@ -205,6 +205,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               Upload exports
             </Link>
           )}
+          {data.mode === "company" && (
+            <Link href="/app/settings" className="rounded-full border border-line bg-panel px-2.5 py-1 text-muted transition-colors hover:border-brand hover:text-brand">
+              Settings
+            </Link>
+          )}
           {data.capabilities.signedIn && (
             <form action="/api/auth/logout" method="post">
               <button type="submit" className="rounded-full px-2.5 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
@@ -256,7 +261,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             </dl>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <Stat label="Cash" value={formatDollars(data.snapshot.cashCents)} sub="Checking, savings and investment accounts" />
+            <Stat label="Cash" value={formatDollars(data.snapshot.cashCents)} sub={data.mode === "company" ? "As you entered it at your last upload" : "Checking, savings and investment accounts"} />
             <Stat
               label="Net burn"
               value={`${formatDollars(sim.netBurnCents)}/mo`}
@@ -267,7 +272,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
         <ThisWeekCard changes={data.changes} mode={data.mode} slack={data.capabilities.slack} />
 
-        <HowItWorks />
+        <HowItWorks source={data.mode === "company" ? "uploads" : "feed"} />
 
         <section className="mb-6 rounded-xl border border-line bg-panel p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

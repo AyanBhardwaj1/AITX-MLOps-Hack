@@ -6,9 +6,9 @@ import { companyNameFromEmail, type AccountsStore, type Company } from "./types"
  * privileged role, so every query here is keyed by the user id the proxy verified.
  */
 export function createPostgresAccounts(pool: Pool): AccountsStore {
-  const select = `select o.id, o.slug, o.name from public.memberships m join public.organizations o on o.id = m.org_id
+  const select = `select o.id, o.slug, o.name, m.role from public.memberships m join public.organizations o on o.id = m.org_id
                   where m.user_id = $1 order by (m.role = 'owner') desc, o.created_at limit 1`;
-  const toCompany = (r: { id: string; slug: string; name: string }): Company => ({ orgId: r.id, scope: r.slug, name: r.name });
+  const toCompany = (r: { id: string; slug: string; name: string; role: string }): Company => ({ orgId: r.id, scope: r.slug, name: r.name, role: r.role === "owner" ? "owner" : "member" });
 
   return {
     kind: "postgres",
@@ -28,8 +28,8 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
           await client.query("commit");
           return toCompany(existing.rows[0]);
         }
-        const org = await client.query<{ id: string; slug: string; name: string }>(
-          `insert into public.organizations (name, slug) values ($1, 'org_' || gen_random_uuid()::text) returning id, slug, name`,
+        const org = await client.query<{ id: string; slug: string; name: string; role: string }>(
+          `insert into public.organizations (name, slug) values ($1, 'org_' || gen_random_uuid()::text) returning id, slug, name, 'owner' as role`,
           [companyNameFromEmail(email)],
         );
         await client.query(`insert into public.memberships (org_id, user_id, role) values ($1, $2, 'owner')`, [org.rows[0]!.id, id]);
@@ -49,6 +49,16 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
           where m.org_id = o.id and m.user_id = $1 and m.role = 'owner'`,
         [userId, name],
       );
+    },
+
+    async deleteCompany(userId) {
+      // Everything an organization holds references it with "on delete cascade".
+      const { rowCount } = await pool.query(
+        `delete from public.organizations o using public.memberships m
+          where m.org_id = o.id and m.user_id = $1 and m.role = 'owner' and o.slug like 'org\\_%'`,
+        [userId],
+      );
+      return (rowCount ?? 0) > 0;
     },
   };
 }

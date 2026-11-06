@@ -10,19 +10,11 @@ import { GraderSignup } from "./grader-signup";
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
-/** A sample export built from the demo company, so visitors can try the grader without their own data. */
+/** A sample export of the fictional demo company, so visitors can try the grader without their own data. */
 async function sampleFiles(): Promise<{ files: GraderFile[]; cashDollars: string }> {
-  const { generateDemoCompany } = await import("@/lib/seed/demo-company");
-  const { cashBalanceCents } = await import("@/lib/rho/map");
-  const demo = generateDemoCompany();
-  const q = (s: string) => (/[",]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
-  const rows = demo.transactions
-    .filter((t) => t.status === "settled")
-    .map((t) => [(t.posted_at ?? t.initiated_at).slice(0, 10), q(t.counterparty_name), (t.amount.amount / 100).toFixed(2), t.transaction_type, t.account_id, q(t.user_full_name ?? "")].join(","));
-  return {
-    files: [{ name: "taco-robotics-sample.csv", text: ["Date,Description,Amount,Type,Account,Cardholder", ...rows].join("\n") }],
-    cashDollars: String(Math.round(cashBalanceCents(demo.accounts) / 100)),
-  };
+  const { sampleExport } = await import("@/lib/seed/sample-export");
+  const sample = sampleExport();
+  return { files: [{ name: sample.name, text: sample.text }], cashDollars: sample.cashDollars };
 }
 
 export function GraderPanel() {

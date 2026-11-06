@@ -1,5 +1,6 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { safeNextPath } from "@/lib/auth/session";
+import { NEXT_COOKIE, safeNextPath } from "@/lib/auth/session";
 import { supabaseForRoute } from "@/lib/auth/supabase-route";
 import { ensureCompanyFor } from "@/lib/server/company";
 
@@ -29,5 +30,9 @@ export async function GET(request: Request) {
     console.error("[auth] couldn't set up the company", err instanceof Error ? err.message : "unknown error");
     return NextResponse.redirect(new URL("/login?error=setup", url.origin), { status: 303 });
   }
-  return NextResponse.redirect(new URL(safeNextPath(url.searchParams.get("next")), url.origin), { status: 303 });
+  // Back to the page that asked for sign-in (remembered by the login request), checked again here.
+  const jar = await cookies();
+  const next = safeNextPath(jar.get(NEXT_COOKIE)?.value ?? null);
+  jar.set(NEXT_COOKIE, "", { path: "/auth/callback", maxAge: 0 });
+  return NextResponse.redirect(new URL(next, url.origin), { status: 303 });
 }

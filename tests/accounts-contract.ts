@@ -41,5 +41,26 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
       expect((await store.companyFor(a.id))!.name).toBe("Acme Robotics");
       expect((await store.companyFor(b.id))!.name).toBe(before.name);
     });
+
+    it("says the first user of a company owns it", async () => {
+      const store = await makeStore();
+      const u = user();
+      expect((await store.ensureCompanyFor(u)).role).toBe("owner");
+    });
+
+    it("deletes an owner's company, leaves others alone, and starts fresh on the next sign-in", async () => {
+      const store = await makeStore();
+      const a = user();
+      const b = user();
+      const first = await store.ensureCompanyFor(a);
+      const other = await store.ensureCompanyFor(b);
+      expect(await store.deleteCompany(a.id)).toBe(true);
+      expect(await store.companyFor(a.id)).toBeNull();
+      expect(await store.companyFor(b.id)).toEqual(other);
+      const fresh = await store.ensureCompanyFor(a);
+      expect(fresh.orgId).not.toBe(first.orgId);
+      expect(fresh.scope).not.toBe(first.scope);
+      expect(await store.deleteCompany(crypto.randomUUID())).toBe(false);
+    });
   });
 }

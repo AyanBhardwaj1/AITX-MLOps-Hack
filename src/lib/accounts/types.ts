@@ -1,10 +1,24 @@
+import { z } from "zod";
+
+export type CompanyRole = "owner" | "member";
+
 /** A signed-in user's company: their organization and the store scope its data lives under. */
 export interface Company {
   orgId: string;
   /** Store scope (organizations.slug), "org_<uuid>". Server-generated, never from a request. */
   scope: string;
   name: string;
+  /** The user's role in it: owners can rename and delete the company. */
+  role: CompanyRole;
 }
+
+/** A company name a founder types: trimmed, 1-80 characters, no control characters. */
+export const companyNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .refine((s) => !/[\u0000-\u001f\u007f]/.test(s), "no control characters");
 
 export interface AccountsStore {
   kind: "memory" | "postgres";
@@ -12,6 +26,8 @@ export interface AccountsStore {
   /** The user's company, created with an owner membership on first use; atomic and idempotent. */
   ensureCompanyFor(user: { id: string; email: string | null }): Promise<Company>;
   renameCompany(userId: string, name: string): Promise<void>;
+  /** Deletes the company the user owns, with everything in it; false when they own none. */
+  deleteCompany(userId: string): Promise<boolean>;
 }
 
 const PERSONAL_DOMAINS = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "me.com", "proton.me", "protonmail.com", "aol.com"]);

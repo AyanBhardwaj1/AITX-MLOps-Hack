@@ -75,6 +75,7 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
   const [deleting, setDeleting] = useState(false);
   // Remounts the file input after an upload, so it shows nothing chosen and the same file can be picked again.
   const [inputKey, setInputKey] = useState(0);
+  const [sampleChosen, setSampleChosen] = useState(false);
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -96,6 +97,17 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
     setInputKey((k) => k + 1);
     setState({ kind: "done", inserted, duplicates, notes });
     router.refresh();
+  }
+
+  /** Puts the fictional demo company's export in the form, for a first look without real data. */
+  async function fillSample() {
+    const { sampleExport } = await import("@/lib/seed/sample-export");
+    const sample = sampleExport();
+    const file = new File([sample.text], sample.name, { type: "text/csv" });
+    setFiles([{ file, account: fileAccountLabel(file.name) }]);
+    setCash(Number(sample.cashDollars).toLocaleString("en-US"));
+    setSampleChosen(true);
+    setState({ kind: "idle" });
   }
 
   async function deleteAll() {
@@ -195,13 +207,25 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
           <p className="text-xs text-muted">A CSV has no balance, so add up your bank accounts. Each upload updates it.</p>
           <input id={`${id}-cash`} name="cash" inputMode="decimal" placeholder="e.g. 950,000…" value={cash} onChange={(e) => setCash(e.target.value)} className={field} />
         </div>
-        <button
-          type="submit"
-          disabled={working || !storageReady}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50"
-        >
-          {working ? "Uploading…" : "Upload and analyse"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            disabled={working || !storageReady}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50"
+          >
+            {working ? "Uploading…" : "Upload and analyse"}
+          </button>
+          {!summary && (
+            <button type="button" onClick={() => void fillSample()} disabled={working} className="rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-canvas disabled:opacity-50">
+              Fill in a sample export
+            </button>
+          )}
+        </div>
+        {sampleChosen && (
+          <p className="text-xs text-muted">
+            The sample is a fictional company&apos;s year of transactions, to show how Runway works. Delete it here before adding your own exports.
+          </p>
+        )}
         <p className="text-xs text-muted">
           Files are read in this browser tab. Only the transaction rows (date, description, amount, account, cardholder) are sent, and they&apos;re
           stored for your company alone. Delete them here any time.

@@ -12,7 +12,7 @@ Runway reads a company's bank feed (read-only), works out burn, runway and the z
 |---|---|
 | `/` | Public site: live runway calculator, what Runway finds, security, FAQ and the early-access form |
 | `/app` | The product, on a synthetic demo company by default; signed-in founders see their own company (`/app?mode=company`) |
-| `/login`, `/app/upload` | Email-link sign-in, and uploading your bank exports into your company |
+| `/login`, `/app/upload`, `/app/settings` | Email-link sign-in (it returns you to the page that asked), uploading bank exports into your company (or a sample export to try it), and renaming or deleting the company |
 | `/grader` | Free CSV runway grader; runs entirely in the browser |
 | `/privacy`, `/security`, `/terms` | Early-access policies (drafts pending legal review) |
 
@@ -207,7 +207,7 @@ The eval and two independent code reviews caught real bugs during development, e
   - One owner per company; no teammates or roles yet, and no second sign-in factor beyond the email link.
   - Companies connect by uploading CSV exports; per-company Rho connections wait on Rho partner OAuth. With accounts on, the env Rho feed is off.
   - The daily Autopilot and the Monday digest don't run per company yet, and app-initiated Slack and Jira are off with accounts on (they're the operator's tools).
-  - The company name comes from the email domain; there's no rename screen yet.
+  - The company name starts from the email domain; the owner can rename or delete the company at `/app/settings`.
   - A magic link only works in the browser that asked for it (PKCE).
 - **Single-company deployments** (no Supabase Auth) keep the shared password: with `APP_PASSWORD` set, the app and its APIs need it, and the app **refuses to show a real Rho account unless `APP_PASSWORD` is set**.
 - **Basic abuse protection is in place:**

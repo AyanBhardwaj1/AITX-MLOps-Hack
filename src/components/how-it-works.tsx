@@ -1,12 +1,16 @@
+const READ = {
+  feed: "Pulls accounts and transactions from Rho's read-only API. Runway has no way to move money.",
+  uploads: "Reads the bank and card exports you upload. Runway has no access to your bank and no way to move money.",
+};
 const STEPS = [
-  { title: "Read", body: "Pulls accounts and transactions from Rho's read-only API. Runway has no way to move money." },
+  { title: "Read", body: READ.feed },
   { title: "Detect", body: "Plain code finds recurring charges and four kinds of waste, each linked to the transactions behind it." },
   { title: "Forecast", body: "Burn, runway and a range from 1,000 simulations of your own cash swings, plus a revenue-drop test. No AI in the math." },
   { title: "Act", body: "Copilot plans with the same numbers; Autopilot runs the monthly review. Agents only draft: you approve in the Inbox." },
 ];
 
 /** A four-step tour for first-time visitors; collapsible so it stays out of the way. */
-export function HowItWorks() {
+export function HowItWorks({ source = "feed" }: { source?: keyof typeof READ }) {
   return (
     <details open className="group mb-6 overflow-hidden rounded-xl border border-line bg-panel">
       <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 text-sm font-semibold transition-colors hover:bg-canvas">
@@ -21,7 +25,7 @@ export function HowItWorks() {
               <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-soft text-xs text-brand">{i + 1}</span>
               {s.title}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">{s.body}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{i === 0 ? READ[source] : s.body}</p>
           </li>
         ))}
       </ol>

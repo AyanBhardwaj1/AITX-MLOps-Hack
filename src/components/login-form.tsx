@@ -4,7 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "sent"; email: string } | { kind: "error"; message: string };
 
-export function LoginForm() {
+/** `next` is the page that asked for sign-in; the server checks it before using it. */
+export function LoginForm({ next }: { next?: string }) {
   const id = useId();
   const [state, setState] = useState<State>({ kind: "idle" });
   const sent = useRef<HTMLParagraphElement>(null);
@@ -16,7 +17,7 @@ export function LoginForm() {
     e.preventDefault();
     const email = String(new FormData(e.currentTarget).get("email") ?? "");
     setState({ kind: "sending" });
-    const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => null);
+    const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, next }) }).catch(() => null);
     const body = (await res?.json().catch(() => null)) as { error?: string } | null;
     setState(res?.ok ? { kind: "sent", email } : { kind: "error", message: body?.error ?? "That didn’t go through. Try again." });
   }

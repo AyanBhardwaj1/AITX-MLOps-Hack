@@ -20,6 +20,9 @@ export function stripInternalHeaders(headers: Headers): Headers {
 }
 
 export const DEFAULT_AFTER_SIGN_IN = "/app?mode=company";
+/** Remembers, across the email round trip, the page that asked for sign-in. Read only by /auth/callback. */
+export const NEXT_COOKIE = "runway_next";
+export const NEXT_COOKIE_MAX_AGE = 60 * 60;
 
 /** Where to go after the magic link: only a path on this site, never another origin. */
 export function safeNextPath(next: string | null): string {

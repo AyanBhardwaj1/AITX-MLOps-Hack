@@ -7,8 +7,8 @@ import type { AccountsStore, Company } from "../accounts/types";
 import { EMAIL_HEADER, USER_HEADER, type SessionUser } from "../auth/session";
 import type { DataMode } from "../modes";
 import { accountsEnabled, env } from "./env";
-import { NotInvited } from "./errors";
-import { getPool, hasDatabase } from "./store";
+import { NotInvited, OwnerOnly, SignInRequired } from "./errors";
+import { getPool, getStore, hasDatabase } from "./store";
 import { getWaitlist } from "./waitlist";
 
 const KEY = Symbol.for("runway.accounts");
@@ -56,3 +56,32 @@ export const currentCompany = cache(async (): Promise<Company | null> => {
   if (!user) return null;
   return ensureCompanyFor(user);
 });
+
+/** The signed-in user's company, when they own it. */
+async function ownedCompany(): Promise<{ user: SessionUser; company: Company }> {
+  const user = await sessionUser();
+  if (!user) throw new SignInRequired();
+  const company = await ensureCompanyFor(user);
+  if (company.role !== "owner") throw new OwnerOnly();
+  return { user, company };
+}
+
+/** Renames the signed-in owner's company. `name` is already validated. */
+export async function renameCurrentCompany(name: string): Promise<string> {
+  const { user } = await ownedCompany();
+  await getAccounts().renameCompany(user.id, name);
+  return name;
+}
+
+/**
+ * Deletes the signed-in owner's company and everything in it. The confirmation must match the
+ * company's current name, so a stray request can't wipe it.
+ */
+export async function deleteCurrentCompany(confirmName: string): Promise<"deleted" | "mismatch"> {
+  const { user, company } = await ownedCompany();
+  if (confirmName.trim() !== company.name) return "mismatch";
+  // Clears the data store first (in memory there is no cascade), then the organization itself.
+  await getStore(company.scope).clearUploads();
+  await getAccounts().deleteCompany(user.id);
+  return "deleted";
+}
