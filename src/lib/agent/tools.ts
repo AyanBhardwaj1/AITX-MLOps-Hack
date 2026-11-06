@@ -8,7 +8,7 @@ import { detectChanges } from "../insights/changes";
 import { goalSeek, simulateSavings, stressRunway, countsTowardBurn } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
-import { budgetStatus, type Budget } from "../finance/budgets";
+import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budgets";
 
 /**
  * Agent tools as plain functions over an Analysis. The model never computes money:
@@ -227,6 +227,8 @@ export function getBudgets(a: Analysis, budgets: readonly Budget[], emptyNote = 
     month: a.asOf.slice(0, 7),
     asOf: a.asOf,
     budgets: budgetStatus(a.txns, a.asOf, budgets, a.streams),
+    /** Runway if every budgeted category came down to its budget (null when none is over it). */
+    runwayWithinBudgets: runwayWithinBudgets(a.snapshot, a.txns, budgets),
     ...(budgets.length === 0 ? { note: emptyNote } : {}),
   };
 }

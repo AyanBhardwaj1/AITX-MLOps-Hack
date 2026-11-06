@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
 import { cashFreshness, dataFreshness, laggingAccounts } from "@/lib/freshness";
-import { BUDGET_CATEGORIES, budgetStatus, type Budget } from "@/lib/finance/budgets";
+import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
@@ -97,6 +97,7 @@ async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["b
   const set = new Set(list.map((b) => b.category));
   return {
     rows: budgetStatus(a.txns, a.asOf, list, a.streams),
+    withinBudgets: runwayWithinBudgets(a.snapshot, a.txns, list),
     unbudgeted: BUDGET_CATEGORIES.filter((c) => !set.has(c)),
     editable: mode === "company",
     sample: mode === "demo",

@@ -113,6 +113,8 @@ describe("planToTarget with dismissals", () => {
     const out = getBudgets(a, budgets);
     expect(out.month).toBe(a.asOf.slice(0, 7));
     expect(out.budgets).toEqual(budgetStatus(a.txns, a.asOf, budgets, a.streams));
+    // Demo software runs above $8,500, so holding to it buys runway.
+    expect(out.runwayWithinBudgets!.runwayMonths).toBeGreaterThan(a.snapshot.runwayMonths);
     expect(getBudgets(a, [])).toMatchObject({ budgets: [], note: expect.stringMatching(/no budgets/i) });
   });
 });

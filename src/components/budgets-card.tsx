@@ -17,7 +17,11 @@ export interface BudgetsData {
   editable: boolean;
   sample: boolean;
   asOf: string;
+  /** Runway if every budgeted category came down to its budget (null when none is over it). */
+  withinBudgets?: { monthlySavingsCents: number; runwayMonths: number; currentRunwayMonths: number } | null;
 }
+
+const months = (n: number) => (Number.isFinite(n) ? `${n.toFixed(1)} months` : "no end (cash-flow positive)");
 
 const STATUS: Record<BudgetRow["status"], { text: string; tone: string }> = {
   over: { text: "Over budget", tone: "bg-warn-soft text-warn" },
@@ -254,6 +258,13 @@ export function BudgetsCard({ budgets, mode }: { budgets: BudgetsData; mode: Dat
             <BudgetLine key={r.category} row={r} mode={mode} editable={budgets.editable} month={budgets.asOf.slice(0, 7)} />
           ))}
         </ul>
+      )}
+      {budgets.withinBudgets && (
+        <p className="border-t border-line px-5 py-3 text-sm">
+          Held to these budgets, runway would be <span className="font-semibold">{months(budgets.withinBudgets.runwayMonths)}</span> instead of{" "}
+          {months(budgets.withinBudgets.currentRunwayMonths)}: {formatMoney(budgets.withinBudgets.monthlySavingsCents)} a month less than the
+          recent average.
+        </p>
       )}
       {budgets.editable && budgets.unbudgeted.length > 0 && <AddBudget unbudgeted={budgets.unbudgeted} />}
       <p id={STATUS_ID} role="status" className="sr-only" />

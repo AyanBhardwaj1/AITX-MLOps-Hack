@@ -25,7 +25,8 @@ demo, the free grader and the public site work exactly as before.
   vendor's own view lets you fix its category right there. Works on the demo too.
 - **Monthly budgets.** Set a budget per spending category. The dashboard shows this month so far,
   where it's heading (recurring bills still due plus one-off spend at its pace) and last month, and
-  the Monday digest names any budget that's over or heading over. Copilot answers "Are we on
+  the Monday digest names any budget that's over or heading over. The card also says what runway
+  the budgets would buy if spending came down to them. Copilot answers "Are we on
   budget this month?" from the same numbers. The demo has a sample set.
 - **Your data, your call.** See what's stored per account, delete one account's rows or everything,
   and download it all as a CSV that uploads back cleanly. Settings downloads a copy of everything

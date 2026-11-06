@@ -2,7 +2,7 @@ import { addDays, daysBetween, monthKey, shiftMonth } from "../dates";
 import { CADENCE_DAYS } from "../detect/recurring";
 import { MAX_CASH_CENTS } from "../money";
 import { CATEGORIES, type Category, type Cents, type EnrichedTxn, type IsoDate, type RecurringStream } from "../types";
-import { countsTowardBurn } from "./runway";
+import { countsTowardBurn, simulateSavings, type Snapshot } from "./runway";
 
 /** Categories that are money in or moving between accounts: nothing to budget. */
 const NOT_SPENDING: ReadonlySet<Category> = new Set(["revenue", "transfer"]);
@@ -257,4 +257,26 @@ export function budgetStatus(txns: readonly EnrichedTxn[], asOf: IsoDate, budget
     const status = s.now > b.monthlyCents ? "over" : projectedCents > b.monthlyCents ? "over_pace" : "under";
     return { category: b.category, monthlyCents: b.monthlyCents, monthToDateCents: s.now, projectedCents, lastMonthCents: s.last, status };
   });
+}
+
+/**
+ * What the budgets would buy: each budgeted category's average spend over the same months as burn,
+ * capped at its budget (categories already under budget save nothing), and runway on what's left.
+ * Null when no budget is below its category's recent spend.
+ */
+export function runwayWithinBudgets(
+  snapshot: Snapshot,
+  txns: readonly EnrichedTxn[],
+  budgets: readonly Budget[],
+): { monthlySavingsCents: Cents; runwayMonths: number; currentRunwayMonths: number } | null {
+  const months = new Set(snapshot.months.map((m) => m.month));
+  if (months.size === 0) return null;
+  const spent = new Map<Category, number>();
+  for (const t of txns) {
+    if (t.amountCents >= 0 || !countsTowardBurn(t) || !months.has(monthKey(t.postedAt))) continue;
+    spent.set(t.vendor.category, (spent.get(t.vendor.category) ?? 0) - t.amountCents);
+  }
+  const monthlySavingsCents = budgets.reduce((sum, b) => sum + Math.max(0, Math.round((spent.get(b.category) ?? 0) / months.size) - b.monthlyCents), 0);
+  if (monthlySavingsCents === 0) return null;
+  return { monthlySavingsCents, runwayMonths: simulateSavings(snapshot, monthlySavingsCents).runwayMonths, currentRunwayMonths: snapshot.runwayMonths };
 }

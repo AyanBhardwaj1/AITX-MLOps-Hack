@@ -224,4 +224,17 @@ describe("budgets", () => {
       expect(budgetStatus(charges, "2026-11-25", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(0);
     });
   });
+
+  it("says what runway the budgets would buy if spending stayed within them", async () => {
+    const { runwayWithinBudgets } = await import("@/lib/finance/budgets");
+    const { computeSnapshot } = await import("@/lib/finance/runway");
+    // Three full months of $6,000 software and $1,000 travel; $70,000 cash.
+    const spend = ["2026-07", "2026-08", "2026-09"].flatMap((m) => [txn(`s${m}`, `${m}-10`, -6_000_00, "software"), txn(`t${m}`, `${m}-12`, -1_000_00, "travel")]);
+    const snapshot = computeSnapshot({ cashCents: 70_000_00, txns: spend, asOf: "2026-10-05" });
+    expect(snapshot.netBurnCents).toBe(7_000_00);
+    const r = runwayWithinBudgets(snapshot, spend, [{ category: "software", monthlyCents: 4_000_00 }, { category: "travel", monthlyCents: 2_000_00 }]);
+    // Software capped at $4,000 saves $2,000/mo; travel is already under its budget, so nothing.
+    expect(r).toMatchObject({ monthlySavingsCents: 2_000_00, runwayMonths: 14, currentRunwayMonths: 10 });
+    expect(runwayWithinBudgets(snapshot, spend, [{ category: "travel", monthlyCents: 2_000_00 }])).toBeNull();
+  });
 });
