@@ -141,10 +141,13 @@ function whatChanged(a: Analysis): InstantAnswer {
   return { question: INSTANT_QUESTIONS.what_changed, tools: ["get_recent_changes"], text };
 }
 
-function budgetsAnswer(a: Analysis, _dismissed: ReadonlySet<string>, budgets: readonly Budget[] | null): InstantAnswer {
+/** Budgets for an instant answer: the list, none at all for this data source (null), or unreadable just now. */
+export type InstantBudgets = readonly Budget[] | null | "unavailable";
+
+function budgetsAnswer(a: Analysis, _dismissed: ReadonlySet<string>, budgets: InstantBudgets): InstantAnswer {
   const tools = ["get_budgets"];
-  // null: this data source has no budgets at all (the Rho sandbox).
   if (budgets === null) return { question: INSTANT_QUESTIONS.budgets, tools, text: "Budgets are for a signed-in company's own data; the Rho sandbox has none." };
+  if (budgets === "unavailable") return { question: INSTANT_QUESTIONS.budgets, tools, text: "Couldn't load your budgets just now. Try again in a moment." };
   const { budgets: rows } = getBudgets(a, budgets);
   if (rows.length === 0)
     return { question: INSTANT_QUESTIONS.budgets, tools, text: "No budgets are set yet. Add one per category on the dashboard's **Budgets** card and Runway tracks it from the bank data." };
@@ -161,7 +164,7 @@ function budgetsAnswer(a: Analysis, _dismissed: ReadonlySet<string>, budgets: re
   return { question: INSTANT_QUESTIONS.budgets, tools, text: lines.join("\n\n") };
 }
 
-const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>, budgets: readonly Budget[] | null) => InstantAnswer> = {
+const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>, budgets: InstantBudgets) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
   how_long: howLong,
@@ -172,6 +175,6 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */
-export function instantAnswer(a: Analysis, question: InstantQuestion, dismissed: ReadonlySet<string> = new Set(), budgets: readonly Budget[] | null = []): InstantAnswer {
+export function instantAnswer(a: Analysis, question: InstantQuestion, dismissed: ReadonlySet<string> = new Set(), budgets: InstantBudgets = []): InstantAnswer {
   return ANSWERS[question](a, dismissed, budgets);
 }

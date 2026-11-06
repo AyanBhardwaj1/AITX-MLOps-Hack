@@ -102,6 +102,14 @@ describe("gradeCsvFiles", () => {
     for (const t of checking) byMonth.set(dateOf(t).slice(0, 7), [...(byMonth.get(dateOf(t).slice(0, 7)) ?? []), t]);
     const statements = [...byMonth].slice(-6).map(([m, rows]) => ({ name: `checking-${m}.csv`, text: mercuryCsv(rows) }));
     expect(gradeCsvFiles(statements, cash).notes.some((n) => /days before the newest one/.test(n))).toBe(false);
+    // Banks' default names (activity.csv, transactions.csv) say nothing about the account: kept apart.
+    const banks = gradeCsvFiles([{ name: "transactions.csv", text: mercuryCsv(checking) }, { name: "activity.csv", text: mercuryCsv(early) }], cash);
+    expect(banks.notes.some((n) => /^The activity\.csv export ends .*days before the newest one/.test(n))).toBe(true);
+    // Two exports of one account that overlap partly (they share rows) are one account.
+    const ytd = checking.filter((t) => dateOf(t) <= cutoff);
+    const recentStart = new Date(Date.parse(`${cutoff}T00:00:00Z`) - 25 * 86_400_000).toISOString().slice(0, 10);
+    const partial = gradeCsvFiles([{ name: "checking-ytd.csv", text: mercuryCsv(ytd) }, { name: "checking-recent.csv", text: mercuryCsv(checking.filter((t) => dateOf(t) >= recentStart)) }], cash);
+    expect(partial.notes.some((n) => /days before the newest one/.test(n))).toBe(false);
     // An older export overlapping a newer one of the same account adds nothing, so says nothing.
     const older = checking.filter((t) => dateOf(t) <= cutoff);
     const overlap = gradeCsvFiles([{ name: "old.csv", text: mercuryCsv(older) }, { name: "new.csv", text: mercuryCsv(checking) }], cash);

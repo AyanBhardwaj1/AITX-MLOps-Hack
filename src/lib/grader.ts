@@ -1,5 +1,5 @@
 import { importCsv, resolveCardPayoffs } from "./csv/import";
-import { fileAccountLabel } from "./uploads/rows";
+import { DEFAULT_ACCOUNT_LABEL, fileAccountLabel } from "./uploads/rows";
 import { forecastCash } from "./finance/forecast";
 import { monthlyHistory } from "./finance/history";
 import { laggingAccounts } from "./freshness";
@@ -40,6 +40,42 @@ const TOP_FINDINGS = 3;
 const firstYear = (f: Finding) => f.monthlySavingsCents * 12 + f.oneTimeCents;
 const HISTORY_MONTHS = 12;
 
+/**
+ * Which files are the same account, as each account's transaction dates: files that share rows
+ * (overlapping exports, in any order), and files whose names point to the same account (six
+ * monthly statements of "checking"). A bank's default name ("activity.csv", "transactions.csv")
+ * says nothing about the account, so it never groups files on its own.
+ */
+function accountsOf(files: readonly { name: string; label: string; keys: string[] }[]): Map<string, string[]> {
+  const parent = files.map((_, i) => i);
+  const root = (i: number): number => (parent[i] === i ? i : (parent[i] = root(parent[i]!)));
+  const join = (a: number, b: number) => void (parent[root(a)] = root(b));
+  const firstWithKey = new Map<string, number>();
+  const firstWithLabel = new Map<string, number>();
+  files.forEach((f, i) => {
+    for (const k of f.keys) {
+      const j = firstWithKey.get(k);
+      if (j === undefined) firstWithKey.set(k, i);
+      else join(i, j);
+    }
+    if (f.label !== DEFAULT_ACCOUNT_LABEL) {
+      const j = firstWithLabel.get(f.label);
+      if (j === undefined) firstWithLabel.set(f.label, i);
+      else join(i, j);
+    }
+  });
+  // Named by the account its files point to, or else by its first file's own name.
+  const groups = new Map<number, { name: string; keys: Set<string> }>();
+  files.forEach((f, i) => {
+    const g = groups.get(root(i)) ?? { name: f.label === DEFAULT_ACCOUNT_LABEL ? f.name : f.label, keys: new Set<string>() };
+    for (const k of f.keys) g.keys.add(k);
+    groups.set(root(i), g);
+  });
+  const out = new Map<string, string[]>();
+  for (const g of groups.values()) out.set(out.has(g.name) ? `${g.name} (${out.size + 1})` : g.name, [...g.keys].map((k) => k.slice(0, 10)));
+  return out;
+}
+
 export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): GraderResult {
   if (files.length === 0) throw new Error("Add at least one CSV file");
   if (!Number.isFinite(cashCents)) throw new Error("Enter today's total cash balance");
@@ -53,7 +89,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   let duplicateFiles = 0;
   let duplicateRows = 0;
   /** Each read file's row keys, to tell which account's export stops early (see below). */
-  const fileKeys: { label: string; keys: string[] }[] = [];
+  const fileKeys: { name: string; label: string; keys: string[] }[] = [];
   files.forEach((f, i) => {
     if (seenTexts.has(f.text)) {
       duplicateFiles += 1;
@@ -75,7 +111,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
         raw.push(t);
       }
       for (const k of fileRows) seenRows.add(k);
-      fileKeys.push({ label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
+      fileKeys.push({ name: f.name, label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {
@@ -109,17 +145,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   if (duplicateRows && inverted.length === 0) notes.push(`${duplicateRows} row${duplicateRows === 1 ? "" : "s"} repeated across overlapping exports ${duplicateRows === 1 ? "was" : "were"} counted once.`);
   if (skipped) notes.push(`${skipped} row${skipped === 1 ? "" : "s"} couldn't be read and ${skipped === 1 ? "was" : "were"} skipped.`);
   if (inverted.length === 0) {
-    // Files grouped by the account their name points to (six monthly statements are one account),
-    // each counting only rows no other file has: an older export overlapping a newer one, in either
-    // order, says nothing.
-    const holders = new Map<string, number>();
-    for (const f of fileKeys) for (const k of new Set(f.keys)) holders.set(k, (holders.get(k) ?? 0) + 1);
-    const byAccount = new Map<string, string[]>();
-    for (const f of fileKeys) {
-      const own = [...new Set(f.keys)].filter((k) => holders.get(k) === 1).map((k) => k.slice(0, 10));
-      if (own.length) byAccount.set(f.label, [...(byAccount.get(f.label) ?? []), ...own]);
-    }
-    for (const l of laggingAccounts(byAccount))
+    for (const l of laggingAccounts(accountsOf(fileKeys)))
       notes.push(
         `The ${l.account} export ends ${l.lastDate}, ${l.daysBehind} days before the newest one. If that account is still open, its spending since then is missing and runway reads longer than it is: export it again up to today.`,
       );

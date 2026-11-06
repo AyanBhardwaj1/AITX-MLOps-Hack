@@ -73,12 +73,13 @@ export async function POST(request: Request) {
     mode === "demo"
       ? { list: DEMO_BUDGETS, analysis: async () => (await loadAnalysis("demo", { visitorFixes: true })).analysis }
       : mode === "company"
-        ? {
-            list: await store.listBudgets().catch((err) => {
+        ? await store.listBudgets().then(
+            (list): CopilotBudgets => ({ list }),
+            (err): CopilotBudgets => {
               console.error("[copilot] budgets unavailable", err instanceof Error ? err.message : "unknown error");
-              return [];
-            }),
-          }
+              return { list: [], emptyNote: "Couldn't load the company's budgets just now; say so rather than that there are none." };
+            },
+          )
         : { list: [], emptyNote: "Budgets are for a signed-in company's own data; the Rho sandbox has none." };
   return createAgentUIStreamResponse({ agent: createCopilot(analysis, saveDraft, dismissed, budgets), uiMessages: messages.messages });
 }

@@ -108,6 +108,21 @@ function usualDays(charges: readonly IsoDate[], semimonthly: boolean): number[] 
       if (cost < bestCost) [best, bestCost] = [semimonthly ? [a, b] : [a], cost];
     }
   }
+  // A bill that moved its due day: when the last three charges all sit exactly on another day the
+  // longer fit misses, the new day wins (otherwise the old one lingers for months).
+  if (!semimonthly && table.length >= 3) {
+    const lastThree = table.slice(-3);
+    if (lastThree.some((row) => row[best[0]!]! > 0)) {
+      let moved: number | null = null;
+      let movedCost = Number.POSITIVE_INFINITY;
+      for (let d = 1; d <= 31; d++) {
+        if (!lastThree.every((row) => row[d] === 0)) continue;
+        const cost = table.reduce((sum, row) => sum + row[d]!, 0);
+        if (cost < movedCost) [moved, movedCost] = [d, cost];
+      }
+      if (moved !== null) return [moved];
+    }
+  }
   return best;
 }
 
@@ -118,6 +133,7 @@ function usualDays(charges: readonly IsoDate[], semimonthly: boolean): number[] 
 function stillDueByInterval(charges: readonly IsoDate[], asOf: IsoDate, month: string): number {
   const gaps = charges.slice(-7).slice(1).map((c, i) => gapDays(charges.slice(-7)[i]!, c));
   const step = median(gaps);
+  if (!(step > 0)) return 0; // stepping by nothing would never end
   const monthEnd = dueIn(month, 31);
   let count = 0;
   for (let next = addDays(charges.at(-1)!, step); next <= monthEnd; next = addDays(next, step)) {
@@ -160,7 +176,8 @@ function stillDueByDay(s: RecurringStream, seen: readonly IsoDate[], asOf: IsoDa
   const paid = new Set<string>();
   let early = 0;
   let late = 0;
-  for (const c of charges) {
+  // Recent charges are enough to say which due dates were paid (and keep this quick on long histories).
+  for (const c of charges.slice(-2 * FIT_CHARGES)) {
     const d = nearest(c);
     if (Math.abs(gapDays(c, d)) > MATCH_DAYS) continue;
     paid.add(d);

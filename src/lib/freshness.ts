@@ -33,8 +33,8 @@ const dayGap = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`
 /**
  * Accounts whose export stops well before the newest account's: an export that stopped early
  * leaves its spending out of burn, so runway reads longer than it is. "Well before" is two weeks,
- * or twice the account's own usual gap between transactions if that's longer (monthly interest on
- * a treasury account isn't late after 20 days). Quiet accounts (under 10 transactions) and ones over
+ * or the account's own usual gap between transactions plus a week if that's longer (monthly
+ * interest on a treasury account isn't late after 20 days, but is after 40). Quiet accounts (under 10 transactions) and ones over
  * 90 days behind (more likely closed) aren't named. `byAccount`: each account's transaction dates.
  */
 export function laggingAccounts(byAccount: ReadonlyMap<string, readonly string[]>): { account: string; lastDate: string; daysBehind: number }[] {
@@ -50,7 +50,8 @@ export function laggingAccounts(byAccount: ReadonlyMap<string, readonly string[]
   return accounts
     .filter((a) => a.rows >= MIN_ACTIVE_ROWS)
     .map((a) => ({ ...a, daysBehind: dayGap(a.lastDate, newest) }))
-    .filter((a) => a.daysBehind >= Math.max(STALE_AFTER_DAYS, 2 * a.usualGap) && a.daysBehind <= LIKELY_CLOSED_DAYS)
+    // A full cycle plus a week late (at least two weeks): a monthly account 50 days behind has missed a payment.
+    .filter((a) => a.daysBehind >= Math.max(STALE_AFTER_DAYS, a.usualGap + 7) && a.daysBehind <= LIKELY_CLOSED_DAYS)
     .sort((x, y) => y.daysBehind - x.daysBehind || x.account.localeCompare(y.account))
     .map(({ account, lastDate, daysBehind }) => ({ account, lastDate, daysBehind }));
 }

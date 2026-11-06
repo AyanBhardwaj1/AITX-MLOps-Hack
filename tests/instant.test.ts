@@ -65,5 +65,6 @@ describe("instant answers (no LLM)", () => {
     expect(ans.text.indexOf("Over budget")).toBeLessThan(ans.text.indexOf("Heading over"));
     expect(instantAnswer(a, "budgets").text).toMatch(/No budgets are set/);
     expect(instantAnswer(a, "budgets", new Set(), null).text).toMatch(/sandbox has none/);
+    expect(instantAnswer(a, "budgets", new Set(), "unavailable").text).toMatch(/Couldn't load your budgets/);
   });
 });

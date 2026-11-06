@@ -43,6 +43,8 @@ describe("accounts that fall behind", () => {
     const main = dates("2026-11-20", 300);
     // Monthly interest on a treasury account: 20 days since the last is normal for it.
     expect(laggingAccounts(new Map([["checking", main], ["treasury", dates("2026-10-31", 12, 30)]]))).toEqual([]);
+    // A monthly account (rent, a loan) 50 days behind has missed a payment: named.
+    expect(laggingAccounts(new Map([["checking", main], ["loan", dates("2026-10-01", 12, 30)]]))).toEqual([{ account: "loan", lastDate: "2026-10-01", daysBehind: 50 }]);
     // Quiet: too few rows to say.
     expect(laggingAccounts(new Map([["checking", main], ["savings", dates("2026-03-01", 2, 90)]]))).toEqual([]);
     // Over 90 days behind is more likely a closed account than a late export.

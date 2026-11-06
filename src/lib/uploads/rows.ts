@@ -43,7 +43,9 @@ export const uploadChunk = z.object({
 });
 export type UploadChunk = z.infer<typeof uploadChunk>;
 
-const DEFAULT_ACCOUNT = "uploaded";
+/** The account name a file gets when its name says nothing about the account. */
+export const DEFAULT_ACCOUNT_LABEL = "uploaded";
+const DEFAULT_ACCOUNT = DEFAULT_ACCOUNT_LABEL;
 /** Words in export file names that say nothing about which account it is. */
 const NOISE = new Set(["export", "exports", "statement", "statements", "transactions", "transaction", "activity", "history", "download", "csv", "copy", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december"]);
 

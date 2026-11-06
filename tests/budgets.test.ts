@@ -192,10 +192,23 @@ describe("budgets", () => {
       expect(budgetStatus(charges, asOf, [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(actual * 1_000_00);
     });
 
-    it("never loops on a history with same-day duplicates", () => {
-      const dates = ["2026-05-05", "2026-05-05", "2026-05-05", "2026-05-05", "2026-06-05", "2026-07-05", "2026-08-05"];
-      const { charges, stream: s } = history("software", dates, 100_00, "monthly");
-      expect(budgetStatus(charges, "2026-08-10", [{ category: "software", monthlyCents: 1 }], [s])[0]!.projectedCents).toBe(100_00);
+    it("never loops when a burst of same-day add-ons makes the usual gap zero", () => {
+      // A second seat billed on the 20th for 20 months, then six add-ons on one day: gaps [31,15,0,0,0,0].
+      const seats = Array.from({ length: 20 }, (_, i) => new Date(Date.UTC(2024, 10 + i, 20)).toISOString().slice(0, 10));
+      const dates = [...seats.filter((d) => d < "2026-07-01"), ...Array.from({ length: 6 }, () => "2026-07-05")];
+      const charges = dates.map((d, i) => txn(`seat${i}`, d, -15_00, "software"));
+      const s = { ...stream("software", charges.map((c) => c.id), "2026-08-05", 15_00, "monthly", "2026-07-05"), occurrences: charges.length } as RecurringStream;
+      const t = performance.now();
+      budgetStatus(charges, "2026-07-10", [{ category: "software", monthlyCents: 1 }], [s]);
+      expect(performance.now() - t).toBeLessThan(1_000);
+    });
+
+    it("follows a bill that moved its due day across the month boundary (the 28th to the 3rd)", () => {
+      const before = Array.from({ length: 14 }, (_, i) => new Date(Date.UTC(2025, i, 28)).toISOString().slice(0, 10)).filter((d) => d < "2026-03-01");
+      const after = ["2026-04-03", "2026-05-04", "2026-06-03"]; // May 3 2026 is a Sunday: paid Monday
+      const { charges, stream: s } = history("rent", [...before, ...after], 10_000_00, "monthly");
+      // Mid-June: June's rent is in; nothing more until July 3.
+      expect(budgetStatus(charges, "2026-06-10", [{ category: "rent", monthlyCents: 10_500_00 }], [s])[0]).toMatchObject({ projectedCents: 10_000_00, status: "under" });
     });
 
     it("stops expecting a bill more than ten days past due that never came", () => {

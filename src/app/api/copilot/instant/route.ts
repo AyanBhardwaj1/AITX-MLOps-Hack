@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const { mode, question } = parsed.data;
     const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     // Read only for the budget question: the demo's sample, or the signed-in company's own.
-    // A storage hiccup means no budgets in the answer, not a failed answer.
+    // A storage hiccup says so in the answer rather than failing it (or claiming there are none).
     const budgets =
       question !== "budgets"
         ? []
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
                 .listBudgets()
                 .catch((err) => {
                   console.error("[copilot/instant] budgets unavailable", err instanceof Error ? err.message : "unknown error");
-                  return [];
+                  return "unavailable" as const;
                 });
     return NextResponse.json(instantAnswer(analysis, question, new Set(parsed.data.dismissed), budgets));
   } catch (err) {
