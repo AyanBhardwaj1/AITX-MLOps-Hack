@@ -33,8 +33,21 @@ export async function companyDataExport(): Promise<Generator<string>> {
     store.listActivity(MAX_ACTIVITY),
   ]);
   // Findings with the decision on each (accepted, dismissed or still open), from today's analysis.
-  const findings = uploads ? (await loadAnalysis("company")).analysis.findings : [];
-  const statuses = findings.length ? await store.syncFindings(findings) : new Map<string, string>();
+  // A hiccup there (or the uploads deleted meanwhile) leaves them out rather than failing the copy.
+  let findings: Awaited<ReturnType<typeof loadAnalysis>>["analysis"]["findings"] = [];
+  let statuses = new Map<string, string>();
+  let findingsNote: string | null = null;
+  if (uploads) {
+    try {
+      findings = (await loadAnalysis("company")).analysis.findings;
+      statuses = await store.syncFindings(findings);
+    } catch (err) {
+      console.error("[export] findings unavailable", err instanceof Error ? err.message : "unknown error");
+      findings = [];
+      findingsNote = "Findings couldn't be worked out just now; download again for them.";
+    }
+  }
+  const detected = new Set(findings.map((f) => f.id));
   const head = {
     exportedAt: new Date().toISOString(),
     note: "Money is in cents (1/100 of a dollar). Transactions are as uploaded; categories and findings are worked out from them. Investor links are listed without their secret token or the snapshot they show.",
@@ -44,7 +57,10 @@ export async function companyDataExport(): Promise<Generator<string>> {
     cash: uploads ? { cents: uploads.cashCents, enteredAt: uploads.cashEnteredAt } : null,
     budgets,
     categoryFixes: fixes,
+    ...(findingsNote ? { findingsNote } : {}),
     findings: findings.map((f) => ({ fingerprint: f.id, kind: f.kind, title: f.title, monthlySavingsCents: f.monthlySavingsCents, status: statuses.get(f.id) ?? "open", decidedBy: decisions.get(f.id)?.by ?? null, decidedAt: decisions.get(f.id)?.at ?? null })),
+    // Decisions on findings Runway doesn't detect any more (the duplicate stopped, say): who and when.
+    earlierDecisions: [...decisions].filter(([fingerprint]) => !detected.has(fingerprint)).map(([fingerprint, d]) => ({ fingerprint, by: d.by, at: d.at })),
     acceptedFindings: accepted,
     drafts: actions.map(({ id, kind, status, title, body, createdAt, createdBy, externalRef }) => ({ id, kind, status, title, body, createdAt, createdBy, externalRef })),
     autopilotRuns: runs.map(({ id, trigger, status, startedAt, finishedAt, findingsCount, memo }) => ({ id, trigger, status, startedAt, finishedAt, findingsCount, memo })),

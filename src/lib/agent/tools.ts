@@ -227,8 +227,10 @@ export function getBudgets(a: Analysis, budgets: readonly Budget[], emptyNote = 
     month: a.asOf.slice(0, 7),
     asOf: a.asOf,
     budgets: budgetStatus(a.txns, a.asOf, budgets, a.streams),
-    /** Runway if every budgeted category came down to its budget (null when none is over it). */
-    runwayWithinBudgets: runwayWithinBudgets(a.snapshot, a.txns, budgets),
+    runwayWithinBudgets: (() => {
+      const r = runwayWithinBudgets(a.snapshot, a.txns, budgets);
+      return r ? { ...r, runwayMonths: round1(r.runwayMonths), currentRunwayMonths: round1(r.currentRunwayMonths) } : null;
+    })(),
     ...(budgets.length === 0 ? { note: emptyNote } : {}),
   };
 }

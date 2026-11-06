@@ -237,4 +237,27 @@ describe("budgets", () => {
     expect(r).toMatchObject({ monthlySavingsCents: 2_000_00, runwayMonths: 14, currentRunwayMonths: 10 });
     expect(runwayWithinBudgets(snapshot, spend, [{ category: "travel", monthlyCents: 2_000_00 }])).toBeNull();
   });
+
+  it("doesn't count refunded spend as something a budget could save", async () => {
+    const { runwayWithinBudgets } = await import("@/lib/finance/budgets");
+    const { computeSnapshot } = await import("@/lib/finance/runway");
+    const spend = ["2026-07", "2026-08", "2026-09"].flatMap((m) => [
+      txn(`p${m}`, `${m}-01`, -10_000_00, "payroll"),
+      txn(`t${m}`, `${m}-10`, -5_000_00, "travel"),
+      txn(`r${m}`, `${m}-14`, 5_000_00, "travel"),
+    ]);
+    const snapshot = computeSnapshot({ cashCents: 100_000_00, txns: spend, asOf: "2026-10-05" });
+    expect(runwayWithinBudgets(snapshot, spend, [{ category: "travel", monthlyCents: 1_000_00 }])).toBeNull();
+  });
+
+  it("says nothing when it wouldn't change what anyone sees", async () => {
+    const { runwayWithinBudgets } = await import("@/lib/finance/budgets");
+    const { computeSnapshot } = await import("@/lib/finance/runway");
+    // Cash-flow positive already: runway has no end either way.
+    const earning = ["2026-07", "2026-08", "2026-09"].flatMap((m) => [txn(`s${m}`, `${m}-10`, -6_000_00, "software"), txn(`i${m}`, `${m}-15`, 50_000_00, "revenue")]);
+    expect(runwayWithinBudgets(computeSnapshot({ cashCents: 1_000_00, txns: earning, asOf: "2026-10-05" }), earning, [{ category: "software", monthlyCents: 1_000_00 }])).toBeNull();
+    // A saving too small to move runway by a tenth of a month.
+    const big = ["2026-07", "2026-08", "2026-09"].flatMap((m) => [txn(`b${m}`, `${m}-10`, -100_000_00, "payroll"), txn(`c${m}`, `${m}-12`, -1_001_00, "software")]);
+    expect(runwayWithinBudgets(computeSnapshot({ cashCents: 1_000_000_00, txns: big, asOf: "2026-10-05" }), big, [{ category: "software", monthlyCents: 1_000_00 }])).toBeNull();
+  });
 });

@@ -87,4 +87,32 @@ describe("download everything the company holds", () => {
     expect(data.transactions).toEqual([]);
     expect(data.team.members.length).toBe(2);
   });
+
+  it("records each finding's decision, and keeps decisions on findings no longer detected", async () => {
+    const upload = (await import("@/app/api/uploads/route")).POST;
+    const { GET } = await import("@/app/api/export/route");
+    const { scopeFor } = await import("@/lib/server/scope");
+    const { getStore } = await import("@/lib/server/store");
+    const { generateDemoCompany } = await import("@/lib/seed/demo-company");
+    const demo = generateDemoCompany();
+    const rows = demo.transactions.map((t, i) => ({
+      date: (t.posted_at ?? t.initiated_at).slice(0, 10), description: t.counterparty_name, amountCents: t.amount.amount, type: "ach_debit",
+      account: t.account_id, accountType: t.account_type === "credit" ? "credit" : "checking", cardholder: t.user_full_name ?? null, n: i,
+    }));
+    as("findings-co");
+    expect((await upload(post("/api/uploads", { cashCents: 950_000_00, rows }))).status).toBe(200);
+    const get = async () => JSON.parse(await (await GET(new Request("http://localhost/api/export?mode=company&kind=everything", { headers: { "x-forwarded-for": "203.0.113.43" } }))).text());
+    const first = await get();
+    expect(first.findings.length).toBeGreaterThan(0);
+    const target = first.findings[0];
+    const store = getStore(await scopeFor("company"));
+    await store.setFindingStatus(target.fingerprint, "dismissed", undefined, { id: "findings-co", email: "findings-co@acme.example" });
+    const second = await get();
+    expect(second.findings.find((f: { fingerprint: string }) => f.fingerprint === target.fingerprint)).toMatchObject({ status: "dismissed", decidedBy: "findings-co@acme.example" });
+    // A decision on a finding that isn't detected any more is still in the copy.
+    await store.syncFindings([{ ...target, id: "gone-finding", evidenceTxnIds: [], vendorKeys: [] } as never]);
+    await store.setFindingStatus("gone-finding", "dismissed", undefined, { id: "findings-co", email: "findings-co@acme.example" });
+    const third = await get();
+    expect(third.earlierDecisions).toEqual(expect.arrayContaining([expect.objectContaining({ fingerprint: "gone-finding", by: "findings-co@acme.example" })]));
+  });
 });

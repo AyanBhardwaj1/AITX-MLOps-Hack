@@ -114,7 +114,8 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
         execute: async (input) => runScenario(a, input),
       }),
       get_budgets: tool({
-        description: "This month's budgets per category: monthlyCents, monthToDateCents, projectedCents (heading for), lastMonthCents and status (under, over_pace, over).",
+        description:
+          "This month's budgets per category: monthlyCents, monthToDateCents, projectedCents (heading for), lastMonthCents and status (under, over_pace, over). runwayWithinBudgets: runway in months (null = no end) if every budgeted category came down to its budget, with the monthly saving in cents; null when no budget would change runway.",
         inputSchema: budgetsInput,
         execute: async () => getBudgets(budgets.analysis ? await budgets.analysis() : a, budgets.list, budgets.emptyNote),
       }),

@@ -270,13 +270,25 @@ export function runwayWithinBudgets(
   budgets: readonly Budget[],
 ): { monthlySavingsCents: Cents; runwayMonths: number; currentRunwayMonths: number } | null {
   const months = new Set(snapshot.months.map((m) => m.month));
-  if (months.size === 0) return null;
-  const spent = new Map<Category, number>();
+  // Cash-flow positive already: runway has no end either way, so there's nothing to say.
+  if (months.size === 0 || !Number.isFinite(snapshot.runwayMonths)) return null;
+  const gross = new Map<Category, number>();
+  const net = new Map<Category, number>();
   for (const t of txns) {
-    if (t.amountCents >= 0 || !countsTowardBurn(t) || !months.has(monthKey(t.postedAt))) continue;
-    spent.set(t.vendor.category, (spent.get(t.vendor.category) ?? 0) - t.amountCents);
+    if (!countsTowardBurn(t) || !months.has(monthKey(t.postedAt))) continue;
+    const c = t.vendor.category;
+    net.set(c, (net.get(c) ?? 0) - t.amountCents);
+    if (t.amountCents < 0) gross.set(c, (gross.get(c) ?? 0) - t.amountCents);
   }
-  const monthlySavingsCents = budgets.reduce((sum, b) => sum + Math.max(0, Math.round((spent.get(b.category) ?? 0) / months.size) - b.monthlyCents), 0);
+  // A budget caps charges, but refunds already lowered burn: never count more than the category's net spend.
+  const monthlySavingsCents = budgets.reduce((sum, b) => {
+    const avgGross = Math.round((gross.get(b.category) ?? 0) / months.size);
+    const avgNet = Math.round((net.get(b.category) ?? 0) / months.size);
+    return sum + Math.max(0, Math.min(avgGross - b.monthlyCents, avgNet));
+  }, 0);
   if (monthlySavingsCents === 0) return null;
-  return { monthlySavingsCents, runwayMonths: simulateSavings(snapshot, monthlySavingsCents).runwayMonths, currentRunwayMonths: snapshot.runwayMonths };
+  const runwayMonths = simulateSavings(snapshot, monthlySavingsCents).runwayMonths;
+  // Too small a change to show at a tenth of a month: "12.3 instead of 12.3" says nothing.
+  if (Number.isFinite(runwayMonths) && runwayMonths.toFixed(1) === snapshot.runwayMonths.toFixed(1)) return null;
+  return { monthlySavingsCents, runwayMonths, currentRunwayMonths: snapshot.runwayMonths };
 }

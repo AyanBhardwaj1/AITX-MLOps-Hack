@@ -21,4 +21,11 @@ describe("streamed downloads", () => {
     expect(JSON.parse(out)).toEqual({ a: 1, rows: [{ n: 1 }, { n: 2 }], z: "__stream_rows__ is just text" });
     expect(JSON.parse([...jsonWithStreamedArray({ rows: null }, "rows", [])].join(""))).toEqual({ rows: [] });
   });
+
+  it("streams JSON across many chunks and it still parses", async () => {
+    const rows = Array.from({ length: 2_000 }, (_, i) => ({ i, text: `row "${i}" ✓` }));
+    const chunks = await read(streamChunks(jsonWithStreamedArray({ head: 1, rows: null }, "rows", rows), 500));
+    expect(chunks.length).toBeGreaterThan(10);
+    expect(JSON.parse(chunks.join(""))).toEqual({ head: 1, rows });
+  });
 });
