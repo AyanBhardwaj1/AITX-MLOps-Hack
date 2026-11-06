@@ -40,7 +40,8 @@ demo, the free grader and the public site work exactly as before.
   old or more.
 - **Daily Autopilot for every company.** Each company's Inbox gets fresh drafts every morning.
 - **Getting started** checklist on a new company's dashboard, and a nudge when the uploaded data
-  gets old.
+  gets old, or when one account's export stops two weeks or more before the others (its spending
+  since would be missing from burn).
 - **Faster.** A company with ~18,000 transactions loads its dashboard in about 0.3 s (was 1.3 s), with
   identical numbers.
 

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { UploadForm, type UploadSummary } from "@/components/upload-form";
 import { companyForPage, pendingInvitesForMe } from "@/lib/server/company";
 import { accountsEnabled } from "@/lib/server/env";
+import { laggingAccounts } from "@/lib/freshness";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -21,13 +22,14 @@ async function summaryFor(scope: string): Promise<UploadSummary | null> {
     if (!a) byAccount.set(r.account_id, { rows: 1, from: d, to: d, card: r.account_type === "credit" });
     else byAccount.set(r.account_id, { rows: a.rows + 1, from: d < a.from ? d : a.from, to: d > a.to ? d : a.to, card: a.card && r.account_type === "credit" });
   }
+  const behind = new Map(laggingAccounts(new Map([...byAccount].map(([account, a]) => [account, { lastDate: a.to, rows: a.rows }]))).map((l) => [l.account, l.daysBehind]));
   return {
     transactions: stored.rows.length,
     from: dates[0] ?? null,
     to: dates.at(-1) ?? null,
     cashCents: stored.cashCents,
     cashEnteredOn: stored.cashEnteredAt.slice(0, 10),
-    accounts: [...byAccount].map(([account, a]) => ({ account, ...a })).sort((x, y) => y.rows - x.rows),
+    accounts: [...byAccount].map(([account, a]) => ({ account, ...a, daysBehind: behind.get(account) })).sort((x, y) => y.rows - x.rows),
   };
 }
 

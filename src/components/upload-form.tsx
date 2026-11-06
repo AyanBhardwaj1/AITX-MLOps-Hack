@@ -28,6 +28,8 @@ export interface UploadSummary {
     from: string;
     to: string;
     card: boolean;
+    /** Days this account's export ends before the newest one (only when two weeks or more). */
+    daysBehind?: number;
   }[];
 }
 
@@ -333,6 +335,12 @@ export function UploadForm({
                       {a.account}
                       {a.card ? (
                         <span className="ml-1 text-xs text-muted">(card)</span>
+                      ) : null}
+                      {a.daysBehind ? (
+                        <span className="block text-xs text-warn">
+                          Ends {formatDate(a.to)}, {a.daysBehind} days behind
+                          the rest: upload a newer export
+                        </span>
                       ) : null}
                     </td>
                     <td className="tabular py-1.5 text-right">

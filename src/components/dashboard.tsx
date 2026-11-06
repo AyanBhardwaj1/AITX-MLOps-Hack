@@ -55,6 +55,8 @@ export interface DashboardData {
   companyName: string;
   /** How old a company's uploaded data is (company mode only). */
   freshness?: { daysOld: number; stale: boolean };
+  /** A company's uploaded accounts whose exports end two weeks or more before the newest one. */
+  laggingAccounts?: { name: string; lastDate: string; daysBehind: number }[];
   /** A company's cash figure: entered by hand, so it ages on its own. */
   cashFreshness?: { daysOld: number; stale: boolean; enteredOn: string };
   /** Monthly budgets: the demo's sample or a company's own; none on the sandbox feed. */
@@ -291,6 +293,16 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
               Upload a fresh export
             </Link>{" "}
             and update today&apos;s cash.
+          </p>
+        )}
+        {data.laggingAccounts && data.laggingAccounts.length > 0 && (
+          <p role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
+            {data.laggingAccounts.map((l) => `${l.name} ends ${formatDate(l.lastDate)} (${l.daysBehind} days behind)`).join("; ")}, so{" "}
+            {data.laggingAccounts.length === 1 ? "its" : "their"} spending since is missing from burn and runway reads longer than it is.{" "}
+            <Link href="/app/upload" className="font-medium underline">
+              Upload a newer export
+            </Link>
+            .
           </p>
         )}
         {data.cashFreshness?.stale && !data.freshness?.stale && (

@@ -9,7 +9,7 @@ import { analyze } from "@/lib/pipeline";
 import { redirect } from "next/navigation";
 import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
-import { cashFreshness, dataFreshness } from "@/lib/freshness";
+import { cashFreshness, dataFreshness, laggingAccounts } from "@/lib/freshness";
 import { BUDGET_CATEGORIES, budgetStatus, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
@@ -70,6 +70,17 @@ async function companyProgress(mode: DataMode, decidedFindings: number): Promise
   }
 }
 
+/** Uploaded accounts whose exports stop well before the others (their spending since is missing). */
+function laggingFor(dataset: { accounts: { id: string; account_name?: string | null }[] }, a: Analysis): DashboardData["laggingAccounts"] {
+  const latest = new Map<string, { lastDate: string; rows: number }>();
+  for (const t of a.txns) {
+    const seen = latest.get(t.accountId) ?? { lastDate: "", rows: 0 };
+    latest.set(t.accountId, { lastDate: seen.lastDate < t.postedAt ? t.postedAt : seen.lastDate, rows: seen.rows + 1 });
+  }
+  const names = new Map(dataset.accounts.map((acc) => [acc.id, acc.account_name || acc.id]));
+  return laggingAccounts(latest).map((l) => ({ name: names.get(l.account) ?? l.account, lastDate: l.lastDate, daysBehind: l.daysBehind }));
+}
+
 /** The demo's fixed sample, or a company's own (best effort: a storage hiccup shows none). */
 async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["budgets"]> {
   if (mode === "sandbox") return undefined;
@@ -114,6 +125,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     label: dataset.label,
     companyName: await companyName(mode),
     freshness: mode === "company" ? dataFreshness(a.asOf, new Date()) : undefined,
+    laggingAccounts: mode === "company" ? laggingFor(dataset, a) : undefined,
     cashFreshness: mode === "company" && dataset.cashEnteredAt ? (cashFreshness(dataset.cashEnteredAt, new Date()) ?? undefined) : undefined,
     gettingStarted: await companyProgress(mode, [...statuses.values()].filter((s) => s !== "open").length),
     asOf: a.asOf,
