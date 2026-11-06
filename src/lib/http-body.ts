@@ -25,3 +25,17 @@ export async function readBodyCapped(request: Request, maxBytes: number): Promis
   }
   return new TextDecoder().decode(all);
 }
+
+/** Small JSON request bodies (settings, decisions, sign-in) never need more than this. */
+export const MAX_JSON_BODY_BYTES = 64 * 1024;
+
+/** A JSON request body read with a byte cap: null when it's too big, empty or not JSON. */
+export async function readJsonCapped(request: Request, maxBytes = MAX_JSON_BODY_BYTES): Promise<unknown> {
+  const text = await readBodyCapped(request, maxBytes).catch(() => null);
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}

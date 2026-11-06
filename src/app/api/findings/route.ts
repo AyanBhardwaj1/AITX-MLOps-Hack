@@ -8,6 +8,7 @@ import { parseMode } from "@/lib/server/data";
 import { getStore } from "@/lib/server/store";
 import { scopeFor } from "@/lib/server/scope";
 import { isStoreError } from "@/lib/store/types";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ const body = z.object({
 /** A person accepts or dismisses a finding. Dismissals survive later detector runs. */
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  const parsed = body.safeParse(await request.json().catch(() => null));
+  const parsed = body.safeParse(await readJsonCapped(request));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
     const mode = parseMode(parsed.data.mode);

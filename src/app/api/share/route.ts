@@ -9,6 +9,7 @@ import { getStore, persistentStorageReady } from "@/lib/server/store";
 import { canWriteRealData } from "@/lib/server/write-guard";
 import { handleShare } from "@/lib/share/request";
 import { newShareToken, shareLinkState } from "@/lib/share/token";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
 /** Create or revoke a link. Cross-site writes are refused by the proxy. */
 export async function POST(request: Request) {
   if (!allowWrite(clientIp(request))) return NextResponse.json({ error: "Too many requests. Wait a minute." }, { status: 429 });
-  const body = await request.json().catch(() => null);
+  const body = (await readJsonCapped(request)) as { action?: unknown } | null;
   try {
     // The company checked once, then reused: the link must reach its creator whatever happens next.
     let companyScope: string | null = null;
@@ -58,8 +59,8 @@ export async function POST(request: Request) {
       newToken: newShareToken,
       storageReady: persistentStorageReady,
     });
-    if (result.status === 200 && companyScope && result.changed !== false && (body.action === "create" || body.action === "revoke")) {
-      await logActivity(companyScope, "share_link", body.action === "create" ? "Created an investor link" : "Revoked an investor link");
+    if (result.status === 200 && companyScope && result.changed !== false && (body?.action === "create" || body?.action === "revoke")) {
+      await logActivity(companyScope, "share_link", body?.action === "create" ? "Created an investor link" : "Revoked an investor link");
     }
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   } catch (err) {

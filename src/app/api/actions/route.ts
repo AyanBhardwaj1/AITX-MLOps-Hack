@@ -9,6 +9,7 @@ import { fileJiraTicket } from "@/lib/server/jira-client";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
 import { isStoreError } from "@/lib/store/types";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -39,7 +40,7 @@ const decideBody = z.object({
  */
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  const parsed = decideBody.safeParse(await request.json().catch(() => null));
+  const parsed = decideBody.safeParse(await readJsonCapped(request));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
     const store = getStore(await scopeFor(parseMode(parsed.data.mode)));

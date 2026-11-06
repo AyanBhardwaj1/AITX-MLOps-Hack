@@ -8,6 +8,7 @@ import { loadAnalysis } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ const body = z.object({
 /** Copilot's suggested questions answered from the tools alone (no LLM), for when OpenAI isn't configured. */
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
-  const parsed = body.safeParse(await request.json().catch(() => null));
+  const parsed = body.safeParse(await readJsonCapped(request));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
     const { mode, question } = parsed.data;

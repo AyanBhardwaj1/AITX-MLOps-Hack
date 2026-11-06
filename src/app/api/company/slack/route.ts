@@ -5,6 +5,7 @@ import { companySlackStatus, logActivity, ownerCompany } from "@/lib/server/comp
 import { accessErrorResponse } from "@/lib/server/errors";
 import { getStore } from "@/lib/server/store";
 import { isSlackWebhookUrl, normalizeSlackWebhookUrl, postToSlack } from "@/lib/slack";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   try {
     // Owner first: only the owner chooses where the digest goes (teammates may send it there now).
     const company = await ownerCompany();
-    const parsed = body.safeParse(await request.json().catch(() => null));
+    const parsed = body.safeParse(await readJsonCapped(request));
     if (!parsed.success) return NextResponse.json({ error: "Paste a Slack incoming webhook URL (https://hooks.slack.com/services/…)." }, { status: 400 });
     const url = parsed.data.url ? normalizeSlackWebhookUrl(parsed.data.url) : null;
     if (url) {

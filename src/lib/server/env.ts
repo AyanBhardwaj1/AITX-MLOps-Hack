@@ -66,4 +66,4 @@ export const accountsEnabled = () => Boolean(env().NEXT_PUBLIC_SUPABASE_URL && e
  * on a deployment with accounts: one company's data must never land in the operator's channels.
  */
 export const canSendSlackFromApp = () => hasSlack() && Boolean(env().APP_PASSWORD) && !accountsEnabled();
-export const canFileJiraFromApp = () => hasJira() && !accountsEnabled();
+export const canFileJiraFromApp = () => hasJira() && Boolean(env().APP_PASSWORD) && !accountsEnabled();

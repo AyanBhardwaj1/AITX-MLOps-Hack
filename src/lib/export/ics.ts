@@ -13,8 +13,17 @@ const HORIZON_DAYS = 365;
 const REMIND_DAYS_BEFORE = 14;
 const DAY_MS = 86_400_000;
 
-/** RFC 5545 TEXT escaping: backslash, semicolon, comma and newlines. */
-const text = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+/**
+ * RFC 5545 TEXT escaping: backslash, semicolon, comma, and every line break (CR, LF or both) as
+ * "\\n"; other control characters are dropped, so text from a bank file can't start a new line.
+ */
+const text = (s: string) =>
+  s
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/[\u0000-\u001f\u007f]/g, "");
 
 /** Lines of at most 75 octets, continued with a leading space, never splitting a character. */
 function fold(line: string): string {

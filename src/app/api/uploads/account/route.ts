@@ -4,6 +4,7 @@ import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { logActivity, ownerCompany, sessionUser } from "@/lib/server/company";
 import { accessErrorResponse, SignInRequired } from "@/lib/server/errors";
 import { getStore } from "@/lib/server/store";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   try {
     if (!(await sessionUser())) throw new SignInRequired();
-    const parsed = body.safeParse(await request.json().catch(() => null));
+    const parsed = body.safeParse(await readJsonCapped(request));
     if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     // Owner only: deleting account by account would otherwise let a member empty the company.
     const { scope } = await ownerCompany();

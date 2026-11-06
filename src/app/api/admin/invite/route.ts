@@ -3,6 +3,7 @@ import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { isOperator } from "@/lib/server/operator";
 import { getWaitlist } from "@/lib/server/waitlist";
 import { waitlistInput } from "@/lib/waitlist/types";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   // Anyone else gets the same answer as a page that doesn't exist.
   if (!(await isOperator())) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const parsed = body.safeParse(await request.json().catch(() => null));
+  const parsed = body.safeParse(await readJsonCapped(request));
   if (!parsed.success) return NextResponse.json({ error: "Enter an email address." }, { status: 400 });
   const waitlist = getWaitlist();
   if (!waitlist) return NextResponse.json({ error: "The waitlist needs DATABASE_URL on this deployment." }, { status: 503 });

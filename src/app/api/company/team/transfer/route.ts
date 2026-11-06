@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sessionUser, transferCompany } from "@/lib/server/company";
 import { SignInRequired } from "@/lib/server/errors";
 import { teamError } from "@/lib/server/team-route";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ const body = z.object({ userId: z.uuid() });
 export async function POST(request: Request) {
   try {
     if (!(await sessionUser())) throw new SignInRequired();
-    const parsed = body.safeParse(await request.json().catch(() => null));
+    const parsed = body.safeParse(await readJsonCapped(request));
     if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     if (await transferCompany(parsed.data.userId)) return NextResponse.json({ transferred: true });
     return NextResponse.json({ error: "Only a current teammate can become the owner." }, { status: 404 });

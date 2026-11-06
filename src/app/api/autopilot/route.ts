@@ -7,6 +7,7 @@ import { executeAutopilot } from "@/lib/server/autopilot-service";
 import { parseMode } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) {
     return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   }
-  const parsed = body.safeParse(await request.json().catch(() => ({})));
+  const parsed = body.safeParse((await readJsonCapped(request)) ?? {});
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
     const run = await executeAutopilot(parsed.data.mode, "manual");

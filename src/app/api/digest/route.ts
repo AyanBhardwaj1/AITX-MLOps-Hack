@@ -9,6 +9,7 @@ import { scopeFor } from "@/lib/server/scope";
 import { createSharedRateLimiter } from "@/lib/server/shared-rate-limit";
 import { buildDigestFor, sendCompanyDigestNow, sendDigest } from "@/lib/server/digest-service";
 import { accountsEnabled, canSendSlackFromApp, hasSlack } from "@/lib/server/env";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
 /** Send the digest to Slack now. */
 export async function POST(request: Request) {
   if (!allowSend(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
-  const raw = await request.json().catch(() => null);
+  const raw = (await readJsonCapped(request)) as { mode?: unknown } | null;
   // A company's digest goes to its own Slack, never the operator's.
   if (dataModeSchema.safeParse(raw?.mode).data === "company") return sendToCompanySlack();
   if (!hasSlack()) return NextResponse.json({ error: "Slack isn't set up: add SLACK_WEBHOOK_URL on the server." }, { status: 503 });

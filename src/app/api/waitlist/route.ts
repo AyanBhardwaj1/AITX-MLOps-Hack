@@ -3,6 +3,7 @@ import { clientIp } from "@/lib/rate-limit";
 import { createSharedRateLimiter } from "@/lib/server/shared-rate-limit";
 import { getWaitlist } from "@/lib/server/waitlist";
 import { handleSignup } from "@/lib/waitlist/signup";
+import { readBodyCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,9 @@ export async function POST(request: Request) {
   if (!(await allow(clientIp(request)))) return NextResponse.json({ error: "Too many tries. Wait a minute and try again." }, { status: 429 });
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return NextResponse.json({ error: "Request too large" }, { status: 413 });
-  const text = await request.text().catch(() => "");
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return NextResponse.json({ error: "Request too large" }, { status: 413 });
+  // Counted as it arrives, so a chunked body with no length can't be buffered without limit.
+  const text = await readBodyCapped(request, MAX_BODY_BYTES).catch(() => "");
+  if (text === null) return NextResponse.json({ error: "Request too large" }, { status: 413 });
 
   const store = getWaitlist();
   if (!store) {

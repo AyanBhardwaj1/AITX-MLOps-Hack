@@ -9,6 +9,7 @@ import { getStore } from "@/lib/server/store";
 import type { VendorCorrection } from "@/lib/vendors/corrections";
 import { handleCorrection, type CorrectionSink } from "@/lib/vendors/correction-request";
 import { DEMO_CORRECTIONS_COOKIE, MAX_DEMO_CORRECTIONS, decodeDemoCorrections, encodeDemoCorrections } from "@/lib/vendors/demo-cookie";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,7 @@ function demoSink(initial: VendorCorrection[]) {
 /** Set or clear a person's category fix for one vendor. Behind APP_PASSWORD when set; cross-site writes are refused by the proxy. */
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many changes. Wait a minute." }, { status: 429 });
-  const body = await request.json().catch(() => null);
+  const body = await readJsonCapped(request);
   const demo = demoSink(decodeDemoCorrections(cookieValue(request, DEMO_CORRECTIONS_COOKIE)));
   try {
     const result = await handleCorrection(body, {

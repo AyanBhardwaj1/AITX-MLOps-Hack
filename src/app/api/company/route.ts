@@ -4,6 +4,7 @@ import { companyNameSchema } from "@/lib/accounts/types";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { renameCurrentCompany, sessionUser } from "@/lib/server/company";
 import { accessErrorResponse, SignInRequired } from "@/lib/server/errors";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   try {
     // Who's asking comes first, so a signed-out request learns nothing about validation.
     if (!(await sessionUser())) throw new SignInRequired();
-    const parsed = body.safeParse(await request.json().catch(() => null));
+    const parsed = body.safeParse(await readJsonCapped(request));
     if (!parsed.success) return NextResponse.json({ error: "Enter a name of 1 to 80 characters." }, { status: 400 });
     return NextResponse.json({ name: await renameCurrentCompany(parsed.data.name) });
   } catch (err) {

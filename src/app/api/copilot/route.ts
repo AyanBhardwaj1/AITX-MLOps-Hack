@@ -11,6 +11,7 @@ import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
 import { loadAnalysis } from "@/lib/server/data";
 import { hasOpenAI } from "@/lib/server/env";
+import { readBodyCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -30,8 +31,9 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) {
     return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   }
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return NextResponse.json({ error: "Request too large" }, { status: 413 });
+  // Bytes counted as they arrive, so an oversized or chunked body is never held whole.
+  const raw = await readBodyCapped(request, MAX_BODY_BYTES).catch(() => "");
+  if (raw === null) return NextResponse.json({ error: "Request too large" }, { status: 413 });
 
   let json: unknown;
   try {

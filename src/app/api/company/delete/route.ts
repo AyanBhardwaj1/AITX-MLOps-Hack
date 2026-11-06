@@ -3,6 +3,7 @@ import { z } from "zod";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { deleteCurrentCompany, sessionUser } from "@/lib/server/company";
 import { accessErrorResponse, SignInRequired } from "@/lib/server/errors";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   try {
     if (!(await sessionUser())) throw new SignInRequired();
-    const parsed = body.safeParse(await request.json().catch(() => null));
+    const parsed = body.safeParse(await readJsonCapped(request));
     const result = parsed.success ? await deleteCurrentCompany(parsed.data.confirm) : "mismatch";
     if (result === "mismatch") return NextResponse.json({ error: "Type the company’s name exactly to confirm." }, { status: 400 });
     return NextResponse.json({ deleted: true });

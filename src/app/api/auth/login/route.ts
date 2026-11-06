@@ -8,6 +8,7 @@ import { createSharedRateLimiter } from "@/lib/server/shared-rate-limit";
 import { env } from "@/lib/server/env";
 import { isInvited } from "@/lib/server/company";
 import { siteUrl } from "@/lib/site-url";
+import { readJsonCapped } from "@/lib/http-body";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   const supabase = await supabaseForRoute();
   if (!supabase) return NextResponse.json({ error: "Sign-in isn't set up on this deployment yet." }, { status: 503 });
   const origin = process.env.VERCEL ? siteUrl().origin : new URL(request.url).origin;
-  const body = await request.json().catch(() => null);
+  const body = await readJsonCapped(request);
   const result = await handleLoginRequest(body, {
     sendLink: async (email) => {
       // Skipped quietly, so the answer is the same and says nothing about the address.
