@@ -70,6 +70,8 @@ export function InboxPanel({
   }, [active, mode]);
 
   async function decide(id: string, decision: "approved" | "rejected") {
+    // aria-disabled (not disabled) keeps focus on the button while it's busy: ignore repeat presses.
+    if (busy) return;
     setBusy(id);
     try {
       const res = await fetch("/api/actions", {
@@ -132,17 +134,17 @@ export function InboxPanel({
                 <>
                   <button
                     type="button"
-                    disabled={busy === a.id}
+                    aria-disabled={busy === a.id}
                     onClick={() => void decide(a.id, "approved")}
-                    className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50"
+                    className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px aria-disabled:opacity-50"
                   >
                     {a.kind === "jira_ticket" && jira ? "Approve & file" : "Approve"}
                   </button>
                   <button
                     type="button"
-                    disabled={busy === a.id}
+                    aria-disabled={busy === a.id}
                     onClick={() => void decide(a.id, "rejected")}
-                    className="rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-canvas active:translate-y-px disabled:opacity-50"
+                    className="rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-canvas active:translate-y-px aria-disabled:opacity-50"
                   >
                     Reject
                   </button>

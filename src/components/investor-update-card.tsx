@@ -2,7 +2,7 @@
 
 import type { DataMode } from "@/lib/modes";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 const COPIED_MS = 2_000;
 
@@ -12,6 +12,13 @@ type State = { status: "idle" | "loading" } | { status: "ready"; subject: string
 export function InvestorUpdateCard({ mode }: { mode: DataMode }) {
   const id = useId();
   const [state, setState] = useState<State>({ status: "idle" });
+  // The button that was pressed goes away with the draft: once it's on screen, focus moves to it.
+  const focusDraft = useRef(false);
+  useEffect(() => {
+    if (state.status !== "ready" || !focusDraft.current) return;
+    focusDraft.current = false;
+    document.getElementById(`${id}-text`)?.focus();
+  }, [state.status, id]);
   const [copied, setCopied] = useState(false);
 
   async function draft() {
@@ -20,8 +27,7 @@ export function InvestorUpdateCard({ mode }: { mode: DataMode }) {
       const res = await fetch(`/api/investor-update?mode=${mode}`);
       const json = (await res.json()) as { subject?: string; markdown?: string; error?: string };
       setState(res.ok && json.markdown && json.subject ? { status: "ready", subject: json.subject, text: json.markdown } : { status: "error", message: json.error ?? "Couldn't draft the update." });
-      // The button that was pressed goes away with the draft: focus moves to the draft itself.
-      if (res.ok) setTimeout(() => document.getElementById(`${id}-text`)?.focus(), 0);
+      focusDraft.current = res.ok;
     } catch {
       setState({ status: "error", message: "Couldn't reach the server. Try again." });
     }
