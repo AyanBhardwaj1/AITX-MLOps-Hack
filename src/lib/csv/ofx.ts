@@ -72,13 +72,15 @@ interface Statement {
  * "cut_short" when one doesn't (a truncated download), so nothing is read from half a file.
  */
 function findStatements(text: string): Statement[] | "cut_short" {
-  const upper = text.toUpperCase();
   const opens = [...text.matchAll(STATEMENT_OPEN)];
   const statements: Statement[] = [];
   for (const [i, open] of opens.entries()) {
     const kind = open[1]!.toUpperCase();
     const bodyStart = open.index! + open[0].length;
-    const end = upper.indexOf(`</${kind}>`, bodyStart);
+    // Searched in the text itself: upper-casing can lengthen letters ("ß" → "SS") and shift positions.
+    const close = new RegExp(`</${kind}>`, "gi");
+    close.lastIndex = bodyStart;
+    const end = close.exec(text)?.index ?? -1;
     const next = opens[i + 1]?.index ?? Number.POSITIVE_INFINITY;
     if (end === -1 || end > next) return "cut_short";
     statements.push({ kind, body: text.slice(bodyStart, end), bodyStart });
@@ -159,16 +161,19 @@ interface StatementAccount {
   card: boolean;
   /** How the name tells it from a checking account ending alike ("" for checking). */
   kindName: string;
+  /** A kind whose balance is cash (checking, savings, money market, CD). */
+  cash: boolean;
 }
 
 const ACCOUNT_KINDS: Record<string, string> = { CHECKING: "", SAVINGS: " savings", MONEYMRKT: " money market", CREDITLINE: " credit line", CD: " CD" };
 
 function statementAccount(kind: string, body: string): StatementAccount {
   const id = value(body, F.acctid).replace(/\s/g, "");
-  if (kind === "CCSTMTRS") return { id, card: true, kindName: " card" };
+  if (kind === "CCSTMTRS") return { id, card: true, kindName: " card", cash: false };
   const type = value(body, F_ACCTTYPE).toUpperCase();
-  const kindName = ACCOUNT_KINDS[type] ?? (type ? ` ${type.toLowerCase()}` : "");
-  return { id, card: type === "CREDITLINE", kindName };
+  const known = Object.hasOwn(ACCOUNT_KINDS, type);
+  // An unknown kind keeps the plain name (never text from the file) and isn't counted as cash.
+  return { id, card: type === "CREDITLINE", kindName: known ? ACCOUNT_KINDS[type]! : "", cash: (known || type === "") && type !== "CREDITLINE" };
 }
 
 /**
@@ -186,7 +191,7 @@ function accountName(label: string, a: StatementAccount): string {
  * Keyed by the account number (kept in the browser), or by `fallback` when the file gives none.
  */
 function statementBalance(body: string, a: StatementAccount, fallback: string): OfxBalance | null {
-  if (a.card) return null;
+  if (!a.cash) return null;
   const ledger = LEDGER.exec(body.slice(body.lastIndexOf("</BANKTRANLIST>") + 1))?.[1];
   const cents = ledger ? ofxAmount(value(ledger, F_BAL.amount)) : null;
   return cents === null ? null : { key: a.id || fallback, cents, asOf: ofxDate(value(ledger!, F_BAL.asOf)) };
@@ -221,6 +226,7 @@ export function importOfx(text: string, { accountId, resolvePayoffs = true, flip
   };
   const ids = statements.map((s) => statementAccount(s.kind, s.body));
   // Two accounts of one kind ending alike would share a name and merge: ask for separate files.
+  if (ids.filter((a) => !a.id).length > 1) throw new Error("This file has several accounts without account numbers. Download each one on its own and upload them with different names.");
   const names = new Map<string, string>();
   for (const a of ids) {
     const name = accountName(accountId, a);

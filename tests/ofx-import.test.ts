@@ -230,6 +230,27 @@ describe("OFX review fixes", () => {
     expect(() => importOfx(second("CHECKING", "9996789"), { accountId: "chase" })).toThrow(/two checking accounts ending 6789/);
   });
 
+  it("finds statements correctly around letters that grow when capitalised", () => {
+    const both = sgmlChecking.replace("<NAME>GUSTO PAYROLL", `<NAME>${"Straße ﬁ ".repeat(400)}`).replace("</BANKMSGSRSV1>", "</BANKMSGSRSV1>" + xmlCard.slice(xmlCard.indexOf("<CREDITCARDMSGSRSV1>"), xmlCard.indexOf("</OFX>")));
+    const r = importOfx(both, { accountId: "a" });
+    expect(r.transactions).toHaveLength(8);
+    expect(readOfxBalances(both, "a")).toHaveLength(1);
+  });
+
+  it("doesn't count an account of an unknown kind as cash, or name it from the file's text", () => {
+    const odd = sgmlChecking.replace("<ACCTTYPE>CHECKING", "<ACCTTYPE>LINEOFCREDIT");
+    const r = importOfx(odd, { accountId: "a" });
+    expect(r.transactions[0]!.account_id).toBe("a …6789");
+    expect(r.balances).toEqual([]);
+  });
+
+  it("refuses several accounts without numbers in one file, rather than merging them", () => {
+    const noIds = sgmlChecking.replace("<ACCTID>000123456789", "").replace("</BANKMSGSRSV1>", "</BANKMSGSRSV1>" + xmlCard.slice(xmlCard.indexOf("<CREDITCARDMSGSRSV1>"), xmlCard.indexOf("</OFX>")).replace("<ACCTID>4111111111114321</ACCTID>", ""));
+    expect(() => importOfx(noIds, { accountId: "a" })).toThrow(/without account numbers/);
+    // One such account on its own is fine: it takes the file's name.
+    expect(importOfx(sgmlChecking.replace("<ACCTID>000123456789", ""), { accountId: "a" }).transactions[0]!.account_id).toBe("a");
+  });
+
   it("treats a card statement's PAYMENT as the payoff, so card spend isn't counted twice", () => {
     const card = xmlCard.replace("<TRNTYPE>CREDIT</TRNTYPE><DTPOSTED>20261020</DTPOSTED><TRNAMT>500.00</TRNAMT><FITID>a3</FITID><NAME>PAYMENT THANK YOU</NAME>", "<TRNTYPE>PAYMENT</TRNTYPE><DTPOSTED>20261020</DTPOSTED><TRNAMT>500.00</TRNAMT><FITID>a3</FITID><NAME>ONLINE PMT - THANKS</NAME>");
     const r = importOfx(card, { accountId: "amex", resolvePayoffs: false });
