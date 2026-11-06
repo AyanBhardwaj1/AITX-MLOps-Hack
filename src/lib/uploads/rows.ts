@@ -104,9 +104,9 @@ export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {
  */
 export function uploadedDataset({ cashCents, rows: all, today }: { cashCents: Cents; rows: readonly RhoTransaction[]; today?: string }): { accounts: RhoAccount[]; transactions: RhoTransaction[] } {
   // A row dated after today (a scheduled payment in the export) hasn't happened: counted, it would
-  // move "as of" into the future and quiet the alerts. A day's grace for time zones.
-  const latest = today ? new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) : null;
-  const rows = latest ? all.filter((r) => (r.posted_at ?? r.initiated_at).slice(0, 10) <= latest) : all;
+  // move "as of" into the future and quiet the alerts (a rent payment due on the 1st, uploaded on
+  // the 31st, would turn the month). Today is UTC, which is already tomorrow for US evenings.
+  const rows = today ? all.filter((r) => (r.posted_at ?? r.initiated_at).slice(0, 10) <= today) : all;
   const accountTypes = new Map<string, RhoAccount["account_type"]>();
   for (const r of rows) {
     // An account with any non-card row holds cash (a debit card on checking is still checking).

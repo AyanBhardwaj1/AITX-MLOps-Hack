@@ -107,6 +107,9 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   if (!Number.isFinite(cashCents)) throw new Error("Enter today's total cash balance");
 
   const raw: RhoTransaction[] = [];
+  // A row dated after today (a scheduled payment in the export) hasn't happened yet: left out, or it
+  // would move "as of" into the future. UTC, which is already tomorrow for US evenings.
+  const today = new Date().toISOString().slice(0, 10);
   const errors: string[] = [];
   const inverted: string[] = [];
   const seenTexts = new Set<string>();
@@ -127,7 +130,9 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
       // Card payoffs are decided over all files together below, never per file.
       const r = importStatement(f.text, { accountId: `upload_${i + 1}`, resolvePayoffs: false });
       read.push(r.transactions);
-      fileKeys.push({ name: f.name, label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
+      // Rows dated after today are left out below, so they don't say how far an export reaches either.
+      const dated = r.transactions.filter((t) => t.initiated_at.slice(0, 10) <= today);
+      fileKeys.push({ name: f.name, label: fileAccountLabel(f.name), keys: dated.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {
@@ -155,10 +160,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     fileRows.push(mine);
   });
   if (raw.length === 0) throw new Error(errors[0] ?? "No readable transactions in these files");
-  // A row dated after tomorrow (a scheduled payment in the export) hasn't happened yet: left out,
-  // or it would move "as of" into the future.
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-  const happened = raw.filter((t) => (t.posted_at ?? t.initiated_at).slice(0, 10) <= tomorrow);
+  const happened = raw.filter((t) => (t.posted_at ?? t.initiated_at).slice(0, 10) <= today);
   const future = raw.length - happened.length;
   if (happened.length === 0) throw new Error("Every row in these files is dated after today");
   const { transactions, cardSpendAsPayoffs: payoffsAsSpend } = resolveCardPayoffs(happened);
