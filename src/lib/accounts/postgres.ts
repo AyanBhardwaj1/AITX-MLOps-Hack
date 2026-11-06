@@ -141,6 +141,11 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
       return (rowCount ?? 0) > 0;
     },
 
+    async leaveCompany(userId) {
+      const { rowCount } = await pool.query(`delete from public.memberships where user_id = $1 and role <> 'owner'`, [userId]);
+      return (rowCount ?? 0) > 0;
+    },
+
     async removeMember(ownerId, memberUserId) {
       const { rowCount } = await pool.query(
         `delete from public.memberships t using public.memberships o

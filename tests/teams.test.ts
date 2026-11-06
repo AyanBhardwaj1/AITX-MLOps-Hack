@@ -119,4 +119,35 @@ describe("teammates", () => {
     expect((await accept(post("/api/company/invites/accept", { orgId: "not-a-uuid" }))).status).toBe(400);
     expect((await accept(post("/api/company/invites/accept", { orgId: owner.orgId }))).status).toBe(404);
   });
+
+  it("only the owner can delete all the company's uploaded data", async () => {
+    const ownerId = crypto.randomUUID();
+    const owner = await ownerWithCompany(ownerId);
+    const { getStore } = await import("@/lib/server/store");
+    await getStore(owner.scope).setCorrection({ vendorKey: "zoom", category: "other", job: null }, 10);
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: "clearer@acme.example" }));
+    as(crypto.randomUUID(), "clearer@acme.example");
+    const clear = (await import("@/app/api/uploads/clear/route")).POST;
+    expect((await clear()).status).toBe(403);
+    expect(await getStore(owner.scope).listCorrections()).toHaveLength(1);
+    as(ownerId);
+    expect((await clear()).status).toBe(200);
+  });
+
+  it("a member can leave the team; the owner can't leave their own company", async () => {
+    const ownerId = crypto.randomUUID();
+    await ownerWithCompany(ownerId);
+    const team = await import("@/app/api/company/team/route");
+    await team.POST(post("/api/company/team", { email: "leaver@acme.example" }));
+    const leaverId = crypto.randomUUID();
+    as(leaverId, "leaver@acme.example");
+    const { scopeFor } = await import("@/lib/server/scope");
+    await scopeFor("company");
+    const leave = (await import("@/app/api/company/team/leave/route")).POST;
+    expect((await leave()).status).toBe(200);
+    await expect(scopeFor("company")).rejects.toMatchObject({ name: "NotInvited" });
+    as(ownerId);
+    expect((await leave()).status).toBe(409);
+  });
 });

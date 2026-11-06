@@ -60,6 +60,8 @@ export interface AccountsStore {
   /** The members and pending invites of the user's company. */
   team(userId: string): Promise<Team | null>;
   revokeInvite(ownerId: string, email: string): Promise<boolean>;
+  /** A member leaves their company (never the owner, who deletes it instead). */
+  leaveCompany(userId: string): Promise<boolean>;
   /** The owner removes a member (never the owner). */
   removeMember(ownerId: string, memberUserId: string): Promise<boolean>;
   /** Companies that have invited this (verified) email. */

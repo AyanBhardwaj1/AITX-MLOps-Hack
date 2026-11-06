@@ -61,7 +61,7 @@ export default async function UploadPage() {
           instead of setting up a new company.
         </p>
       )}
-      <UploadForm summary={summary} storageReady={persistentStorageReady()} />
+      <UploadForm summary={summary} storageReady={persistentStorageReady()} owner={company.role === "owner"} />
     </main>
   );
 }

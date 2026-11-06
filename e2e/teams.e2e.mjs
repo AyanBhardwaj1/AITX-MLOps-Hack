@@ -27,6 +27,10 @@ await suite("teams", async ({ browser, step }) => {
     assert.equal(await mate.getByLabel("Invite by email").count(), 0);
     assert.equal(await mate.getByRole("button", { name: "Delete company" }).count(), 0);
     assert.equal((await mate.request.post(`${APP}/api/company/team`, { data: { email: "x@y.example" }, headers: { Origin: APP } })).status(), 403);
+    await mate.goto(`${APP}/app/upload`);
+    await mate.getByRole("heading", { name: "Stored for your company", exact: true }).waitFor();
+    assert.equal(await mate.getByRole("button", { name: "Delete all uploaded data" }).count(), 0);
+    assert.equal((await mate.request.post(`${APP}/api/uploads/clear`, { headers: { Origin: APP } })).status(), 403);
   });
   await step("a removed teammate loses access", async () => {
     await owner.goto(`${APP}/app/settings`);
@@ -49,5 +53,14 @@ await suite("teams", async ({ browser, step }) => {
     await cof.getByRole("button", { name: /^Join / }).click();
     await cof.waitForURL(`${APP}/app?mode=company`);
     await cof.getByText(/^Acme · your uploaded exports/).waitFor();
+  });
+  await step("a member can leave; with their own waitlist invite they start a company of their own", async () => {
+    cof.on("dialog", (d) => d.accept());
+    await cof.goto(`${APP}/app/settings`);
+    await cof.getByRole("button", { name: "Leave this company" }).click();
+    await cof.waitForURL(`${APP}/`);
+    await cof.goto(`${APP}/app?mode=company`);
+    await cof.waitForURL(/\/app\/upload$/, { timeout: 10_000 });
+    await cof.getByRole("heading", { name: /^Set up / }).waitFor();
   });
 });

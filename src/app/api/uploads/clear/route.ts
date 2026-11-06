@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { accessErrorResponse } from "@/lib/server/errors";
-import { scopeFor } from "@/lib/server/scope";
+import { ownerCompany } from "@/lib/server/company";
 import { getStore } from "@/lib/server/store";
 
 export const runtime = "nodejs";
 
-/** Deletes everything the signed-in company uploaded (transactions and the entered cash). */
+/** The owner deletes everything the company uploaded, and everything worked out from it. */
 export async function POST() {
   try {
-    await getStore(await scopeFor("company")).clearUploads();
+    // Owner only: it also deletes the team's findings, drafts and share links.
+    await getStore((await ownerCompany()).scope).clearUploads();
     return NextResponse.json({ ok: true });
   } catch (err) {
     const known = accessErrorResponse(err);

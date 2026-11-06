@@ -99,6 +99,11 @@ export function createMemoryAccounts(): AccountsStore {
       invites = invites.filter((i) => !(i.orgId === orgId && i.email === normalized));
       return invites.length < before;
     },
+    async leaveCompany(userId) {
+      const before = memberships.length;
+      memberships = memberships.filter((m) => !(m.userId === userId && m.role !== "owner"));
+      return memberships.length < before;
+    },
     async removeMember(ownerId, memberUserId) {
       const orgId = ownedOrg(ownerId);
       if (!orgId) return false;

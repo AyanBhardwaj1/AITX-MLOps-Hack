@@ -83,7 +83,8 @@ function dollarsToCents(text: string): number | null {
   return Math.round(Number(cleaned) * 100);
 }
 
-export function UploadForm({ summary, storageReady }: { summary: UploadSummary | null; storageReady: boolean }) {
+/** `owner`: only the owner may delete everything (it also removes the team's findings and share links). */
+export function UploadForm({ summary, storageReady, owner }: { summary: UploadSummary | null; storageReady: boolean; owner: boolean }) {
   const id = useId();
   const router = useRouter();
   const [files, setFiles] = useState<Picked[]>([]);
@@ -217,9 +218,11 @@ export function UploadForm({ summary, storageReady }: { summary: UploadSummary |
             <a href="/api/export?mode=company&kind=transactions" download className="rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-canvas">
               Download all as CSV
             </a>
-            <button type="button" onClick={() => void deleteAll()} disabled={deleting} className="rounded-lg border border-line px-4 py-2 text-sm text-warn transition-colors hover:bg-warn-soft disabled:opacity-60">
-              {deleting ? "Deleting…" : "Delete my uploaded data"}
-            </button>
+            {owner && (
+              <button type="button" onClick={() => void deleteAll()} disabled={deleting} className="rounded-lg border border-line px-4 py-2 text-sm text-warn transition-colors hover:bg-warn-soft disabled:opacity-60">
+                {deleting ? "Deleting…" : "Delete all uploaded data"}
+              </button>
+            )}
           </div>
         </section>
       )}

@@ -175,3 +175,10 @@ export async function companySlackStatus(): Promise<{ connected: boolean; hint: 
 export async function ownerCompany(): Promise<Company> {
   return (await ownedCompany()).company;
 }
+
+/** The signed-in member leaves their company; false for the owner (who deletes the company instead). */
+export async function leaveCurrentCompany(): Promise<boolean> {
+  const user = await sessionUser();
+  if (!user) throw new SignInRequired();
+  return getAccounts().leaveCompany(user.id);
+}

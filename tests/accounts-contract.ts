@@ -181,6 +181,19 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
         expect((await store.companyFor(b.id))!.role).toBe("owner");
       });
 
+      it("lets a member leave, but never the owner", async () => {
+        const store = await makeStore();
+        const owner = user();
+        await store.ensureCompanyFor(owner);
+        const mate = user();
+        await store.invite(owner.id, mate.email);
+        await store.ensureCompanyFor(mate);
+        expect(await store.leaveCompany(owner.id)).toBe(false);
+        expect(await store.leaveCompany(mate.id)).toBe(true);
+        expect(await store.companyFor(mate.id)).toBeNull();
+        expect((await store.team(owner.id))!.members).toHaveLength(1);
+      });
+
       it("drops pending invites with the company", async () => {
         const store = await makeStore();
         const owner = user();

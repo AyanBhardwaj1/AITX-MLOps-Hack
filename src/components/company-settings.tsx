@@ -38,7 +38,7 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
   }
 
   const field = "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:border-brand";
-  if (!owner) return <p className="mt-6 rounded-xl border border-line bg-panel p-5 text-sm text-muted">Only the company’s owner can rename or delete it.</p>;
+  if (!owner) return <LeaveCompany />;
   return (
     <div className="mt-6 space-y-6">
       <form onSubmit={(e) => void saveName(e)} className="space-y-3 rounded-xl border border-line bg-panel p-5">
@@ -95,5 +95,34 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
         )}
       </form>
     </div>
+  );
+}
+
+/** A member leaves the team; their sign-in stays, without a company until they're invited again. */
+function LeaveCompany() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function leave() {
+    if (!window.confirm("Leave this company? You'll lose access to its data until you're invited again.")) return;
+    setBusy(true);
+    const r = await post("/api/company/team/leave", {});
+    setBusy(false);
+    if (!r.ok) return setError(r.error ?? "That didn’t go through. Try again.");
+    router.push("/");
+    router.refresh();
+  }
+  return (
+    <section className="mt-6 rounded-xl border border-line bg-panel p-5">
+      <p className="text-sm text-muted">Only the company’s owner can rename or delete it, or manage the team.</p>
+      <button type="button" onClick={() => void leave()} disabled={busy} className="mt-3 rounded-lg border border-warn px-4 py-2 text-sm font-medium text-warn hover:bg-warn-soft disabled:opacity-50">
+        {busy ? "Leaving…" : "Leave this company"}
+      </button>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-warn">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
