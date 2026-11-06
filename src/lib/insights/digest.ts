@@ -1,7 +1,7 @@
 import { STALE_AFTER_DAYS } from "../freshness";
 import { monthlyHistory } from "../finance/history";
 import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
-import { categoryName, formatDate } from "../format";
+import { categoryName, formatDate, formatMoney } from "../format";
 import type { BudgetRow } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
@@ -106,15 +106,17 @@ function blocks(d: DigestInput): Block[] {
   if (d.budgets?.length) {
     const off = d.budgets.filter((b) => b.status !== "under");
     const label = (c: BudgetRow["category"]) => categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1);
-    out.push({ kind: "h", text: "Budgets" });
+    const monthName = new Date(`${d.asOf.slice(0, 7)}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
+    const lastDay = new Date(Date.UTC(Number(d.asOf.slice(0, 4)), Number(d.asOf.slice(5, 7)), 0)).getUTCDate();
+    out.push({ kind: "h", text: `Budgets, ${monthName}${Number(d.asOf.slice(8, 10)) === lastDay ? "" : " so far"}` });
     out.push(
       off.length
         ? {
             kind: "ul",
             items: off.map((b) =>
               b.status === "over"
-                ? [{ bold: `${label(b.category)} over budget` }, `: ${formatDollars(b.monthToDateCents)} so far of ${formatDollars(b.monthlyCents)}.`]
-                : [{ bold: `${label(b.category)} heading over` }, `: ${formatDollars(b.projectedCents)} likely of ${formatDollars(b.monthlyCents)}.`],
+                ? [{ bold: `${label(b.category)} over budget` }, `: ${formatMoney(b.monthToDateCents)} so far of ${formatMoney(b.monthlyCents)}.`]
+                : [{ bold: `${label(b.category)} heading over` }, `: ${formatMoney(b.projectedCents)} likely of ${formatMoney(b.monthlyCents)}.`],
             ),
           }
         : { kind: "p", spans: [`Your ${d.budgets.length} budget${d.budgets.length === 1 ? " is" : "s are all"} on track.`] },

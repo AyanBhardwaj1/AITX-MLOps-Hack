@@ -1,4 +1,4 @@
-import { addDays, monthKey, shiftMonth } from "../dates";
+import { addDays, addMonths, monthKey, shiftMonth } from "../dates";
 import { CADENCE_DAYS } from "../detect/recurring";
 import { MAX_CASH_CENTS } from "../money";
 import { CATEGORIES, type Category, type Cents, type EnrichedTxn, type IsoDate, type RecurringStream } from "../types";
@@ -36,28 +36,35 @@ export function parseBudgetInput(raw: unknown): { category: Category; monthlyCen
 
 const daysInMonth = (month: string) => new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
 
+/** Calendar months between charges, for cadences that bill on a day of the month. */
+const MONTHS_APART: Partial<Record<RecurringStream["cadence"], number>> = { monthly: 1, quarterly: 3, annual: 12 };
+/** Before a week of the month has passed, one-off spend is too thin to extrapolate (a flight on the 1st isn't 30 flights). */
+const MIN_PACE_DAYS = 7;
+
 /**
- * A stream's charges still to come this month (one that's due but not yet seen counts too),
- * capped at its usual number a month less those already charged: stepping by an average cycle
- * would otherwise invent a third semimonthly payday on the 30th.
+ * A stream's charges still to come this month: due after the as-of day (one due today but not yet
+ * posted usually lands next month) and by the month's end. Monthly and longer bills step in
+ * calendar months from the last charge, so a bill on the 31st still lands in February; weekly and
+ * biweekly step exactly, so a fifth Friday or third payday counts. Semimonthly steps are averages,
+ * so they're capped at two a month, and monthly and longer at one, less those already charged.
  */
-function stillDue(s: RecurringStream, month: string, seenThisMonth: number): number {
-  const days = daysInMonth(month);
-  const monthEnd = `${month}-${String(days).padStart(2, "0")}`;
+function stillDue(s: RecurringStream, asOf: IsoDate, month: string, seenThisMonth: number): number {
+  const monthEnd = `${month}-${String(daysInMonth(month)).padStart(2, "0")}`;
+  const months = MONTHS_APART[s.cadence];
   let count = 0;
-  for (let k = 0; k < 40; k++) {
-    const due = addDays(s.nextExpected, Math.round(k * CADENCE_DAYS[s.cadence]));
+  for (let k = 0; k < 60; k++) {
+    const due = months ? addMonths(s.lastDate, (k + 1) * months) : addDays(s.nextExpected, Math.round(k * CADENCE_DAYS[s.cadence]));
     if (due > monthEnd) break;
-    if (due >= `${month}-01`) count += 1;
+    if (due > asOf && due >= `${month}-01`) count += 1;
   }
-  const usual = Math.max(1, Math.round(days / CADENCE_DAYS[s.cadence]));
-  return Math.min(count, Math.max(0, usual - seenThisMonth));
+  const cap = months ? 1 : s.cadence === "semimonthly" ? 2 : Number.POSITIVE_INFINITY;
+  return Math.min(count, Math.max(0, cap - seenThisMonth));
 }
 
 /**
  * Each budget against this month so far, last month in full, and the month's likely total:
  * what's spent, plus recurring bills still due this month at their usual amount, plus the rest
- * (one-off spend) at its daily pace so far. Same spend rule as the burn figures; integer cents.
+ * (one-off spend) at its daily pace so far, once a week of the month has passed. Same spend rule as the burn figures; integer cents.
  * Without `streams`, everything is treated as one-off spend.
  */
 export function budgetStatus(txns: readonly EnrichedTxn[], asOf: IsoDate, budgets: readonly Budget[], streams: readonly RecurringStream[] = []): BudgetRow[] {
@@ -82,14 +89,15 @@ export function budgetStatus(txns: readonly EnrichedTxn[], asOf: IsoDate, budget
   for (const s of streams) {
     if (!s.active) continue;
     const seen = s.txnIds.filter((id) => monthKey(postedOn.get(id) ?? "") === month).length;
-    const n = stillDue(s, month, seen);
+    const n = stillDue(s, asOf, month, seen);
     if (n > 0) due.set(s.category, (due.get(s.category) ?? 0) + n * s.typicalAmountCents);
   }
   const day = Number(asOf.slice(8, 10));
   const days = daysInMonth(month);
   return budgets.map((b) => {
     const s = spent.get(b.category) ?? { now: 0, oneOff: 0, last: 0 };
-    const projectedCents = s.now + (due.get(b.category) ?? 0) + Math.round((s.oneOff * (days - day)) / day);
+    const pace = day < MIN_PACE_DAYS ? 0 : Math.round((s.oneOff * (days - day)) / day);
+    const projectedCents = s.now + (due.get(b.category) ?? 0) + pace;
     const status = s.now > b.monthlyCents ? "over" : projectedCents > b.monthlyCents ? "over_pace" : "under";
     return { category: b.category, monthlyCents: b.monthlyCents, monthToDateCents: s.now, projectedCents, lastMonthCents: s.last, status };
   });

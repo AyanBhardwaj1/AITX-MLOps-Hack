@@ -40,11 +40,14 @@ describe("POST /api/company/budgets", () => {
     expect((await POST(post({ category: "software", monthlyCents: 5_000_00 }))).status).toBe(200);
     expect((await POST(post({ category: "software", monthlyCents: 6_500_00 }))).status).toBe(200);
     expect((await POST(post({ category: "travel", monthlyCents: 1_000_00 }))).status).toBe(200);
+    // A change only cents apart still reads as one.
+    expect((await POST(post({ category: "travel", monthlyCents: 999_99 }))).status).toBe(200);
     expect((await POST(post({ category: "travel", monthlyCents: null }))).status).toBe(200);
     const store = getStore(await scopeFor("company"));
     expect(await store.listBudgets()).toEqual([{ category: "software", monthlyCents: 6_500_00 }]);
     expect((await store.listActivity(10)).filter((e) => e.kind === "budget").map((e) => e.detail)).toEqual([
       "Removed the travel budget",
+      "Changed the travel budget from $1,000 to $999.99/mo",
       "Set the travel budget to $1,000/mo",
       "Changed the software budget from $5,000 to $6,500/mo",
       "Set the software budget to $5,000/mo",

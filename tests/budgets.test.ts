@@ -5,6 +5,9 @@ import type { EnrichedTxn, RecurringStream } from "@/lib/types";
 const txn = (id: string, postedAt: string, amountCents: number, category: EnrichedTxn["vendor"]["category"], type: EnrichedTxn["type"] = "card"): EnrichedTxn =>
   ({ id, accountId: "chk", postedAt, amountCents, description: id, type, status: "posted", vendor: { key: id, name: id, category, job: null, source: "catalog" } }) as EnrichedTxn;
 
+const stream = (category: EnrichedTxn["vendor"]["category"], ids: string[], nextExpected: string, typicalAmountCents: number, cadence: RecurringStream["cadence"], lastDate = "2026-11-15") =>
+  ({ vendorKey: category, vendorName: category, category, job: null, cadence, occurrences: 6, typicalAmountCents, amountCv: 0, monthlyCostCents: typicalAmountCents, firstDate: "2026-06-01", lastDate, nextExpected, active: true, txnIds: ids, cardholders: [] }) as unknown as RecurringStream;
+
 const txns = [
   txn("s1", "2026-10-02", -2_000_00, "software"),
   txn("s2", "2026-10-20", -1_500_00, "software"),
@@ -42,7 +45,7 @@ describe("budgets", () => {
   });
 
   it("ignores transactions after the as-of date", () => {
-    expect(budgetStatus(txns, "2026-11-03", [{ category: "software", monthlyCents: 10_000_00 }])[0]).toMatchObject({ monthToDateCents: 3_000_00, projectedCents: 30_000_00 });
+    expect(budgetStatus(txns, "2026-11-03", [{ category: "software", monthlyCents: 10_000_00 }])[0]).toMatchObject({ monthToDateCents: 3_000_00, projectedCents: 3_000_00 });
   });
 
   it("reads a budget from a form: whole categories, positive integer cents, a sane ceiling", () => {
@@ -58,8 +61,6 @@ describe("budgets", () => {
 
   it("projects recurring bills by when they're due, not by pace: payroll paid already doesn't double", () => {
     const pay = [txn("p1", "2026-11-01", -40_000_00, "payroll"), txn("p2", "2026-11-15", -40_000_00, "payroll"), txn("lunch", "2026-11-10", -300_00, "meals")];
-    const stream = (category: EnrichedTxn["vendor"]["category"], ids: string[], nextExpected: string, typicalAmountCents: number, cadence: RecurringStream["cadence"]) =>
-      ({ vendorKey: category, vendorName: category, category, job: null, cadence, occurrences: 6, typicalAmountCents, amountCv: 0, monthlyCostCents: typicalAmountCents, firstDate: "2026-06-01", lastDate: "2026-11-15", nextExpected, active: true, txnIds: ids, cardholders: [] }) as unknown as RecurringStream;
     const streams = [stream("payroll", ["p1", "p2"], "2026-12-01", 40_000_00, "semimonthly")];
     const [payroll, meals] = budgetStatus(pay, "2026-11-20", [{ category: "payroll", monthlyCents: 80_000_00 }, { category: "meals", monthlyCents: 400_00 }], streams);
     // Both paydays are in: the month is done at $80,000, not "on pace" for $120,000.
@@ -72,5 +73,32 @@ describe("budgets", () => {
     // Weekly bills count each time they fall before the month ends: Nov 12, 19 and 26.
     const [weekly] = budgetStatus([], "2026-11-05", [{ category: "contractors", monthlyCents: 1 }], [stream("contractors", [], "2026-11-12", 100_00, "weekly")]);
     expect(weekly!.projectedCents).toBe(300_00);
+  });
+
+  it("counts every weekly and biweekly charge a month holds: a fifth Friday, a third payday", () => {
+    // July 2026: paydays on the 3rd, 17th and 31st.
+    const [pay] = budgetStatus([], "2026-07-01", [{ category: "payroll", monthlyCents: 100_000_00 }], [stream("payroll", [], "2026-07-03", 40_000_00, "biweekly", "2026-06-19")]);
+    expect(pay).toMatchObject({ projectedCents: 120_000_00, status: "over_pace" });
+    // October 2026 has five Fridays.
+    const [weekly] = budgetStatus([], "2026-10-01", [{ category: "contractors", monthlyCents: 4_500_00 }], [stream("contractors", [], "2026-10-02", 1_000_00, "weekly", "2026-09-25")]);
+    expect(weekly).toMatchObject({ projectedCents: 5_000_00, status: "over_pace" });
+  });
+
+  it("keeps a bill paid on the 31st in February, by stepping calendar months", () => {
+    const [rent] = budgetStatus([], "2027-02-10", [{ category: "rent", monthlyCents: 9_000_00 }], [stream("rent", [], "2027-03-02", 10_000_00, "monthly", "2027-01-31")]);
+    expect(rent).toMatchObject({ projectedCents: 10_000_00, status: "over_pace" });
+  });
+
+  it("doesn't blow one early purchase up into a month: no pace until a week in", () => {
+    const flight = [txn("f1", "2026-11-01", -300_00, "travel")];
+    expect(budgetStatus(flight, "2026-11-01", [{ category: "travel", monthlyCents: 500_00 }])[0]).toMatchObject({ projectedCents: 300_00, status: "under" });
+    // From day 7 the pace counts: $300 in 7 of 30 days.
+    expect(budgetStatus(flight, "2026-11-07", [{ category: "travel", monthlyCents: 500_00 }])[0]!.projectedCents).toBe(Math.round((300_00 * 30) / 7));
+  });
+
+  it("adds only bills still to come: one due today but not yet posted lands next month, not in a closed one", () => {
+    const spent = [txn("r0", "2026-10-02", -1_000_00, "rent")];
+    const [rent] = budgetStatus(spent, "2026-10-31", [{ category: "rent", monthlyCents: 9_000_00 }], [stream("rent", [], "2026-10-31", 10_000_00, "monthly", "2026-09-30")]);
+    expect(rent).toMatchObject({ monthToDateCents: 1_000_00, projectedCents: 1_000_00, status: "under" });
   });
 });

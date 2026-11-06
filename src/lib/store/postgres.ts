@@ -527,8 +527,10 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
     async setBudget(category, monthlyCents) {
       const org = await orgId();
       return inTransaction(pool, async (c) => {
+        // One writer per company at a time: a row lock can't serialise two writes of a budget that doesn't exist yet.
+        await c.query(`select pg_advisory_xact_lock(hashtextextended('budgets:' || $1::text, 0))`, [org]);
         const { rows } = await c.query<{ monthly_minor: string }>(
-          `select monthly_minor from public.company_budgets where org_id = $1 and category = $2 for update`,
+          `select monthly_minor from public.company_budgets where org_id = $1 and category = $2`,
           [org, category],
         );
         if (monthlyCents === null) await c.query(`delete from public.company_budgets where org_id = $1 and category = $2`, [org, category]);

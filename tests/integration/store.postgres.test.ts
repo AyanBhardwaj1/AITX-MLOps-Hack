@@ -37,3 +37,16 @@ describe("postgres: cash written while another write holds the row", () => {
     expect((await store.loadUploads())!.cashCents).toBe(200);
   });
 });
+
+describe("postgres: two people setting the same new budget at once", () => {
+  it("reports one as the first and the other as the change from it", async () => {
+    for (let round = 0; round < 10; round++) {
+      const store = createPostgresStore(pool, `test_${crypto.randomUUID()}`);
+      await store.listBudgets(); // creates the organization outside the race
+      const [a, b] = await Promise.all([store.setBudget("software", 100), store.setBudget("software", 200)]);
+      const previous = [a, b].filter((p) => p !== null);
+      expect(previous).toHaveLength(1);
+      expect([100, 200]).toContain(previous[0]);
+    }
+  });
+});

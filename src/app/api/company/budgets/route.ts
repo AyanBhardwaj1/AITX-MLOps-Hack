@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseBudgetInput } from "@/lib/finance/budgets";
-import { categoryName } from "@/lib/format";
+import { categoryName, formatMoney } from "@/lib/format";
 import { readBodyCapped } from "@/lib/http-body";
-import { formatDollars } from "@/lib/money";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/server/company";
 import { accessErrorResponse } from "@/lib/server/errors";
@@ -45,10 +44,10 @@ export async function POST(request: Request) {
           ? null
           : `Removed the ${name} budget`
         : previous === null
-          ? `Set the ${name} budget to ${formatDollars(input.monthlyCents)}/mo`
+          ? `Set the ${name} budget to ${formatMoney(input.monthlyCents)}/mo`
           : previous === input.monthlyCents
             ? null
-            : `Changed the ${name} budget from ${formatDollars(previous)} to ${formatDollars(input.monthlyCents)}/mo`;
+            : `Changed the ${name} budget from ${formatMoney(previous)} to ${formatMoney(input.monthlyCents)}/mo`;
     if (detail) await logActivity(scope, "budget", detail);
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {

@@ -82,11 +82,15 @@ describe("weekly digest", () => {
   it("names budgets that are over or heading over, and stays quiet otherwise", () => {
     const row = (category: "software" | "travel" | "cloud", status: "over" | "over_pace" | "under") => ({ category, monthlyCents: 5_000_00, monthToDateCents: 6_000_00, projectedCents: 7_000_00, lastMonthCents: 4_000_00, status });
     const md = buildDigest({ ...input, budgets: [row("software", "over"), row("travel", "over_pace"), row("cloud", "under")] }).markdown;
-    expect(md).toContain("## Budgets");
+    // The month is named: a digest on Monday the 2nd may be about the month just closed.
+    expect(md).toContain(`## Budgets, ${new Date(`${input.asOf.slice(0, 7)}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" })} so far`);
     expect(md).toContain("**Software over budget**: $6,000 so far of $5,000");
     expect(md).toContain("**Travel heading over**: $7,000 likely of $5,000");
     expect(md).not.toContain("Cloud");
     expect(buildDigest({ ...input, budgets: [row("cloud", "under")] }).markdown).toContain("Your 1 budget is on track.");
     expect(buildDigest(input).markdown).not.toContain("## Budgets");
+    // Cents show whenever whole dollars would hide why it's over.
+    const close = { category: "meals" as const, monthlyCents: 500_00, monthToDateCents: 500_40, projectedCents: 500_40, lastMonthCents: 0, status: "over" as const };
+    expect(buildDigest({ ...input, budgets: [close] }).markdown).toContain("$500.40 so far of $500");
   });
 });

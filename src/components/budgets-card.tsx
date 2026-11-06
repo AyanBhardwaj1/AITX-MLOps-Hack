@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { BudgetRow } from "@/lib/finance/budgets";
-import { categoryName, formatDate } from "@/lib/format";
+import { categoryName, formatDate, formatMoney } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
-import { formatDollars, parseDollarsToCents } from "@/lib/money";
+import { parseDollarsToCents } from "@/lib/money";
 import type { Category } from "@/lib/types";
 
 export interface BudgetsData {
@@ -42,9 +42,22 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
   const id = useId();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(row.monthlyCents / 100));
+  const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const changeButton = useRef<HTMLButtonElement>(null);
+  /** Opens with today's amount (a teammate may have changed it since this page loaded). */
+  const open = () => {
+    setDraft(String(row.monthlyCents / 100));
+    setError(null);
+    setEditing(true);
+  };
+  /** Back to the Change button, so keyboard focus isn't dropped to the top of the page. */
+  const close = () => {
+    setEditing(false);
+    setError(null);
+    requestAnimationFrame(() => changeButton.current?.focus());
+  };
   const max = Math.max(row.monthlyCents, row.projectedCents, 1);
   const pct = (cents: number) => `${Math.min(100, (cents / max) * 100)}%`;
   const status = STATUS[row.status];
@@ -54,8 +67,7 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
     const problem = await save(row.category, monthlyCents);
     setBusy(false);
     if (problem) return setError(problem);
-    setError(null);
-    setEditing(false);
+    close();
     router.refresh();
   }
 
@@ -74,12 +86,12 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
         <span className="absolute -top-1 h-4 w-0.5 bg-ink" style={{ left: pct(row.monthlyCents) }} />
       </div>
       <p className="tabular mt-1.5 text-sm text-muted">
-        <span className="font-medium text-ink">{formatDollars(row.monthToDateCents)}</span> of {formatDollars(row.monthlyCents)} so far · heading for{" "}
-        {formatDollars(row.projectedCents)} · last month {formatDollars(row.lastMonthCents)}
+        <span className="font-medium text-ink">{formatMoney(row.monthToDateCents)}</span> of {formatMoney(row.monthlyCents)} so far · heading for{" "}
+        {formatMoney(row.projectedCents)} · last month {formatMoney(row.lastMonthCents)}
         {editable && !editing && (
           <>
             {" · "}
-            <button type="button" onClick={() => setEditing(true)} className="font-medium text-brand hover:underline">
+            <button ref={changeButton} type="button" onClick={open} className="font-medium text-brand hover:underline">
               Change<span className="sr-only"> the {categoryName(row.category)} budget</span>
             </button>
           </>
@@ -100,6 +112,8 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
           </label>
           <input
             id={`${id}-amount`}
+            // Focus follows the Change button that opened this, which is now gone.
+            autoFocus
             inputMode="decimal"
             autoComplete="off"
             value={draft}
@@ -114,7 +128,7 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
           <button type="button" disabled={busy} onClick={() => void submit(null)} className="rounded-lg border border-line px-3 py-1.5 text-warn hover:bg-warn-soft disabled:opacity-50">
             Remove
           </button>
-          <button type="button" onClick={() => setEditing(false)} className="px-2 py-1.5 text-muted hover:text-ink">
+          <button type="button" onClick={close} className="px-2 py-1.5 text-muted hover:text-ink">
             Cancel
           </button>
           {error && (
@@ -131,7 +145,10 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
 function AddBudget({ unbudgeted }: { unbudgeted: Category[] }) {
   const id = useId();
   const router = useRouter();
-  const [category, setCategory] = useState<Category>(unbudgeted[0]!);
+  const [picked, setCategory] = useState<Category>(unbudgeted[0]!);
+  // Worked out each render: once a category gets a budget it leaves the list, and a stale pick
+  // would quietly overwrite that budget instead of adding the one shown.
+  const category = unbudgeted.includes(picked) ? picked : unbudgeted[0]!;
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

@@ -80,13 +80,22 @@ await suite("uploads", async ({ browser, step }) => {
     await card.getByLabel("Per month ($)").fill("1");
     await card.getByRole("button", { name: "Add budget" }).click();
     await card.getByRole("link", { name: "Software" }).waitFor();
+    // A second budget, leaving the picker on what it now shows: it adds that one, not software again.
+    const shown = await card.getByLabel("Category").inputValue();
+    assert.notEqual(shown, "software");
+    await card.getByLabel("Per month ($)").fill("3,000");
+    await card.getByRole("button", { name: "Add budget" }).click();
+    await card.locator("li", { hasText: "of $3,000 so far" }).waitFor();
+    await card.locator("li", { hasText: "of $1 so far" }).waitFor();
     await card.getByRole("button", { name: /Change the software budget/ }).click();
+    // Focus moves into the box that opened, not back to the top of the page.
+    assert.equal(await p.evaluate(() => document.activeElement?.getAttribute("inputmode")), "decimal");
     await card.getByLabel(/Monthly software budget/).fill("2,500");
     await card.getByRole("button", { name: "Save" }).click();
     await card.getByText(/of \$2,500 so far/).waitFor();
     await card.getByRole("button", { name: /Change the software budget/ }).click();
     await card.getByRole("button", { name: "Remove" }).click();
-    await card.getByText("No budgets yet.").waitFor();
+    await card.getByRole("link", { name: "Software" }).waitFor({ state: "detached" });
     await p.goto(`${APP}/app/settings`);
     await p.getByText("Changed the software budget from $1 to $2,500/mo").waitFor();
     await p.getByText("Removed the software budget").waitFor();
