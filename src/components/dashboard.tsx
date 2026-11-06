@@ -454,7 +454,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                   <h2 className="font-semibold">Waste found</h2>
                   <p className="text-xs text-muted">Tick a finding to see its effect on runway. Every number links to the transactions behind it.</p>
                 </div>
-                <div className="text-right">
+                <div className="ml-auto text-right">
                   <p className="tabular text-lg font-semibold text-brand">{formatDollars(monthly.reduce((s, f) => s + f.monthlySavingsCents, 0))}/mo</p>
                   {oneTime > 0 && <p className="text-xs text-muted">+ {formatCents(oneTime)} to reclaim</p>}
                   <a href={`/api/export?mode=${data.mode}&kind=findings`} download className="text-xs font-medium text-brand hover:underline">
