@@ -36,7 +36,9 @@ export function SiteHeader() {
           </Link>
         )}
         <Link href="/#early-access" className="btn min-h-[44px] whitespace-nowrap px-4">
-          Get early access
+          {/* The full label doesn't fit beside the logo and Sign in on the narrowest phones. */}
+          <span className="min-[360px]:hidden">Join</span>
+          <span className="hidden min-[360px]:inline">Get early access</span>
         </Link>
       </nav>
     </header>
