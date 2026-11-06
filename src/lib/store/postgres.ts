@@ -546,12 +546,14 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       });
     },
 
-    async claimBudgetAlert(category, month) {
+    async claimBudgetAlert(category, month, monthlyCents) {
       const org = await orgId();
-      // One statement: of two overlapping runs, only one sees the row still unclaimed.
+      // One statement: of two overlapping runs, only one sees the row still unclaimed, and only
+      // while the budget is still the amount the run read.
       const { rowCount } = await pool.query(
-        `update public.company_budgets set alerted_month = $3 where org_id = $1 and category = $2 and alerted_month is distinct from $3`,
-        [org, category, month],
+        `update public.company_budgets set alerted_month = $3
+          where org_id = $1 and category = $2 and alerted_month is distinct from $3 and ($4::bigint is null or monthly_minor = $4::bigint)`,
+        [org, category, month, monthlyCents ?? null],
       );
       return rowCount === 1;
     },
@@ -583,6 +585,14 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
 
     async setSlackWebhook(url) {
       const org = await orgId();
+      // A different channel hasn't heard this month's budget alerts either. Reads the old address
+      // in the same statement's snapshot, before the upsert below changes it.
+      await pool.query(
+        `with prev as (select slack_webhook_url from public.company_integrations where org_id = $1)
+         update public.company_budgets set alerted_month = null
+          where org_id = $1 and (select slack_webhook_url from prev) is distinct from $2`,
+        [org, url],
+      );
       await pool.query(
         `insert into public.company_integrations (org_id, slack_webhook_url) values ($1, $2)
          on conflict (org_id) do update set slack_webhook_url = excluded.slack_webhook_url, updated_at = now(),

@@ -329,6 +329,22 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       ]);
     });
 
+    it("claims a budget alert only for the amount the run read, and a new channel re-arms budget alerts", async () => {
+      const store = await makeStore();
+      await store.setBudget("software", 1_000_00);
+      // A teammate raised the budget while the run was analysing: the old amount's alert isn't sent.
+      await store.setBudget("software", 5_000_00);
+      expect(await store.claimBudgetAlert("software", "2026-11", 1_000_00)).toBe(false);
+      expect(await store.claimBudgetAlert("software", "2026-11", 5_000_00)).toBe(true);
+      // Same channel: still claimed. A different channel hasn't heard it.
+      await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/aaaaaaaaaaaa");
+      expect(await store.claimBudgetAlert("software", "2026-11", 5_000_00)).toBe(true);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/aaaaaaaaaaaa");
+      expect(await store.claimBudgetAlert("software", "2026-11", 5_000_00)).toBe(false);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T000/B000/bbbbbbbbbbbb");
+      expect(await store.claimBudgetAlert("software", "2026-11", 5_000_00)).toBe(true);
+    });
+
     it("keeps the company's own Slack webhook, and forgets it on request", async () => {
       const store = await makeStore();
       expect(await store.getSlackWebhook()).toBeNull();

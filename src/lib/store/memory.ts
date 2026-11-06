@@ -164,8 +164,9 @@ export function createMemoryStore(): Store {
       if (previous !== monthlyCents) alertedMonths.delete(category);
       return previous;
     },
-    async claimBudgetAlert(category, month) {
+    async claimBudgetAlert(category, month, monthlyCents) {
       if (!budgets.has(category) || alertedMonths.get(category) === month) return false;
+      if (monthlyCents !== undefined && budgets.get(category) !== monthlyCents) return false;
       alertedMonths.set(category, month);
       return true;
     },
@@ -203,6 +204,7 @@ export function createMemoryStore(): Store {
       if (url !== slackWebhook) {
         runwayAlertMonths = null;
         staleNudgedFor = null;
+        alertedMonths.clear();
       }
       slackWebhook = url;
     },

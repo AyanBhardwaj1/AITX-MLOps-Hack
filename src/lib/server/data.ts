@@ -58,7 +58,7 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
 async function loadCompanyDataset(scope: string): Promise<Dataset> {
   const uploads = await getStore(scope).loadUploads();
   if (!uploads) throw new NoCompanyData();
-  return { ...uploadedDataset(uploads), cashEnteredAt: uploads.cashEnteredAt, label: "company" };
+  return { ...uploadedDataset({ ...uploads, today: new Date().toISOString().slice(0, 10) }), cashEnteredAt: uploads.cashEnteredAt, label: "company" };
 }
 
 export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };

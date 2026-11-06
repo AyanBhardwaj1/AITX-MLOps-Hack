@@ -129,9 +129,10 @@ export interface Store {
   setBudget(category: Category, monthlyCents: Cents | null): Promise<Cents | null>;
   /**
    * Claims the one "over budget" alert a category's budget gets in a month (YYYY-MM): true for
-   * exactly one caller, false once claimed or with no budget. A new amount re-arms it.
+   * exactly one caller, false once claimed or with no budget. A new amount re-arms it. With
+   * `monthlyCents`, only while the budget is still that amount (a teammate may have just changed it).
    */
-  claimBudgetAlert(category: Category, month: string): Promise<boolean>;
+  claimBudgetAlert(category: Category, month: string, monthlyCents?: Cents): Promise<boolean>;
   /** Gives a claim back after the post failed, so the next run tries again. */
   releaseBudgetAlert(category: Category, month: string): Promise<void>;
   /**

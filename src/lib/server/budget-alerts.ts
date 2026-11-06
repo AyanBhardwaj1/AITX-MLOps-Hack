@@ -52,7 +52,7 @@ export async function sendBudgetAlerts({
   const over = budgetStatus(analysis.txns, analysis.asOf, budgets, analysis.streams).filter((r) => r.status === "over");
   const claimed: BudgetRow[] = [];
   try {
-    for (const row of over) if (await store.claimBudgetAlert(row.category, month)) claimed.push(row);
+    for (const row of over) if (await store.claimBudgetAlert(row.category, month, row.monthlyCents)) claimed.push(row);
     if (claimed.length === 0) return { status: "none" };
     await post(url, budgetAlertText({ company, month, rows: claimed, link }));
   } catch (err) {

@@ -155,7 +155,13 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     fileRows.push(mine);
   });
   if (raw.length === 0) throw new Error(errors[0] ?? "No readable transactions in these files");
-  const { transactions, cardSpendAsPayoffs: payoffsAsSpend } = resolveCardPayoffs(raw);
+  // A row dated after tomorrow (a scheduled payment in the export) hasn't happened yet: left out,
+  // or it would move "as of" into the future.
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const happened = raw.filter((t) => (t.posted_at ?? t.initiated_at).slice(0, 10) <= tomorrow);
+  const future = raw.length - happened.length;
+  if (happened.length === 0) throw new Error("Every row in these files is dated after today");
+  const { transactions, cardSpendAsPayoffs: payoffsAsSpend } = resolveCardPayoffs(happened);
 
   const a = analyze({
     accounts: [{ id: "upload", account_type: "checking", account_name: "Uploaded", balance: { amount: Math.round(cashCents), currency: "USD" } }],
@@ -166,6 +172,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
 
   const notes: string[] = [];
   // An inverted file explains everything else that looks off, so say that first and skip notes it would make misleading.
+  if (future > 0) notes.push(`${future} ${future === 1 ? "row dated after today was" : "rows dated after today were"} left out: scheduled payments haven't happened yet.`);
   for (const name of inverted) notes.push(`Most amounts in ${name} are positive. If that export lists charges as positive numbers, spend is being read as income and these results are wrong: export with charges as negatives.`);
   if (payoffsAsSpend && inverted.length === 0) {
     notes.push(
