@@ -212,3 +212,10 @@ describe("which subscriptions cost the most runway", () => {
     expect(ans.text).not.toMatch(/\b\d{4,} days\b/);
   });
 });
+
+describe("dates in instant answers", () => {
+  it("writes renewal dates the way the dashboard does, not as ISO", () => {
+    const text = instantAnswer(a, "renewals").text;
+    expect(text).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+  });
+});

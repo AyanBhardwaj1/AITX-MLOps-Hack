@@ -39,7 +39,7 @@ export function RunwayTrendCard({ points }: { points: RunwayPoint[] }) {
             {/* Hidden from assistive tech (the verdict and the table say it), so it must not take keyboard focus either. */}
             <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} accessibilityLayer={false}>
               <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5b6779" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
+              <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={14} tick={{ fontSize: 11, fill: "#5b6779" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
               <YAxis tick={{ fontSize: 11, fill: "#5b6779" }} tickLine={false} axisLine={false} width={32} domain={["auto", "auto"]} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${Number(v).toFixed(1)} months`, "Runway"]} cursor={{ stroke: "#94a3b8", strokeWidth: 1 }} />
               <Line type="monotone" dataKey="runway" stroke={LINE} strokeWidth={2} dot={{ r: 4, fill: LINE, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false} />

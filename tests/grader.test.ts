@@ -119,6 +119,7 @@ describe("gradeCsvFiles", () => {
     const early = card.filter((t) => dateOf(t) <= cutoff);
     const g = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }, { name: "amex.csv", text: mercuryCsv(early) }], cash);
     expect(g.notes.some((n) => /^The amex export ends .*days before the newest one/.test(n))).toBe(true);
+    expect(g.notes.find((n) => n.startsWith("The amex export ends"))).toMatch(/^The amex export ends [A-Z][a-z]{2} \d{1,2}, \d{4}, /);
     // Both up to date: nothing to say.
     const full = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv(checking) }, { name: "amex.csv", text: mercuryCsv(card) }], cash);
     expect(full.notes.some((n) => /days before the newest one/.test(n))).toBe(false);

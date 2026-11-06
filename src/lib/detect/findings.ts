@@ -1,5 +1,6 @@
 import { AVG_DAYS_PER_MONTH, daysBetween, compareIsoDates } from "../dates";
 import { formatCents } from "../money";
+import { formatDate } from "../format";
 import { coefficientOfVariation, median } from "../stats";
 import type { Category, EnrichedTxn, Finding, IsoDate, RecurringStream } from "../types";
 import { jobLabel } from "../vendors/catalog";
@@ -206,7 +207,7 @@ function duplicateCharges(txns: readonly EnrichedTxn[], streams: readonly Recurr
         id: `duplicate_charge:${t.vendor.key}:${t.id}`,
         kind: "duplicate_charge",
         title: `${t.vendor.name} charged twice`,
-        detail: `${t.vendor.name} charged ${formatCents(-t.amountCents)} on ${prev.postedAt} and again on ${t.postedAt}.${amount < -t.amountCents ? ` ${formatCents(-t.amountCents - amount)} was refunded; ${formatCents(amount)} is still owed.` : " Ask for a refund."}`,
+        detail: `${t.vendor.name} charged ${formatCents(-t.amountCents)} on ${formatDate(prev.postedAt)} and again on ${formatDate(t.postedAt)}.${amount < -t.amountCents ? ` ${formatCents(-t.amountCents - amount)} was refunded; ${formatCents(amount)} is still owed.` : " Ask for a refund."}`,
         vendorKeys: [t.vendor.key],
         monthlySavingsCents: 0,
         oneTimeCents: amount,

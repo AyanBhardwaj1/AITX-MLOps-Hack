@@ -8,6 +8,7 @@ import { analyze } from "./pipeline";
 import type { RhoTransaction } from "./rho/schema";
 import type { Cents, Finding, IsoDate } from "./types";
 import { burnBridge, type BurnBridge } from "./finance/burn-bridge";
+import { formatDate } from "./format";
 import { cashPnl, type CashPnl } from "./finance/cash-pnl";
 import { moneyIn, type MoneyIn } from "./finance/money-in";
 
@@ -197,7 +198,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   if (inverted.length === 0) {
     for (const l of laggingAccounts(accountsOf(fileKeys)))
       notes.push(
-        `The ${l.account} export ends ${l.lastDate}, ${l.daysBehind} days before the newest one. If that account is still open, its spending since then is missing and runway reads longer than it is: export it again up to today.`,
+        `The ${l.account} export ends ${formatDate(l.lastDate)}, ${l.daysBehind} days before the newest one. If that account is still open, its spending since then is missing and runway reads longer than it is: export it again up to today.`,
       );
   }
   if (months < 4) notes.push(`Only ${months} month${months === 1 ? "" : "s"} of history: burn and recurring charges are more reliable with 6–12 months.`);

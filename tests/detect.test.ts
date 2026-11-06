@@ -109,6 +109,8 @@ describe("detectFindings", () => {
     const dup = detectFindings(txns, AS_OF).filter((f) => f.kind === "duplicate_charge");
     expect(dup).toHaveLength(1);
     expect(dup[0]!.oneTimeCents).toBe(11_999);
+    // Dates read the way the rest of the dashboard writes them, not as ISO.
+    expect(dup[0]!.detail).toContain("on Sep 10, 2026 and again on Sep 11, 2026");
   });
 
   it("does not call two people's identical purchases a double charge", () => {

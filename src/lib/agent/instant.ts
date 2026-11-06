@@ -110,7 +110,7 @@ function renewals(a: Analysis): InstantAnswer {
       "Decide on these before they renew (annual, quarterly or $5k+):",
       decide
         .slice(0, MAX_LISTED)
-        .map((x) => `- **${x.vendorName}** ${x.cadence}: ${formatCents(x.amountCents)} on ${x.dueDate} (in ${x.daysAway} days)`)
+        .map((x) => `- **${x.vendorName}** ${x.cadence}: ${formatCents(x.amountCents)} on ${formatDate(x.dueDate)} (in ${x.daysAway} days)`)
         .join("\n"),
     );
   }
