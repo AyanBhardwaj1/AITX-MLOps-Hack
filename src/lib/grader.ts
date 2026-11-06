@@ -9,6 +9,7 @@ import type { RhoTransaction } from "./rho/schema";
 import type { Cents, Finding, IsoDate } from "./types";
 import { burnBridge, type BurnBridge } from "./finance/burn-bridge";
 import { formatDate } from "./format";
+import { localIsoDate } from "./dates";
 import { cashPnl, type CashPnl } from "./finance/cash-pnl";
 import { moneyIn, type MoneyIn } from "./finance/money-in";
 
@@ -114,8 +115,8 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
 
   const raw: RhoTransaction[] = [];
   // A row dated after today (a scheduled payment in the export) hasn't happened yet: left out, or it
-  // would move "as of" into the future. UTC, which is already tomorrow for US evenings.
-  const today = new Date().toISOString().slice(0, 10);
+  // would move "as of" into the future. The visitor's own date: the grader runs in their browser.
+  const today = localIsoDate();
   const errors: string[] = [];
   const inverted: string[] = [];
   const seenTexts = new Set<string>();
