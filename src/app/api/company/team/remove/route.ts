@@ -6,7 +6,8 @@ import { teamError } from "@/lib/server/team-route";
 
 export const runtime = "nodejs";
 
-const body = z.object({ userId: z.string().min(1).max(64) });
+// Supabase user ids are UUIDs; anything else is refused before it reaches the database.
+const body = z.object({ userId: z.uuid() });
 
 /** The owner removes a teammate (never the owner). They lose access on their next request. */
 export async function POST(request: Request) {

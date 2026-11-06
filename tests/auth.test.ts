@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { handleLoginRequest } from "@/lib/auth/login";
 import { createProxy } from "@/lib/auth/proxy";
-import { EMAIL_HEADER, safeNextPath, stripInternalHeaders, USER_HEADER } from "@/lib/auth/session";
+import { EMAIL_HEADER, safeNextPath, stripInternalHeaders, USER_HEADER, verifiedEmail } from "@/lib/auth/session";
 
 describe("stripInternalHeaders", () => {
   it("removes any identity header a client tries to send", () => {
@@ -12,6 +12,15 @@ describe("stripInternalHeaders", () => {
     expect(out.get(EMAIL_HEADER)).toBeNull();
     expect(out.get("x-runway-anything")).toBeNull();
     expect(out.get("accept")).toBe("text/html");
+  });
+});
+
+describe("verifiedEmail", () => {
+  it("passes an email on only once Supabase has confirmed it", () => {
+    expect(verifiedEmail({ email: "Maya@Acme.example", email_confirmed_at: "2026-11-06T07:00:00Z" })).toBe("maya@acme.example");
+    expect(verifiedEmail({ email: "cfo@victim.example", email_confirmed_at: null })).toBeNull();
+    expect(verifiedEmail({ email: "cfo@victim.example" })).toBeNull();
+    expect(verifiedEmail({ email_confirmed_at: "2026-11-06T07:00:00Z" })).toBeNull();
   });
 });
 

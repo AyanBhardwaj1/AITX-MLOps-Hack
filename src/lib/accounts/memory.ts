@@ -1,4 +1,4 @@
-import { companyNameFromEmail, MAX_TEAM_SIZE, normalizeEmail, type AccountsStore, type Company, type CompanyRole } from "./types";
+import { companyNameFromEmail, MAX_TEAM_SIZE, NotInvitedError, normalizeEmail, type AccountsStore, type Company, type CompanyRole } from "./types";
 
 interface Org {
   orgId: string;
@@ -37,7 +37,7 @@ export function createMemoryAccounts(): AccountsStore {
       const m = membershipOf(userId);
       return m ? toCompany(m) : null;
     },
-    async ensureCompanyFor({ id, email }) {
+    async ensureCompanyFor({ id, email }, { allowNew = true } = {}) {
       const existing = membershipOf(id);
       if (existing) return toCompany(existing);
       const normalized = email ? normalizeEmail(email) : null;
@@ -48,6 +48,7 @@ export function createMemoryAccounts(): AccountsStore {
         memberships.push(m);
         return toCompany(m);
       }
+      if (!allowNew) throw new NotInvitedError();
       const orgId = crypto.randomUUID();
       orgs.set(orgId, { orgId, scope: `org_${crypto.randomUUID()}`, name: companyNameFromEmail(email) });
       const m: Membership = { orgId, userId: id, role: "owner", email: normalized };
@@ -104,6 +105,29 @@ export function createMemoryAccounts(): AccountsStore {
       const before = memberships.length;
       memberships = memberships.filter((m) => !(m.orgId === orgId && m.userId === memberUserId && m.role !== "owner"));
       return memberships.length < before;
+    },
+    async invitesFor(email) {
+      const normalized = normalizeEmail(email);
+      return invites.filter((i) => i.email === normalized && orgs.has(i.orgId)).map((i) => ({ orgId: i.orgId, companyName: orgs.get(i.orgId)!.name }));
+    },
+    async acceptInvite({ id, email }, orgId) {
+      const normalized = email ? normalizeEmail(email) : null;
+      const invite = normalized ? invites.find((i) => i.orgId === orgId && i.email === normalized) : undefined;
+      if (!invite) return "no_invite";
+      for (const m of memberships.filter((x) => x.userId === id && x.role === "owner")) {
+        if (memberships.some((x) => x.orgId === m.orgId && x.userId !== id)) return "has_team";
+      }
+      for (const m of memberships.filter((x) => x.userId === id)) {
+        if (m.role === "owner") {
+          orgs.delete(m.orgId);
+          invites = invites.filter((i) => i.orgId !== m.orgId);
+        }
+      }
+      const ownedGone = new Set(memberships.filter((x) => x.userId === id && x.role === "owner").map((x) => x.orgId));
+      memberships = memberships.filter((x) => x.userId !== id && !ownedGone.has(x.orgId));
+      invites = invites.filter((i) => i !== invite);
+      memberships.push({ orgId, userId: id, role: "member", email: normalized });
+      return "joined";
     },
     async hasCompanyInvite(email) {
       const normalized = normalizeEmail(email);

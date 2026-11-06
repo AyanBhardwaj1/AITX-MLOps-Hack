@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import { companyNameFromEmail, MAX_TEAM_SIZE, normalizeEmail, type AccountsStore, type Company, type InviteResult, type Team } from "./types";
+import { companyNameFromEmail, MAX_TEAM_SIZE, NotInvitedError, normalizeEmail, type AccountsStore, type Company, type InviteResult, type Team } from "./types";
 
 type Row = { id: string; slug: string; name: string; role: string };
 
@@ -41,7 +41,7 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
       return rows[0] ? toCompany(rows[0]) : null;
     },
 
-    async ensureCompanyFor({ id, email }) {
+    async ensureCompanyFor({ id, email }, { allowNew = true } = {}) {
       const normalized = email ? normalizeEmail(email) : null;
       // One first sign-in at a time per user, so racing requests can't create two companies.
       return inTransaction(`company:${id}`, async (c) => {
@@ -60,6 +60,8 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
           await c.query(`delete from public.company_invites where id = $1`, [invite.id]);
           return toCompany((await c.query<Row>(select, [id])).rows[0]!);
         }
+        // Checked here, in the same transaction as the invite lookup, so a revoked invite can't slip through.
+        if (!allowNew) throw new NotInvitedError();
         const org = await c.query<Row>(
           `insert into public.organizations (name, slug) values ($1, 'org_' || gen_random_uuid()::text) returning id, slug, name, 'owner' as role`,
           [companyNameFromEmail(email)],
@@ -146,6 +148,35 @@ export function createPostgresAccounts(pool: Pool): AccountsStore {
         [ownerId, memberUserId],
       );
       return (rowCount ?? 0) > 0;
+    },
+
+    async invitesFor(email) {
+      const { rows } = await pool.query<{ org_id: string; name: string }>(
+        `select i.org_id, o.name from public.company_invites i join public.organizations o on o.id = i.org_id where i.email = $1 order by i.created_at`,
+        [normalizeEmail(email)],
+      );
+      return rows.map((r) => ({ orgId: r.org_id, companyName: r.name }));
+    },
+
+    async acceptInvite({ id, email }, orgId) {
+      const normalized = email ? normalizeEmail(email) : null;
+      if (!normalized) return "no_invite";
+      return inTransaction(`company:${id}`, async (c) => {
+        const invite = (await c.query<{ id: string }>(`select id from public.company_invites where org_id = $1 and email = $2 for update`, [orgId, normalized])).rows[0];
+        if (!invite) return "no_invite";
+        const owned = await c.query<{ org_id: string; others: number }>(
+          `select m.org_id, (select count(*)::int from public.memberships x where x.org_id = m.org_id and x.user_id <> $1) as others
+             from public.memberships m where m.user_id = $1 and m.role = 'owner'`,
+          [id],
+        );
+        if (owned.rows.some((r) => r.others > 0)) return "has_team";
+        // A company they own alone goes, with everything in it (the caller checked it holds no data).
+        for (const r of owned.rows) await c.query(`delete from public.organizations where id = $1 and slug like 'org\\_%'`, [r.org_id]);
+        await c.query(`delete from public.memberships where user_id = $1`, [id]);
+        await c.query(`insert into public.memberships (org_id, user_id, role, email) values ($1, $2, 'member', $3)`, [orgId, id, normalized]);
+        await c.query(`delete from public.company_invites where id = $1`, [invite.id]);
+        return "joined";
+      });
     },
 
     async hasCompanyInvite(email) {

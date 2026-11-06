@@ -116,12 +116,17 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
   let orgIdPromise: Promise<string> | undefined;
   const orgId = () => {
     orgIdPromise ??= (async () => {
-      await pool.query(
-        `insert into public.organizations (name, slug, is_demo) values ($1, $1, $2) on conflict (slug) do nothing`,
-        [scope, scope === "demo"],
-      );
+      // Fixed scopes (the demo, the env feed, tests) are made on first use. A company's "org_" scope is
+      // only ever made at sign-in: a write that arrives after the company was deleted must not bring it back.
+      if (!scope.startsWith("org_")) {
+        await pool.query(
+          `insert into public.organizations (name, slug, is_demo) values ($1, $1, $2) on conflict (slug) do nothing`,
+          [scope, scope === "demo"],
+        );
+      }
       const { rows } = await pool.query<{ id: string }>(`select id from public.organizations where slug = $1`, [scope]);
-      return rows[0]!.id;
+      if (!rows[0]) throw Object.assign(new Error("This company no longer exists."), { name: "SignInRequired" });
+      return rows[0].id;
     })().catch((err) => {
       orgIdPromise = undefined; // retry on the next call instead of caching a failure
       throw err;

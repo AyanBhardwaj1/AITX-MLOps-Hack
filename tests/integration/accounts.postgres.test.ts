@@ -58,3 +58,25 @@ describe("members from before teams existed", () => {
     expect(team!.members[0]!.email).toBe("early@acme.example");
   });
 });
+
+describe("a deleted company's scope", () => {
+  it("is never re-created by a late write", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const user = { id: crypto.randomUUID(), email: null };
+    const company = await accounts.ensureCompanyFor(user);
+    await accounts.deleteCompany(user.id);
+    const late = createPostgresStore(pool, company.scope);
+    await expect(late.saveUploads(1, [], 10)).rejects.toMatchObject({ name: "SignInRequired" });
+    const { rows } = await pool.query(`select count(*)::int as n from public.organizations where slug = $1`, [company.scope]);
+    expect(rows[0].n).toBe(0);
+  });
+});
+
+describe("invite-only inside the transaction", () => {
+  it("doesn't create a company when new ones aren't allowed and no company invited them", async () => {
+    const accounts = createPostgresAccounts(pool);
+    const user = { id: crypto.randomUUID(), email: "nobody@nowhere.example" };
+    await expect(accounts.ensureCompanyFor(user, { allowNew: false })).rejects.toMatchObject({ name: "NotInvited" });
+    expect(await accounts.companyFor(user.id)).toBeNull();
+  });
+});

@@ -8,7 +8,7 @@ import type { AccountsStore, Company, InviteResult, Team } from "../accounts/typ
 import { EMAIL_HEADER, USER_HEADER, type SessionUser } from "../auth/session";
 import type { DataMode } from "../modes";
 import { accountsEnabled, env } from "./env";
-import { NotInvited, OwnerOnly, SignInRequired } from "./errors";
+import { OwnerOnly, SignInRequired } from "./errors";
 import { getPool, getStore, hasDatabase } from "./store";
 import { getWaitlist } from "./waitlist";
 
@@ -39,8 +39,9 @@ export async function ensureCompanyFor(user: SessionUser): Promise<Company> {
   const accounts = getAccounts();
   const existing = await accounts.companyFor(user.id);
   if (existing) return existing;
-  if (env().SIGNUPS !== "open" && !(user.email && (await isInvited(user.email)))) throw new NotInvited();
-  return accounts.ensureCompanyFor(user);
+  // A company invite is honoured inside the store's transaction; here only the right to start a new one.
+  const mayStartCompany = env().SIGNUPS === "open" || (user.email !== null && (await getWaitlist()?.isInvited(user.email)) === true);
+  return accounts.ensureCompanyFor(user, { allowNew: mayStartCompany });
 }
 
 /** Invited to Runway: from the waitlist, or by a company that wants them on its team. */
@@ -135,5 +136,25 @@ export async function companyForPage(next: string): Promise<{ user: SessionUser;
 export async function companyAtSignIn(user: SessionUser): Promise<Company> {
   await ensureCompanyFor(user);
   // Idempotent; also fills in the email on memberships made before teams existed.
-  return getAccounts().ensureCompanyFor(user);
+  return getAccounts().ensureCompanyFor(user, { allowNew: false });
+}
+
+/** Companies that have invited the signed-in user (other than the one they're in). */
+export async function pendingInvitesForMe(): Promise<{ orgId: string; companyName: string }[]> {
+  const user = await sessionUser();
+  if (!user?.email) return [];
+  const current = await getAccounts().companyFor(user.id);
+  return (await getAccounts().invitesFor(user.email)).filter((i) => i.orgId !== current?.orgId);
+}
+
+/**
+ * Joins a company that invited the signed-in user. A company they own alone must be empty first: it's
+ * deleted on the way, and their data must never be lost by a click.
+ */
+export async function acceptCompanyInvite(orgId: string): Promise<"joined" | "no_invite" | "has_team" | "has_data"> {
+  const user = await sessionUser();
+  if (!user) throw new SignInRequired();
+  const current = await getAccounts().companyFor(user.id);
+  if (current?.role === "owner" && (await getStore(current.scope).loadUploads())) return "has_data";
+  return getAccounts().acceptInvite(user, orgId);
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UploadForm, type UploadSummary } from "@/components/upload-form";
-import { companyForPage } from "@/lib/server/company";
+import { companyForPage, pendingInvitesForMe } from "@/lib/server/company";
 import { accountsEnabled } from "@/lib/server/env";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
 
@@ -34,6 +34,7 @@ export default async function UploadPage() {
   if (!accountsEnabled()) redirect("/app");
   const { company } = await companyForPage("/app/upload");
   const summary = await summaryFor(company.scope);
+  const invites = summary ? [] : await pendingInvitesForMe();
   return (
     <main id="main" className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -51,6 +52,15 @@ export default async function UploadPage() {
         Upload CSV exports from your bank and card accounts, and today&apos;s total cash. Runway works out your runway and the waste worth
         cutting, and keeps it in your company&apos;s private workspace. Re-uploading an overlapping export won&apos;t duplicate anything.
       </p>
+      {invites.length > 0 && (
+        <p className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm">
+          {invites.map((i) => i.companyName).join(", ")} invited you to {invites.length === 1 ? "its team" : "their teams"}.{" "}
+          <Link href="/app/settings" className="font-medium text-brand hover:underline">
+            Join from settings
+          </Link>{" "}
+          instead of setting up a new company.
+        </p>
+      )}
       <UploadForm summary={summary} storageReady={persistentStorageReady()} />
     </main>
   );

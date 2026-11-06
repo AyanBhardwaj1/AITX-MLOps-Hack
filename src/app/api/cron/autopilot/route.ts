@@ -5,8 +5,11 @@ import { accountsEnabled, env } from "@/lib/server/env";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-/** Leaves headroom under maxDuration for the response after the last company. */
-const COMPANY_BUDGET_MS = 45_000;
+/**
+ * No new company starts after this; the rest leaves room under maxDuration for one more company's
+ * run (vendor labels and an AI memo can take several seconds each) and the response.
+ */
+const COMPANY_BUDGET_MS = 30_000;
 
 /**
  * Daily Autopilot run, triggered by Vercel Cron (see vercel.json). Vercel sends

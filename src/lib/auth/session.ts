@@ -24,6 +24,14 @@ export const DEFAULT_AFTER_SIGN_IN = "/app?mode=company";
 export const NEXT_COOKIE = "runway_next";
 export const NEXT_COOKIE_MAX_AGE = 60 * 60;
 
+/**
+ * The user's email only once Supabase has confirmed it (lowercased). Team invites and invite-only
+ * sign-up key on the email, so an address someone merely claimed must never count.
+ */
+export function verifiedEmail(user: { email?: string | null; email_confirmed_at?: string | null }): string | null {
+  return user.email && user.email_confirmed_at ? user.email.trim().toLowerCase() : null;
+}
+
 /** Where to go after the magic link: only a path on this site, never another origin. */
 export function safeNextPath(next: string | null): string {
   // Control characters are refused too: URL parsers strip tabs and newlines, so "/\t/x.com" becomes "//x.com".

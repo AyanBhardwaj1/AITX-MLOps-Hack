@@ -64,7 +64,7 @@ With `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `DATABASE_U
 
 In **Supabase**:
 1. **Authentication → URL Configuration:** set **Site URL** to your app (e.g. `https://runway-for-rho.vercel.app`) and add `https://runway-for-rho.vercel.app/auth/callback` under **Redirect URLs** (add `http://localhost:3000/auth/callback` too for local development).
-2. **Authentication → Sign In / Providers → Email:** keep Email enabled and **Allow new users to sign up** on. Runway decides who may create an account (`SIGNUPS`), and checks it again on the server when a company is created, so a sign-up made directly against Supabase doesn't get a company.
+2. **Authentication → Sign In / Providers → Email:** keep Email enabled, **Allow new users to sign up** on, and **Confirm email** on. Runway only trusts an email Supabase has confirmed (team invites and invite-only sign-up key on it), so with Confirm email off, people signing up with a password would get no company at all. Runway decides who may create an account (`SIGNUPS`), and checks it again on the server when a company is created, so a sign-up made directly against Supabase doesn't get a company.
 3. **Authentication → Emails → SMTP Settings:** add your own SMTP sender before real users arrive. Supabase's built-in sender is for testing and allows only a few emails an hour.
 4. Run the migrations (`npm run db:migrate`) so the `invited_at` column and the `csv` connection type exist.
 

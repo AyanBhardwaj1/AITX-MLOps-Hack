@@ -37,6 +37,12 @@ row-level security keyed on `auth.uid()`, unused by the app.
   With accounts on, app-initiated Slack sends and Jira filing are off: those are the operator's
   tools. Deleting uploads also deletes everything derived from them, share links included.
 
+- **Teams (after the second review):** an owner invites teammates by email; the invite is honoured
+  only for an email Supabase has confirmed, and inside the same transaction that would otherwise
+  create a company. Someone who already has a company accepts explicitly, and only once theirs holds
+  no data (it's deleted on the way). A company's `org_` scope is only ever created at sign-in, so a
+  late write can't bring a deleted company back.
+
 ## Alternatives
 
 - Browser Supabase client: simpler, but needs `connect-src` to Supabase and puts auth calls in the

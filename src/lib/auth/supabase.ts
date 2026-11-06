@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import type { NextRequest } from "next/server";
 import type { CookieToSet } from "./proxy";
-import type { SessionUser } from "./session";
+import { verifiedEmail, type SessionUser } from "./session";
 
 /** Read straight from process.env: the proxy can't load the server-only env module. */
 export function supabaseSettings(): { url: string; anonKey: string } | null {
@@ -27,7 +27,7 @@ export async function getUserForProxy(request: NextRequest): Promise<{ user: Ses
     // getUser() asks Supabase to validate the token; never trust the cookie's contents alone.
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return { user: null, setCookies };
-    return { user: { id: data.user.id, email: data.user.email ?? null }, setCookies };
+    return { user: { id: data.user.id, email: verifiedEmail(data.user) }, setCookies };
   } catch (err) {
     console.error("[auth] session check failed", err instanceof Error ? err.message : "unknown error");
     return { user: null, setCookies };

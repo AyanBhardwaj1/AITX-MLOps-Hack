@@ -49,6 +49,17 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
       expect(await store.nameForScope(`org_${crypto.randomUUID()}`)).toBeNull();
     });
 
+    it("creates no company when new ones aren't allowed, but still lets an invited teammate join", async () => {
+      const store = await makeStore();
+      const stranger = user();
+      await expect(store.ensureCompanyFor(stranger, { allowNew: false })).rejects.toMatchObject({ name: "NotInvited" });
+      expect(await store.companyFor(stranger.id)).toBeNull();
+      const owner = user();
+      const company = await store.ensureCompanyFor(owner);
+      await store.invite(owner.id, stranger.email);
+      expect((await store.ensureCompanyFor(stranger, { allowNew: false })).orgId).toBe(company.orgId);
+    });
+
     it("says the first user of a company owns it", async () => {
       const store = await makeStore();
       const u = user();
@@ -138,6 +149,36 @@ export function runAccountsContract(name: string, makeStore: () => Promise<Accou
         await store.invite(owner.id, other.email);
         expect(await store.ensureCompanyFor(other)).toEqual(own);
         expect(own.orgId).not.toBe(company.orgId);
+      });
+
+      it("lets someone who already has an empty company of their own accept an invite instead", async () => {
+        const store = await makeStore();
+        const owner = user();
+        const team = await store.ensureCompanyFor(owner);
+        await store.renameCompany(owner.id, "Acme Robotics");
+        const cofounder = user();
+        const own = await store.ensureCompanyFor(cofounder);
+        await store.invite(owner.id, cofounder.email);
+        expect(await store.invitesFor(cofounder.email)).toEqual([{ orgId: team.orgId, companyName: "Acme Robotics" }]);
+        expect(await store.acceptInvite(cofounder, team.orgId)).toBe("joined");
+        expect(await store.companyFor(cofounder.id)).toEqual({ ...team, name: "Acme Robotics", role: "member" });
+        expect(await store.nameForScope(own.scope)).toBeNull();
+        expect(await store.invitesFor(cofounder.email)).toEqual([]);
+        expect(await store.acceptInvite(cofounder, team.orgId)).toBe("no_invite");
+      });
+
+      it("won't let an owner with teammates walk away from their team by accepting an invite", async () => {
+        const store = await makeStore();
+        const a = user();
+        const teamA = await store.ensureCompanyFor(a);
+        const b = user();
+        await store.ensureCompanyFor(b);
+        const bMate = user();
+        await store.invite(b.id, bMate.email);
+        await store.ensureCompanyFor(bMate);
+        await store.invite(a.id, b.email);
+        expect(await store.acceptInvite(b, teamA.orgId)).toBe("has_team");
+        expect((await store.companyFor(b.id))!.role).toBe("owner");
       });
 
       it("drops pending invites with the company", async () => {
