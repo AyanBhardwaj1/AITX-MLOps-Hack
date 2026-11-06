@@ -62,11 +62,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     vendor?.source === "user" ? enrichTransactions({ ...dataset, corrections: undefined }).find((t) => t.vendor.key === vendor.key)?.vendor : vendor;
   // A month from an old link that has no transactions still shows as chosen, not as "All".
   const months = query.month && !result.months.includes(query.month) ? [query.month, ...result.months] : result.months;
-  const accountNames = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
   const name = await companyName(mode);
   const filtered = query.q !== "" || query.category !== null || query.month !== null || query.direction !== "all" || query.vendor !== null || query.account !== null;
   // An account from an old link that has no transactions still shows as chosen.
-  const accounts = query.account && !result.accounts.includes(query.account) ? [query.account, ...result.accounts] : result.accounts;
+  const accountNames = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
+  const label = (id: string) => accountNames.get(id) ?? id;
+  const accounts = (query.account && !result.accounts.includes(query.account) ? [query.account, ...result.accounts] : result.accounts).sort((a, b) => label(a).localeCompare(label(b)));
   const field = "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:border-brand";
 
   return (
@@ -79,7 +80,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         Every transaction behind {name}&apos;s numbers, newest first, with the category Runway gave it.
       </p>
 
-      <form method="get" action="/app/transactions" role="search" className="mt-6 grid gap-3 rounded-xl border border-line bg-panel p-4 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">
+      <form method="get" action="/app/transactions" role="search" className={`mt-6 grid gap-3 rounded-xl border border-line bg-panel p-4 sm:items-end ${accounts.length > 1 ? "sm:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]" : "sm:grid-cols-[2fr_1fr_1fr_1fr_auto]"}`}>
         <input type="hidden" name="mode" value={mode} />
         {query.vendor && <input type="hidden" name="vendor" value={query.vendor} />}
         <label className="block text-sm">
@@ -115,7 +116,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               <option value="">All</option>
               {accounts.map((a) => (
                 <option key={a} value={a}>
-                  {accountNames.get(a) ?? a}
+                  {label(a)}
                 </option>
               ))}
             </select>
