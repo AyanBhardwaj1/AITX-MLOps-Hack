@@ -29,6 +29,12 @@ await suite("settings", async ({ browser, step }) => {
     // Spend by person: the sample's cardholders, each linked to their transactions.
     await p.getByRole("heading", { name: "Spend by person" }).waitFor();
     await p.getByRole("region", { name: "Spend by person table" }).getByRole("link").first().waitFor();
+    // On the company's own uploads: who pays, the 1099 list and the monthly P&L.
+    await p.getByRole("region", { name: "Who pays you" }).getByText("Stripe payouts").waitFor();
+    await p.getByRole("region", { name: /^1099s for \d{4}$/ }).getByRole("link", { name: "Wilson Sonsini (legal)" }).waitFor();
+    const pnl = (await (await p.request.get(`${APP}/api/export?mode=company&kind=pnl`)).text()).replace(/^\uFEFF/, "").trim().split("\r\n");
+    assert.equal(pnl[0].split(",").length, 14);
+    assert.match(pnl.at(-1), /^Net cash flow,/);
     // A suggested budget fills the amount from the last 3 full months, rounded up to $100.
     const budgets = p.getByRole("region", { name: "Budgets" });
     await budgets.getByLabel("Category").selectOption("software");
