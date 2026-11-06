@@ -39,7 +39,7 @@ async function digestFrom({ store, dataset, analysis, company, link, uploaded, d
   const savings = await savingsFromStore(store, dataset, analysis);
   const input = digestInputFromAnalysis(analysis, { company, exclude, appUrl: link, savings });
   // Uploaded data goes stale between uploads; say so before anyone trusts the numbers.
-  const staleDays = uploaded ? dataFreshness(analysis.asOf, new Date()).daysOld : undefined;
+  const freshness = uploaded ? dataFreshness(analysis.asOf, new Date(), dataset.cashEnteredAt) : undefined;
   let list: readonly Budget[] = demo ? DEMO_BUDGETS : [];
   if (uploaded) {
     try {
@@ -50,7 +50,7 @@ async function digestFrom({ store, dataset, analysis, company, link, uploaded, d
     }
   }
   const budgets = list.length ? budgetStatus(analysis.txns, analysis.asOf, list, analysis.streams) : undefined;
-  return { ...buildDigest({ ...input, staleDays, budgets }), changes: [...input.changes] };
+  return { ...buildDigest({ ...input, staleDays: freshness?.daysOld, staleThrough: freshness?.through, budgets }), changes: [...input.changes] };
 }
 
 /** The digest for one data source (resolved from the session for a company). */

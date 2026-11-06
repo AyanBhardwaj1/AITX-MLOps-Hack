@@ -31,6 +31,15 @@ describe("upload reminder in Slack", () => {
     expect(await store.listActivity(5)).toEqual([expect.objectContaining({ kind: "alert", actorEmail: null, detail: "Told Slack: the data ends Oct 24, 2026 (14 days ago)" })]);
   });
 
+  it("nudges when the rows only look fresh because a scheduled payment's date arrived", async () => {
+    const store = await connected();
+    const post = vi.fn(async () => undefined);
+    // The last upload was Oct 1; its newest row is a payment scheduled for Nov 5.
+    const r = await sendStaleNudge({ store, load: async () => analysisTo("2026-11-05"), cashEnteredAt: async () => "2026-10-01T09:00:00Z", company: "Acme", now: NOW, post });
+    expect(r).toEqual({ status: "sent", daysOld: 37 });
+    expect((post.mock.calls[0] as unknown as [string, string])[1]).toContain("Your transactions end on Oct 1, 2026, 37 days ago");
+  });
+
   it("reads no data without a channel, and tries again when Slack refuses", async () => {
     const load = vi.fn(async () => analysisTo("2026-10-01"));
     expect(await sendStaleNudge({ store: createMemoryStore(), load, company: "Acme", now: NOW })).toEqual({ status: "no_slack" });
