@@ -211,14 +211,14 @@ function suggestBudgetsAnswer(a: Analysis): InstantAnswer {
   if (!s) return { question: INSTANT_QUESTIONS.suggest_budgets, tools, text: "There isn't a full month of data yet to suggest budgets from." };
   const rows = Object.entries(s.byCategory)
     .sort((x, y) => y[1]! - x[1]!)
-    .map(([c, cents]) => `- ${categoryName(c)}: ${formatDollars(cents!)}`);
+    .map(([c, cents]) => `- ${categoryName(c).charAt(0).toUpperCase()}${categoryName(c).slice(1)}: ${formatDollars(cents!)}`);
   return {
     question: INSTANT_QUESTIONS.suggest_budgets,
     tools,
     text: [
       `A place to start, per month: each category's average over the last ${s.months === 1 ? "full month" : `${s.months} full months`}, rounded up to the next $100.`,
       rows.join("\n"),
-      "Set any of them under Budgets (\"Use $X\" fills it in), then trim the ones you want to bring down.",
+      "Set the ones you want under Budgets, then trim any you want to bring down.",
     ].join("\n\n"),
   };
 }
@@ -231,7 +231,7 @@ function uncategorisedAnswer(a: Analysis): InstantAnswer {
     question: INSTANT_QUESTIONS.uncategorised,
     tools,
     text: [
-      `**${formatDollars(u.monthlyCents)}/month** (${Math.round(u.shareOfGross * 100)}% of spending) goes to ${u.vendorCount === 1 ? "a vendor" : `${u.vendorCount} vendors`} Runway couldn't categorise, so it's filed under Other. The biggest:`,
+      `**${formatDollars(u.monthlyCents)}/month** (${u.shareOfGross < 0.01 ? "under 1%" : `${Math.round(u.shareOfGross * 100)}%`} of spending) goes to ${u.vendorCount === 1 ? "a vendor" : `${u.vendorCount} vendors`} Runway couldn't categorise, so it's filed under Other. The biggest:`,
       u.vendors.map((v) => `- ${v.name}: ${formatDollars(v.monthlyCents)}/month`).join("\n"),
       "Open a vendor from the transactions page to set its category; one fix covers every charge from it.",
     ].join("\n\n"),
