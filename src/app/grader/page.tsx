@@ -2,9 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GraderPanel } from "@/components/grader-panel";
 
+const title = "Runway Grader: your runway from a bank CSV";
+const description =
+  "Drop a bank CSV export or an OFX, Quicken (QFX) or QuickBooks (QBO) download: runway, a likely range with your burn trend and the biggest wasted spend in seconds. Runs in your browser; nothing is uploaded.";
+const card = { url: "/opengraph-image", width: 1200, height: 630, alt: "Runway: know the day your startup's cash runs out, and find the spend pulling it closer" };
+const shared = "How long is your runway, really? Drop a bank export: runway and the biggest wasted spend in seconds, free. Nothing is uploaded.";
+
 export const metadata: Metadata = {
-  title: "Runway Grader: your runway from a bank CSV",
-  description: "Drop a bank CSV export or an OFX, Quicken (QFX) or QuickBooks (QBO) download: runway, a likely range with your burn trend and the biggest wasted spend in seconds. Runs in your browser; nothing is uploaded.",
+  title,
+  description,
+  // A shared grader link should preview as the grader, not the home page. Setting openGraph here
+  // replaces the inherited one, so the site's card image is named again.
+  openGraph: { title: "Runway Grader", description: shared, type: "website", siteName: "Runway", images: [card] },
+  twitter: { card: "summary_large_image", title: "Runway Grader", description: shared, images: [card] },
 };
 
 export default function GraderPage() {

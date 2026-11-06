@@ -12,6 +12,10 @@ await suite("accounts", async ({ browser, step }) => {
     // Nothing hidden inside a scroll box (a screen-reader label) stretches the page past its footer.
     const below = await a.evaluate(() => document.documentElement.scrollHeight - (document.querySelector("footer").getBoundingClientRect().bottom + scrollY));
     assert.ok(below < 40, `page runs ${below}px past the footer`);
+    // A shared grader link previews as the grader, with the card image.
+    const graderHtml = await (await fetch(`${APP}/grader`)).text();
+    assert.match(graderHtml, /<meta property="og:title" content="Runway Grader"\/>/);
+    assert.match(graderHtml, /<meta property="og:image" content="[^"]+opengraph-image/);
     // No serious or critical accessibility violations on the public pages and the demo (axe-core).
     const axe = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
     // Reduced motion, so a fade-in caught halfway isn't read as low contrast.
