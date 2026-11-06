@@ -55,7 +55,7 @@ const STEPS: { name: string; text: string; shot: Shot }[] = [
 const FAQ = [
   {
     q: "Which banks does it work with?",
-    a: "Rho today, through Rho’s read-only API. The free grader takes CSV exports from any bank, including Mercury-style files. More direct connections come next, in the order people on the list ask for them.",
+    a: "Any bank, through CSV exports: once you’re invited, you upload exports from your bank and card accounts, and add fresh ones as the weeks go by. Most layouts are read as they come, including debit and credit columns and files with no header row. The free grader takes the same files. Direct connections, starting with Rho’s read-only API, come next, in the order people on the list ask for them.",
   },
   {
     q: "Can Runway move money or cancel anything?",
@@ -79,7 +79,7 @@ const FAQ = [
   },
   {
     q: "What happens to my data?",
-    a: "Early access stores your email, role and bank choice, nothing more. Connected accounts are read for analysis and never sold or shared. The privacy page has the details.",
+    a: "Early access stores your email, role and bank choice, nothing more. Once you’re in, the transactions you upload are kept for your company alone, never sold or shared, and you can download or delete them whenever you like. The privacy page has the details.",
   },
 ];
 

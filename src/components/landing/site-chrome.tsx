@@ -2,7 +2,10 @@ import Link from "next/link";
 
 export const REPO_URL = "https://github.com/AyanBhardwaj1/AITX-MLOps-Hack";
 
-/** Plain bar: wordmark, four links, one action. */
+/** Sign-in exists only where Supabase Auth is configured (these values are public, built into the app). */
+const signInAvailable = () => Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+/** Plain bar: wordmark, four links, sign-in for invited founders, one action. */
 export function SiteHeader() {
   return (
     <header className="wrap flex items-center justify-between gap-6 py-6 text-[15px]">
@@ -14,7 +17,7 @@ export function SiteHeader() {
           Runway
         </span>
       </Link>
-      <nav aria-label="Main" className="flex items-center gap-5 sm:gap-7">
+      <nav aria-label="Main" className="flex items-center gap-4 sm:gap-7">
         <Link href="/#how" className="text-link hidden md:inline">
           How it works
         </Link>
@@ -27,7 +30,12 @@ export function SiteHeader() {
         <Link href="/#faq" className="text-link hidden lg:inline">
           Questions
         </Link>
-        <Link href="/#early-access" className="btn min-h-[44px] px-4">
+        {signInAvailable() && (
+          <Link href="/login" className="text-link whitespace-nowrap">
+            Sign in
+          </Link>
+        )}
+        <Link href="/#early-access" className="btn min-h-[44px] whitespace-nowrap px-4">
           Get early access
         </Link>
       </nav>
