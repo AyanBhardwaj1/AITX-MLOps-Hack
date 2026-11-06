@@ -12,6 +12,7 @@ const snapshot = (cashCents: number, netBurnCents: number): Snapshot => ({
   runwayMonths: netBurnCents > 0 ? cashCents / netBurnCents : Number.POSITIVE_INFINITY,
   zeroCashDate: null,
   burnMonths: 3,
+  burnPeriod: { from: "2026-07-01", to: "2026-09-30", months: 3 },
 });
 const finding = (id: string, monthly: number, confidence = 0.8): Finding => ({
   id, kind: "duplicate_tools", title: id, detail: "", vendorKeys: [], monthlySavingsCents: monthly, oneTimeCents: 0, confidence, evidenceTxnIds: [],

@@ -1,3 +1,4 @@
+import { addDays, addMonths } from "../dates";
 import { formatMoney } from "../format";
 import type { Renewal } from "../finance/renewals";
 
@@ -49,12 +50,35 @@ function fold(line: string): string {
 const day = (iso: string) => iso.replaceAll("-", "");
 const nextDay = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
 const stamp = (d: Date) => `${d.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
+/** How each cadence steps: whole months (kept on the same day, clamped) or days. */
+const STEP: Record<Renewal["cadence"], { months?: number; days?: number }> = {
+  annual: { months: 12 },
+  quarterly: { months: 3 },
+  monthly: { months: 1 },
+  semimonthly: { days: 15 },
+  biweekly: { days: 14 },
+  weekly: { days: 7 },
+};
+
+/** Every expected date of a renewal from `from` to `until`, stepping on from its next expected date. */
+function datesWithin(r: Renewal, from: string, until: string): string[] {
+  const step = STEP[r.cadence];
+  const out: string[] = [];
+  // Counted from the first date each time, so a 31st stays the 31st where the month has one.
+  for (let k = 0; k < 400; k++) {
+    const d = step.months ? addMonths(r.dueDate, k * step.months) : addDays(r.dueDate, k * step.days!);
+    if (d > until) break;
+    if (d >= from) out.push(d);
+  }
+  return out;
+}
+
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x";
 
 export function renewalsCalendar({ renewals, company, now, link }: { renewals: readonly Renewal[]; company: string; now: Date; link?: string }): string {
   const today = now.toISOString().slice(0, 10);
   const until = new Date(Date.parse(`${today}T00:00:00Z`) + HORIZON_DAYS * DAY_MS).toISOString().slice(0, 10);
-  const due = renewals.filter((r) => r.decide && r.dueDate >= today && r.dueDate <= until);
+  const due = renewals.filter((r) => r.decide).flatMap((r) => datesWithin(r, today, until).map((dueDate) => ({ ...r, dueDate })));
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

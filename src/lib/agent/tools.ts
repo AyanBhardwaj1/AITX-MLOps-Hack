@@ -5,7 +5,7 @@ import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
-import { goalSeek, simulateSavings, stressRunway, countsTowardBurn } from "../finance/runway";
+import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget } from "../finance/budgets";
@@ -24,9 +24,9 @@ export const snapshotInput = z.object({});
 export function getFinancialSnapshot(a: Analysis) {
   const s = a.snapshot;
   const byCategory = new Map<string, number>();
-  const window = new Set(s.months.map((m) => m.month));
+  // The same period burn averages, so the categories add up to gross burn.
   for (const t of a.txns) {
-    if (t.amountCents >= 0 || !countsTowardBurn(t) || !window.has(t.postedAt.slice(0, 7))) continue;
+    if (t.amountCents >= 0 || !countsTowardBurn(t) || !inBurnPeriod(s, t)) continue;
     byCategory.set(t.vendor.category, (byCategory.get(t.vendor.category) ?? 0) - t.amountCents);
   }
   return {
@@ -39,7 +39,7 @@ export function getFinancialSnapshot(a: Analysis) {
     runwayMonthsIfRevenueFalls30Pct: round1(stressRunway(s, 0.3).runwayMonths),
     lookbackMonths: s.months.map((m) => m.month),
     avgMonthlySpendByCategoryCents: Object.fromEntries(
-      [...byCategory].sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round(v / s.months.length)]),
+      [...byCategory].sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round(v / (s.burnPeriod?.months ?? 1))]),
     ),
   };
 }

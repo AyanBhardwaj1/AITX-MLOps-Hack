@@ -172,7 +172,9 @@ function growthNeeded(r: Resolved): number | null {
 
 export function projectScenario(input: ScenarioInput): ScenarioResult {
   const options = scenarioOptions.parse(input);
-  const recent = input.history.slice(Math.max(firstWholeMonth(input.history), input.history.length - BASE_MONTHS));
+  const whole = input.history.slice(Math.max(firstWholeMonth(input.history), input.history.length - BASE_MONTHS));
+  // No whole month yet: the partial ones are all there is, and better than assuming no spend.
+  const recent = whole.length ? whole : input.history.slice(-BASE_MONTHS);
   const avg = (f: (m: MonthHistory) => number) => (recent.length ? Math.round(recent.reduce((s, m) => s + f(m), 0) / recent.length) : 0);
   const basis = options.revenueGrowth === undefined ? estimateRevenueGrowthDetail(input.history) : null;
   const resolved: Resolved = {

@@ -25,6 +25,11 @@ export interface Snapshot {
    * the days there are were scaled to a month.
    */
   burnMonths: number;
+  /**
+   * The days the burn figures average, inclusive, and how many months they count as: every other
+   * per-month average (budgets, categories, stress) uses the same period. Null with no data.
+   */
+  burnPeriod: { from: IsoDate; to: IsoDate; months: number } | null;
 }
 
 interface SnapshotInput {
@@ -33,6 +38,10 @@ interface SnapshotInput {
   asOf: IsoDate;
   lookbackMonths?: number;
 }
+
+/** Whether a transaction falls in the period burn averages (see Snapshot.burnPeriod). */
+export const inBurnPeriod = (snapshot: Pick<Snapshot, "burnPeriod">, t: { postedAt: IsoDate }) =>
+  snapshot.burnPeriod !== null && t.postedAt >= snapshot.burnPeriod.from && t.postedAt <= snapshot.burnPeriod.to;
 
 /** Same rule everywhere a number claims to be burn: settled, not a transfer by type or by (corrected) category. */
 export function countsTowardBurn(t: EnrichedTxn): boolean {
@@ -84,16 +93,20 @@ export function computeSnapshot({ cashCents, txns, asOf, lookbackMonths = DEFAUL
 
   let grossBurnCents: number;
   let netBurnCents: number;
+  let burnPeriod: Snapshot["burnPeriod"] = null;
   if (counted.length > 0) {
     const totalOut = counted.reduce((s, m) => s + m.outflowCents, 0);
     const totalIn = counted.reduce((s, m) => s + m.inflowCents, 0);
     grossBurnCents = Math.round(totalOut / counted.length);
     netBurnCents = Math.round((totalOut - totalIn) / counted.length);
+    burnPeriod = { from: `${counted[0]!.month}-01`, to: addDays(`${open}-01`, -1), months: counted.length };
   } else if (first !== null && first <= asOf) {
-    // No complete month yet: the days there are, scaled to a month.
-    const perMonth = AVG_DAYS_PER_MONTH / (daysBetween(first, asOf) + 1);
-    grossBurnCents = Math.round(spanOut * perMonth);
-    netBurnCents = Math.round((spanOut - spanIn) * perMonth);
+    // No complete month yet: what the days so far spent, as at least a month. Never scaled up:
+    // one rent payment in a week of data isn't four rent payments a month.
+    const months = Math.max(daysBetween(first, asOf) + 1, AVG_DAYS_PER_MONTH) / AVG_DAYS_PER_MONTH;
+    grossBurnCents = Math.round(spanOut / months);
+    netBurnCents = Math.round((spanOut - spanIn) / months);
+    burnPeriod = { from: first, to: asOf, months };
   } else {
     grossBurnCents = 0;
     netBurnCents = 0;
@@ -102,7 +115,7 @@ export function computeSnapshot({ cashCents, txns, asOf, lookbackMonths = DEFAUL
   grossBurnCents ||= 0;
   netBurnCents ||= 0;
   const runwayMonths = runwayFrom(cashCents, netBurnCents);
-  return { asOf, cashCents, months, grossBurnCents, netBurnCents, runwayMonths, zeroCashDate: zeroCashDate(asOf, runwayMonths), burnMonths: counted.length };
+  return { asOf, cashCents, months, grossBurnCents, netBurnCents, runwayMonths, zeroCashDate: zeroCashDate(asOf, runwayMonths), burnMonths: counted.length, burnPeriod };
 }
 
 export interface Simulation {
@@ -164,7 +177,8 @@ export function goalSeek(snapshot: Snapshot, findings: readonly Finding[], targe
 /** Runway if money coming in falls by `revenueDrop` (0.3 = 30%) while spending stays the same. */
 export function stressRunway(snapshot: Snapshot, revenueDrop: number): Omit<Simulation, "monthlySavingsCents" | "deltaMonths"> {
   if (!(revenueDrop >= 0 && revenueDrop <= 1)) throw new Error("revenue drop must be between 0 and 1");
-  const avgInflow = snapshot.months.reduce((s, m) => s + m.inflowCents, 0) / Math.max(1, snapshot.months.length);
+  // Money in per month, over exactly the months burn averages (gross out minus net).
+  const avgInflow = snapshot.grossBurnCents - snapshot.netBurnCents;
   const netBurnCents = Math.round(snapshot.netBurnCents + avgInflow * revenueDrop);
   const runwayMonths = runwayFrom(snapshot.cashCents, netBurnCents);
   return { netBurnCents, runwayMonths, zeroCashDate: zeroCashDate(snapshot.asOf, runwayMonths) };

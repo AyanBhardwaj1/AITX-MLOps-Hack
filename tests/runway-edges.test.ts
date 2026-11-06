@@ -37,12 +37,13 @@ describe("burn from the months the data really covers", () => {
     expect(s.burnMonths).toBe(2);
   });
 
-  it("with no complete month yet, scales the days it has to a month", () => {
-    // $50k over Oct 5-20 (16 days).
+  it("with no complete month yet, takes what the days so far spent (never scaled up)", () => {
+    // $50k over Oct 5-20 (16 days): at least $50k a month, and no guess beyond it.
     const txns = [txn("x", "2026-10-05", -25_000_00), txn("y", "2026-10-20", -25_000_00)];
     const s = computeSnapshot({ cashCents: 300_000_00, txns, asOf: "2026-10-20" });
-    expect(s.netBurnCents).toBe(Math.round((50_000_00 * 30.4375) / 16));
+    expect(s.netBurnCents).toBe(50_000_00);
     expect(s.burnMonths).toBe(0);
+    expect(s.burnPeriod).toEqual({ from: "2026-10-05", to: "2026-10-20", months: 1 });
   });
 
   it("keeps a full three-month window when the data reaches back further", () => {
@@ -94,5 +95,49 @@ describe("revenue growth ignores the partial month the data starts in", () => {
     const g = estimateRevenueGrowthDetail(history);
     expect(Math.abs(g.rate)).toBeLessThan(0.03);
     expect(g.months).toBe(3);
+  });
+});
+
+describe("review of the burn fix", () => {
+  it("never scales a few days up into a month (one rent payment isn't $300k/month)", () => {
+    const s = computeSnapshot({ cashCents: 500_000_00, txns: [txn("rent", "2026-10-20", -10_000_00, "rent")], asOf: "2026-10-20" });
+    expect(s.netBurnCents).toBe(10_000_00);
+    const week = [txn("rent", "2026-10-14", -10_000_00, "rent"), ...Array.from({ length: 7 }, (_, i) => txn(`d${i}`, `2026-10-${14 + i}`, -50_00, "meals"))];
+    expect(computeSnapshot({ cashCents: 500_000_00, txns: week, asOf: "2026-10-20" }).netBurnCents).toBe(10_350_00);
+  });
+
+  it("records the period its burn covers, for every other average to use", () => {
+    const txns = [txn("aug", "2026-08-25", -10_000_00), ...steady(["2026-09", "2026-10"], "2026-10-31")];
+    const s = computeSnapshot({ cashCents: 300_000_00, txns, asOf: "2026-10-31" });
+    expect(s.burnPeriod).toEqual({ from: "2026-09-01", to: "2026-10-31", months: 2 });
+    expect(computeSnapshot({ cashCents: 1, txns: [], asOf: "2026-10-31" }).burnPeriod).toBeNull();
+  });
+
+  it("stress, budget savings and Copilot's category averages use the same months as burn", async () => {
+    const { stressRunway } = await import("@/lib/finance/runway");
+    const { runwayWithinBudgets } = await import("@/lib/finance/budgets");
+    const { getFinancialSnapshot } = await import("@/lib/agent/tools");
+    // Data from Aug 25: burn averages September and October only.
+    const txns = [
+      txn("aug", "2026-08-25", -10_000_00, "software"),
+      ...["2026-09", "2026-10"].flatMap((m) => [txn(`p${m}`, `${m}-10`, -100_000_00), txn(`s${m}`, `${m}-12`, -30_000_00, "software"), txn(`r${m}`, `${m}-20`, 20_000_00, "revenue")]),
+    ];
+    const s = computeSnapshot({ cashCents: 1_000_000_00, txns, asOf: "2026-10-31" });
+    expect(s.grossBurnCents).toBe(130_000_00);
+    expect(stressRunway(s, 1).netBurnCents).toBe(130_000_00);
+    expect(runwayWithinBudgets(s, txns, [{ category: "software", monthlyCents: 10_000_00 }])!.monthlySavingsCents).toBe(20_000_00);
+    const a = { snapshot: s, txns, asOf: s.asOf } as unknown as Parameters<typeof getFinancialSnapshot>[0];
+    expect(getFinancialSnapshot(a).avgMonthlySpendByCategoryCents.software).toBe(30_000_00);
+  });
+
+  it("with no whole month of history, the scenario isn't 'default alive' on zero spend", async () => {
+    const { projectScenario } = await import("@/lib/finance/scenario");
+    const history = [
+      ...Array.from({ length: 11 }, (_, i) => ({ month: `2026-${String(i - 1 + 1).padStart(2, "0")}`, inflowCents: 0, outflowCents: 0, softwareCents: 0 })).slice(0, 11),
+      { month: "2026-10", inflowCents: 20_000_00, outflowCents: 100_000_00, softwareCents: 0 },
+    ];
+    const r = projectScenario({ asOf: "2026-10-20", cashCents: 300_000_00, history });
+    expect(r.defaultAlive).toBe(false);
+    expect(r.baseExpensesCents).toBeGreaterThan(0);
   });
 });

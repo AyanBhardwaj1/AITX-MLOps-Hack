@@ -46,6 +46,7 @@ describe("renewals as a calendar file", () => {
   });
 
   it("keeps only renewals worth deciding on, in the next year, from today on", () => {
+    // "Old" was expected Nov 1 (before today): an annual renewal, so next due Nov 1 next year.
     const ics = renewalsCalendar({
       renewals: [
         renewal({ vendorKey: "slack", vendorName: "Slack", cadence: "monthly", amountCents: 875_00, decide: false, dueDate: "2026-11-20" }),
@@ -57,10 +58,11 @@ describe("renewals as a calendar file", () => {
       now: NOW,
     });
     expect(ics).not.toContain("Slack");
-    expect(ics).not.toContain("SUMMARY:Old");
+    expect(ics).toContain("DTSTART;VALUE=DATE:20271101");
     expect(ics).not.toContain("SUMMARY:Later");
     expect(ics).toContain("SUMMARY:AWS renews: $6\\,000 (monthly)");
-    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    // AWS monthly Nov 30 2026 to Oct 30 2027 (12), plus Old once.
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(13);
   });
 
   it("is still a valid, empty calendar when nothing is due", () => {
@@ -92,5 +94,25 @@ describe("GET /api/export?kind=calendar", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("a year of renewals, not just the next one", () => {
+  it("repeats each renewal on its cycle across the year, from today on", () => {
+    const ics = renewalsCalendar({
+      renewals: [
+        renewal({ vendorKey: "insure", vendorName: "Insurer", cadence: "quarterly", amountCents: 3_000_00, dueDate: "2026-12-01" }),
+        // Last expected before today (the data ends a while back): moved on to its next date.
+        renewal({ vendorKey: "aws", vendorName: "AWS", cadence: "monthly", amountCents: 8_000_00, dueDate: "2026-11-01" }),
+      ],
+      company: "Acme",
+      now: NOW,
+    });
+    const starts = (name: string) => [...ics.split("BEGIN:VEVENT").slice(1)].filter((e) => e.includes(`SUMMARY:${name}`)).map((e) => /DTSTART;VALUE=DATE:(\d+)/.exec(e)![1]);
+    expect(starts("Insurer")).toEqual(["20261201", "20270301", "20270601", "20270901"]);
+    expect(starts("AWS")).toEqual(["20261201", "20270101", "20270201", "20270301", "20270401", "20270501", "20270601", "20270701", "20270801", "20270901", "20271001", "20271101"]);
+    // Every event has its own identity.
+    const uids = ics.split("\r\n").filter((l) => l.startsWith("UID:"));
+    expect(new Set(uids).size).toBe(uids.length);
   });
 });

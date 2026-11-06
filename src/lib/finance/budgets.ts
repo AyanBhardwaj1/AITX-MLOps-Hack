@@ -2,7 +2,7 @@ import { addDays, daysBetween, monthKey, shiftMonth } from "../dates";
 import { CADENCE_DAYS } from "../detect/recurring";
 import { MAX_CASH_CENTS } from "../money";
 import { CATEGORIES, type Category, type Cents, type EnrichedTxn, type IsoDate, type RecurringStream } from "../types";
-import { countsTowardBurn, simulateSavings, type Snapshot } from "./runway";
+import { countsTowardBurn, inBurnPeriod, simulateSavings, type Snapshot } from "./runway";
 
 /** Categories that are money in or moving between accounts: nothing to budget. */
 const NOT_SPENDING: ReadonlySet<Category> = new Set(["revenue", "transfer"]);
@@ -269,21 +269,22 @@ export function runwayWithinBudgets(
   txns: readonly EnrichedTxn[],
   budgets: readonly Budget[],
 ): { monthlySavingsCents: Cents; runwayMonths: number; currentRunwayMonths: number } | null {
-  const months = new Set(snapshot.months.map((m) => m.month));
   // Cash-flow positive already: runway has no end either way, so there's nothing to say.
-  if (months.size === 0 || !Number.isFinite(snapshot.runwayMonths)) return null;
+  if (!snapshot.burnPeriod || !Number.isFinite(snapshot.runwayMonths)) return null;
+  const perMonth = snapshot.burnPeriod.months;
   const gross = new Map<Category, number>();
   const net = new Map<Category, number>();
   for (const t of txns) {
-    if (!countsTowardBurn(t) || !months.has(monthKey(t.postedAt))) continue;
+    // The same months burn averages, so the saving and the burn it comes off agree.
+    if (!countsTowardBurn(t) || !inBurnPeriod(snapshot, t)) continue;
     const c = t.vendor.category;
     net.set(c, (net.get(c) ?? 0) - t.amountCents);
     if (t.amountCents < 0) gross.set(c, (gross.get(c) ?? 0) - t.amountCents);
   }
   // A budget caps charges, but refunds already lowered burn: never count more than the category's net spend.
   const monthlySavingsCents = budgets.reduce((sum, b) => {
-    const avgGross = Math.round((gross.get(b.category) ?? 0) / months.size);
-    const avgNet = Math.round((net.get(b.category) ?? 0) / months.size);
+    const avgGross = Math.round((gross.get(b.category) ?? 0) / perMonth);
+    const avgNet = Math.round((net.get(b.category) ?? 0) / perMonth);
     return sum + Math.max(0, Math.min(avgGross - b.monthlyCents, avgNet));
   }, 0);
   if (monthlySavingsCents === 0) return null;

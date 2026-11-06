@@ -20,6 +20,8 @@ export interface InvestorUpdateInput {
   cashCents: Cents;
   netBurnCents: Cents;
   grossBurnCents: Cents;
+  /** Complete months the burn averages (0: no complete month yet). */
+  burnMonths?: number;
   runwayMonths: number;
   zeroCashDate: IsoDate | null;
   scenario: Pick<ScenarioResult, "defaultAlive" | "breakEvenMonth" | "revenueGrowth" | "growthBasis" | "growthNeededForDefaultAlive">;
@@ -50,6 +52,7 @@ export function investorUpdateInput(a: Analysis, opts: { company: string; verifi
     cashCents: a.snapshot.cashCents,
     netBurnCents: a.snapshot.netBurnCents,
     grossBurnCents: a.snapshot.grossBurnCents,
+    burnMonths: a.snapshot.burnMonths,
     runwayMonths: a.snapshot.runwayMonths,
     zeroCashDate: a.snapshot.zeroCashDate,
     scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history }),
@@ -89,7 +92,7 @@ export function buildInvestorUpdate(input: InvestorUpdateInput): InvestorUpdate 
     : "cash-flow positive";
   const numbers = [
     revenueLine(input.history, input.scenario),
-    `- **Net burn:** ${formatDollars(input.netBurnCents)}/month (3-month average); gross spend ${formatDollars(input.grossBurnCents)}/month`,
+    `- **Net burn:** ${formatDollars(input.netBurnCents)}/month (${input.burnMonths === undefined || input.burnMonths >= 1 ? `${input.burnMonths ?? 3}-month average` : "no complete month yet"}); gross spend ${formatDollars(input.grossBurnCents)}/month`,
     `- **Cash:** ${formatDollars(input.cashCents)}, so ${runway}`,
     aliveLine(input.scenario),
     spendLine(input.history),

@@ -553,7 +553,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           {ms(data.timingsMs.snapshot)} · detectors {ms(data.timingsMs.detect)}). No LLM in the math.
         </span>
         <span>
-          Burn = average of the last {data.snapshot.months.length} complete months · decisions saved to{" "}
+          Burn = {data.snapshot.burnMonths === 0 ? "what the days so far spent (no complete month yet)" : `average of the ${burnBasis(data.snapshot.burnMonths)}`} · decisions saved to{" "}
           {data.capabilities.persistence === "postgres" ? "the database" : "this server's memory"}
           {data.capabilities.storeOk ? "" : " (database unreachable right now)"}
         </span>
