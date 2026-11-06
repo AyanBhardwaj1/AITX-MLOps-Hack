@@ -42,7 +42,7 @@ const MAX_EVIDENCE_ROWS = 12;
 
 async function findingStatuses(mode: DataMode, findings: Parameters<ReturnType<typeof getStore>["syncFindings"]>[0]) {
   try {
-    return { statuses: await getStore(scopeFor(mode)).syncFindings(findings), storeOk: true };
+    return { statuses: await getStore(await scopeFor(mode)).syncFindings(findings), storeOk: true };
   } catch (err) {
     // The dashboard still works without the database; decisions just can't be saved right now.
     console.error("[page] couldn't sync findings with the store", err);

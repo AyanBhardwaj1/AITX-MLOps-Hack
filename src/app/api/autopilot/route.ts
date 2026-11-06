@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { executeAutopilot } from "@/lib/server/autopilot-service";
 import { parseMode } from "@/lib/server/data";
@@ -11,7 +13,7 @@ export const maxDuration = 60;
 
 const RECENT_RUNS = 10;
 const allow = createRateLimiter({ limit: 5, windowMs: 60_000 });
-const body = z.object({ mode: z.enum(["demo", "sandbox"]).default("demo") });
+const body = z.object({ mode: dataModeSchema });
 
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) {
@@ -27,8 +29,10 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
-    return NextResponse.json({ runs: await getStore(scopeFor(mode)).listRuns(RECENT_RUNS) });
+    return NextResponse.json({ runs: await getStore(await scopeFor(mode)).listRuns(RECENT_RUNS) });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[autopilot] history failed", err);
     return NextResponse.json({ error: "Couldn't load run history." }, { status: 500 });
   }

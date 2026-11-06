@@ -1,12 +1,13 @@
 import { z } from "zod";
+import { DATA_MODES, type DataMode } from "../modes";
 import type { Store } from "../store/types";
 import { correctionFields, correctionInput } from "./corrections";
 
 /** Enough for any real company; stops one scope from being filled with junk. */
 export const MAX_CORRECTIONS = 100;
 
-type Mode = "demo" | "sandbox";
-const mode = z.enum(["demo", "sandbox"]);
+type Mode = DataMode;
+const mode = z.enum(DATA_MODES);
 const request = z.discriminatedUnion("action", [
   correctionFields.extend({ mode, action: z.literal("set") }),
   z.object({ mode, action: z.literal("clear"), vendorKey: correctionFields.shape.vendorKey }),
@@ -16,7 +17,7 @@ export type CorrectionSink = Pick<Store, "setCorrection" | "clearCorrection">;
 
 export interface CorrectionDeps {
   /** Where this data source's fixes are kept (the demo uses the visitor's own cookie). */
-  sinkFor: (mode: Mode) => CorrectionSink;
+  sinkFor: (mode: Mode) => CorrectionSink | Promise<CorrectionSink>;
   /** Vendor keys present in this data source, so only real vendors can be corrected. */
   knownVendorKeys: (mode: Mode) => Promise<ReadonlySet<string>>;
   /** False where the app refuses to show the data (a real account with no password set). */
@@ -30,7 +31,7 @@ export async function handleCorrection(raw: unknown, deps: CorrectionDeps): Prom
   if (!parsed.success) return { status: 400, body: { error: "Invalid correction" } };
   const req = parsed.data;
   if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before saving changes to a connected account." } };
-  const sink = deps.sinkFor(req.mode);
+  const sink = await deps.sinkFor(req.mode);
   if (req.action === "clear") {
     await sink.clearCorrection(req.vendorKey);
     return { status: 200, body: { ok: true } };

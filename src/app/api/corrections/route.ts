@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { analyze } from "@/lib/pipeline";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadDataset } from "@/lib/server/data";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   const demo = demoSink(decodeDemoCorrections(cookieValue(request, DEMO_CORRECTIONS_COOKIE)));
   try {
     const result = await handleCorrection(body, {
-      sinkFor: (mode) => (mode === "demo" ? demo.sink : getStore(scopeFor(mode))),
+      sinkFor: async (mode) => (mode === "demo" ? demo.sink : getStore(await scopeFor(mode))),
       knownVendorKeys: async (mode) => new Set(analyze(await loadDataset(mode)).txns.map((t) => t.vendor.key)),
       canWrite: canWriteRealData,
     });
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
     }
     return res;
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[corrections] save failed", err);
     return NextResponse.json({ error: "Couldn’t save that change. Try again." }, { status: 500 });
   }

@@ -20,7 +20,7 @@ export interface PublicRun extends Omit<AutopilotRun, "memoFacts" | "findings" |
  */
 export async function executeAutopilot(mode: DataMode, trigger: "manual" | "cron"): Promise<PublicRun> {
   const startedAt = new Date().toISOString();
-  const store = getStore(scopeFor(mode));
+  const store = getStore(await scopeFor(mode));
   const run = await runAutopilot({
     loadData: () => loadLabelledDataset(mode),
     writeMemo: hasOpenAI() ? writeMemoWithLLM : undefined,

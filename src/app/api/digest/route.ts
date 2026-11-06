@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { buildDigestFor, sendDigest } from "@/lib/server/digest-service";
@@ -9,7 +11,7 @@ export const runtime = "nodejs";
 
 const allowPreview = createRateLimiter({ limit: 30, windowMs: 60_000 });
 const allowSend = createRateLimiter({ limit: 3, windowMs: 60_000 });
-const body = z.object({ mode: z.enum(["demo", "sandbox"]).default("demo") });
+const body = z.object({ mode: dataModeSchema });
 
 /** Preview this week's digest (same content Slack would get). */
 export async function GET(request: Request) {
@@ -18,6 +20,8 @@ export async function GET(request: Request) {
     const digest = await buildDigestFor(parseMode(new URL(request.url).searchParams.get("mode")));
     return NextResponse.json({ ...digest, slackConfigured: hasSlack(), canSend: canSendSlackFromApp() });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[digest] preview failed", err);
     return NextResponse.json({ error: "Couldn't build the digest. Try again." }, { status: 500 });
   }
@@ -35,6 +39,8 @@ export async function POST(request: Request) {
     await sendDigest(parsed.data.mode);
     return NextResponse.json({ sent: true });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[digest] send failed", err);
     return NextResponse.json({ error: "Slack didn't accept the digest. Check the webhook URL." }, { status: 502 });
   }

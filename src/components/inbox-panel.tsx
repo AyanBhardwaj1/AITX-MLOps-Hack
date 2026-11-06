@@ -1,5 +1,7 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import { useEffect, useState } from "react";
 import { orderInbox } from "@/lib/agent/inbox-order";
 import { formatMoney } from "@/lib/format";
@@ -35,7 +37,7 @@ export function InboxPanel({
   active,
   impactByFinding,
 }: {
-  mode: "demo" | "sandbox";
+  mode: DataMode;
   jira: boolean;
   active: boolean;
   /** First-year value (cents) of each finding, so the biggest decisions come first. */

@@ -1,5 +1,7 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import { useEffect, useState } from "react";
 import type { PublicRun } from "@/lib/server/autopilot-service";
 import type { StoredRun } from "@/lib/store/types";
@@ -17,7 +19,7 @@ const STEP_LABEL: Record<string, string> = {
 
 const HISTORY_SHOWN = 5;
 
-export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: "demo" | "sandbox"; llm: boolean; onOpenInbox: () => void }) {
+export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: DataMode; llm: boolean; onOpenInbox: () => void }) {
   const [run, setRun] = useState<PublicRun | null>(null);
   const [running, setRunning] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);

@@ -1,5 +1,7 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import { useState } from "react";
 import type { Change, Severity } from "@/lib/insights/changes";
 import { formatMoney } from "@/lib/format";
@@ -12,7 +14,7 @@ type Preview = { status: "idle" } | { status: "loading" } | { status: "ready"; m
 type SendState = { status: "idle" | "sending" | "sent" } | { status: "error"; message: string };
 
 /** What changed recently, plus a preview of (and a way to send) the Monday digest. */
-export function ThisWeekCard({ changes, mode, slack }: { changes: Change[]; mode: "demo" | "sandbox"; slack: boolean }) {
+export function ThisWeekCard({ changes, mode, slack }: { changes: Change[]; mode: DataMode; slack: boolean }) {
   const [preview, setPreview] = useState<Preview>({ status: "idle" });
   const [send, setSend] = useState<SendState>({ status: "idle" });
 

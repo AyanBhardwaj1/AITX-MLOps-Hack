@@ -1,0 +1,28 @@
+import { NextResponse } from "next/server";
+import { safeNextPath } from "@/lib/auth/session";
+import { supabaseForRoute } from "@/lib/auth/supabase-route";
+import { ensureCompanyFor } from "@/lib/server/company";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/** The magic link lands here: swap the one-time code for a session, make sure the user has a company, continue. */
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const fail = NextResponse.redirect(new URL("/login?error=link", url.origin), { status: 303 });
+  const supabase = await supabaseForRoute();
+  if (!supabase || !code || code.length > 512) return fail;
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error || !data.user) {
+    console.error("[auth] code exchange failed", error?.message ?? "no user");
+    return fail;
+  }
+  try {
+    await ensureCompanyFor({ id: data.user.id, email: data.user.email ?? null });
+  } catch (err) {
+    console.error("[auth] couldn't set up the company", err instanceof Error ? err.message : "unknown error");
+    return NextResponse.redirect(new URL("/login?error=setup", url.origin), { status: 303 });
+  }
+  return NextResponse.redirect(new URL(safeNextPath(url.searchParams.get("next")), url.origin), { status: 303 });
+}

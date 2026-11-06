@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { findingsCsv, recurringCsv } from "@/lib/export/csv";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadAnalysis } from "@/lib/server/data";
@@ -10,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const query = z.object({ mode: z.enum(["demo", "sandbox"]).default("demo"), kind: z.enum(["recurring", "findings"]) });
+const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings"]) });
 
 /** CSV download of recurring charges or findings. Behind APP_PASSWORD when set, like the rest of the app. */
 export async function GET(request: Request) {
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
     let body: string;
     if (kind === "recurring") body = recurringCsv(analysis);
     else {
-      const statuses = await getStore(scopeFor(mode))
+      const statuses = await getStore(await scopeFor(mode))
         .syncFindings(analysis.findings)
         .catch((err) => {
           console.error("[export] statuses unavailable; exporting findings as open", err);
@@ -40,6 +42,8 @@ export async function GET(request: Request) {
       },
     });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[export] failed", err);
     return NextResponse.json({ error: "Couldn’t build that export." }, { status: 500 });
   }

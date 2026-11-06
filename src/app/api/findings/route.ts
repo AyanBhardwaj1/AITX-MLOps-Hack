@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { getStore } from "@/lib/server/store";
@@ -10,7 +12,7 @@ export const runtime = "nodejs";
 
 const allow = createRateLimiter({ limit: 60, windowMs: 60_000 });
 const body = z.object({
-  mode: z.enum(["demo", "sandbox"]).default("demo"),
+  mode: dataModeSchema,
   fingerprint: z.string().min(1).max(200),
   status: z.enum(["open", "accepted", "dismissed"]),
 });
@@ -21,9 +23,11 @@ export async function POST(request: Request) {
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
-    await getStore(scopeFor(parseMode(parsed.data.mode))).setFindingStatus(parsed.data.fingerprint, parsed.data.status);
+    await getStore(await scopeFor(parseMode(parsed.data.mode))).setFindingStatus(parsed.data.fingerprint, parsed.data.status);
     return NextResponse.json({ ok: true });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     if (isStoreError(err)) return NextResponse.json({ error: err.message }, { status: err.code === "not_found" ? 404 : 409 });
     console.error("[findings] status update failed", err);
     return NextResponse.json({ error: "Couldn't save that. Try again." }, { status: 500 });

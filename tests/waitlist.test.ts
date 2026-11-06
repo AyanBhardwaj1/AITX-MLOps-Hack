@@ -36,14 +36,14 @@ describe("handleSignup", () => {
   });
 
   it("pretends to accept a bot that fills the hidden field, and stores nothing", async () => {
-    const store: WaitlistStore = { kind: "memory", add: vi.fn(), has: vi.fn() };
+    const store: WaitlistStore = { kind: "memory", add: vi.fn(), has: vi.fn(), invite: vi.fn(), isInvited: vi.fn() };
     const res = await handleSignup({ email: "bot@example.com", website: "https://spam.example" }, store);
     expect(res).toEqual({ status: 200, body: { ok: true } });
     expect(store.add).not.toHaveBeenCalled();
   });
 
   it("lets a storage failure surface instead of claiming success", async () => {
-    const store: WaitlistStore = { kind: "postgres", add: vi.fn().mockRejectedValue(new Error("db down")), has: vi.fn() };
+    const store: WaitlistStore = { kind: "postgres", add: vi.fn().mockRejectedValue(new Error("db down")), has: vi.fn(), invite: vi.fn(), isInvited: vi.fn() };
     await expect(handleSignup({ email: "a@example.com" }, store)).rejects.toThrow("db down");
   });
 });

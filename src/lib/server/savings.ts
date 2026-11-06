@@ -10,7 +10,7 @@ import { getStore } from "./store";
 export async function savingsFor(mode: DataMode, dataset: Dataset, analysis: Analysis): Promise<SavingsSummary> {
   let stored: AcceptedFinding[] = [];
   try {
-    stored = await getStore(scopeFor(mode)).listAcceptedFindings();
+    stored = await getStore(await scopeFor(mode)).listAcceptedFindings();
   } catch (err) {
     console.error("[savings] couldn't read accepted findings", err);
   }

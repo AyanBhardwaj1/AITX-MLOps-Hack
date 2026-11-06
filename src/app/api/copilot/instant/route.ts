@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { instantAnswer, instantQuestionInput } from "@/lib/agent/instant";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadAnalysis } from "@/lib/server/data";
@@ -8,7 +10,7 @@ export const runtime = "nodejs";
 
 const allow = createRateLimiter({ limit: 30, windowMs: 60_000 });
 const body = z.object({
-  mode: z.enum(["demo", "sandbox"]).default("demo"),
+  mode: dataModeSchema,
   question: instantQuestionInput,
   /** Findings this person dismissed on the page; read-only, so asking never writes shared state. */
   dismissed: z.array(z.string().max(200)).max(100).default([]),
@@ -23,6 +25,8 @@ export async function POST(request: Request) {
     const { analysis } = await loadAnalysis(parsed.data.mode, { visitorFixes: true });
     return NextResponse.json(instantAnswer(analysis, parsed.data.question, new Set(parsed.data.dismissed)));
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[copilot/instant] failed", err);
     return NextResponse.json({ error: "Couldn't load the data. Try again." }, { status: 500 });
   }

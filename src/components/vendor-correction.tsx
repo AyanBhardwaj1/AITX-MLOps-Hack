@@ -1,11 +1,13 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { categoryName } from "@/lib/format";
 import { CATEGORIES } from "@/lib/types";
 
-type Mode = "demo" | "sandbox";
+type Mode = DataMode;
 
 const JOB_CATEGORIES = new Set(["software", "cloud", "ai_api"]);
 /** The dashboard's persistent status region (rows can vanish after a fix, so it can't live in a row). */

@@ -20,5 +20,16 @@ export function runWaitlistContract(name: string, makeStore: () => Promise<Waitl
       expect(await store.has(b)).toBe(false);
       expect(await store.add({ email: b, role: null, bank: null, source: null })).toBe("added");
     });
+
+    it("marks an email as invited, and only that one", async () => {
+      const store = await makeStore();
+      const email = `invitee+${crypto.randomUUID()}@example.com`;
+      await store.add({ email, role: "founder", bank: null, source: null });
+      expect(await store.isInvited(email)).toBe(false);
+      expect(await store.invite(email)).toBe(true);
+      expect(await store.isInvited(email)).toBe(true);
+      expect(await store.isInvited(`other+${crypto.randomUUID()}@example.com`)).toBe(false);
+      expect(await store.invite(`never-signed-up+${crypto.randomUUID()}@example.com`)).toBe(false);
+    });
   });
 }

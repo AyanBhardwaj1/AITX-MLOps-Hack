@@ -1,5 +1,7 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CORRECTIONS_STATUS_ID, CorrectionEditor, CorrectionsList, RECURRING_HEADING_ID } from "./vendor-correction";
@@ -44,7 +46,7 @@ export interface EvidenceRow {
 }
 
 export interface DashboardData {
-  mode: "demo" | "sandbox";
+  mode: DataMode;
   label: string;
   asOf: string;
   asOfFromData: boolean;

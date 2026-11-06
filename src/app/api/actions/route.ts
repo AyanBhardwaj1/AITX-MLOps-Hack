@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { hasJira } from "@/lib/server/env";
@@ -16,15 +18,17 @@ const allow = createRateLimiter({ limit: 30, windowMs: 60_000 });
 export async function GET(request: Request) {
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
-    return NextResponse.json({ actions: await getStore(scopeFor(mode)).listActions(LIST_LIMIT) });
+    return NextResponse.json({ actions: await getStore(await scopeFor(mode)).listActions(LIST_LIMIT) });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[actions] list failed", err);
     return NextResponse.json({ error: "Couldn't load the inbox." }, { status: 500 });
   }
 }
 
 const decideBody = z.object({
-  mode: z.enum(["demo", "sandbox"]).default("demo"),
+  mode: dataModeSchema,
   id: z.string().uuid(),
   decision: z.enum(["approved", "rejected"]),
 });
@@ -37,7 +41,7 @@ export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = decideBody.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  const store = getStore(scopeFor(parseMode(parsed.data.mode)));
+  const store = getStore(await scopeFor(parseMode(parsed.data.mode)));
   try {
     const action = await store.decideAction(parsed.data.id, parsed.data.decision);
     if (action.status === "approved" && action.kind === "jira_ticket" && hasJira()) {
@@ -59,6 +63,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ action });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     if (isStoreError(err)) return NextResponse.json({ error: err.message }, { status: err.code === "not_found" ? 404 : 409 });
     console.error("[actions] decision failed", err);
     return NextResponse.json({ error: "Couldn't save that. Try again." }, { status: 500 });

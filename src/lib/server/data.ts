@@ -11,10 +11,12 @@ import { env, hasOpenAI } from "./env";
 import { labelUnknownVendors } from "./vendor-llm";
 import { scopeFor } from "./scope";
 import { getStore } from "./store";
+import type { DataMode } from "../modes";
 import type { VendorCorrection } from "../vendors/corrections";
 import { DEMO_CORRECTIONS_COOKIE, decodeDemoCorrections } from "../vendors/demo-cookie";
 
-export type DataMode = "demo" | "sandbox";
+export type { DataMode } from "../modes";
+export { parseMode } from "../modes";
 
 export interface Dataset {
   accounts: RhoAccount[];
@@ -28,9 +30,6 @@ export interface Dataset {
 const SANDBOX_CACHE_MS = 5 * 60_000;
 let sandboxCache: { at: number; data: Dataset } | undefined;
 
-export function parseMode(value: unknown): DataMode {
-  return value === "sandbox" ? "sandbox" : "demo";
-}
 
 export async function loadDataset(mode: DataMode): Promise<Dataset> {
   if (mode === "demo") {
@@ -73,7 +72,7 @@ export interface LoadOptions {
 async function loadCorrections(mode: DataMode, { visitorFixes = false }: LoadOptions): Promise<ReadonlyMap<string, VendorCorrection> | undefined> {
   if (mode === "demo" && !visitorFixes) return undefined;
   try {
-    const list = mode === "demo" ? await demoCorrections() : await getStore(scopeFor(mode)).listCorrections();
+    const list = mode === "demo" ? await demoCorrections() : await getStore(await scopeFor(mode)).listCorrections();
     return list.length ? new Map(list.map((c) => [c.vendorKey, c])) : undefined;
   } catch (err) {
     console.error("[data] couldn't load vendor corrections; using the automatic categories", err);

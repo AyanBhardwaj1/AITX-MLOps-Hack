@@ -58,6 +58,12 @@ const toShareLink = (r: ShareRow): StoredShareLink => ({
   revokedAt: r.revoked_at ? r.revoked_at.toISOString() : null,
 });
 
+/** A share link by token hash in any organization (the public /s/<token> page has no session). */
+export async function findShareLinkByTokenHash(pool: Pool, tokenHash: string): Promise<StoredShareLink | null> {
+  const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where token_hash = $1`, [tokenHash]);
+  return rows[0] ? toShareLink(rows[0]) : null;
+}
+
 async function inTransaction<T>(pool: Pool, fn: (c: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {

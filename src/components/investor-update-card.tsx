@@ -1,5 +1,7 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import { useId, useState } from "react";
 
 const COPIED_MS = 2_000;
@@ -7,7 +9,7 @@ const COPIED_MS = 2_000;
 type State = { status: "idle" | "loading" } | { status: "ready"; subject: string; text: string } | { status: "error"; message: string };
 
 /** Drafts the monthly investor update from real numbers; the founder edits and copies it. */
-export function InvestorUpdateCard({ mode }: { mode: "demo" | "sandbox" }) {
+export function InvestorUpdateCard({ mode }: { mode: DataMode }) {
   const id = useId();
   const [state, setState] = useState<State>({ status: "idle" });
   const [copied, setCopied] = useState(false);

@@ -1,10 +1,12 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { formatDate } from "@/lib/format";
 
-type Mode = "demo" | "sandbox";
+type Mode = DataMode;
 interface LinkRow {
   id: string;
   label: string | null;

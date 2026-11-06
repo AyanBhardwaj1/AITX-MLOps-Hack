@@ -1,7 +1,7 @@
 import "server-only";
 import { Pool } from "pg";
 import { createMemoryStore } from "../store/memory";
-import { createPostgresStore } from "../store/postgres";
+import { createPostgresStore, findShareLinkByTokenHash } from "../store/postgres";
 import type { Store } from "../store/types";
 import { env } from "./env";
 
@@ -50,6 +50,16 @@ export function getStore(scope: string): Store {
     stores.set(scope, store);
   }
   return store;
+}
+
+/** A share link by token hash across every organization: the link page has no session to scope by. */
+export async function findShareLinkAnywhere(tokenHash: string) {
+  if (hasDatabase()) return findShareLinkByTokenHash(getPool(), tokenHash);
+  for (const store of stores.values()) {
+    const link = await store.findShareLink(tokenHash);
+    if (link) return link;
+  }
+  return null;
 }
 
 const PING_TIMEOUT_MS = 3_000;

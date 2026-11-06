@@ -12,6 +12,14 @@ export function createPostgresWaitlist(pool: Pool): WaitlistStore {
       );
       return rowCount === 1 ? "added" : "exists";
     },
+    async invite(email) {
+      const { rowCount } = await pool.query(`update public.waitlist set invited_at = coalesce(invited_at, now()) where email = $1`, [email]);
+      return (rowCount ?? 0) > 0;
+    },
+    async isInvited(email) {
+      const { rowCount } = await pool.query(`select 1 from public.waitlist where email = $1 and invited_at is not null`, [email]);
+      return (rowCount ?? 0) > 0;
+    },
     async has(email) {
       const { rowCount } = await pool.query(`select 1 from public.waitlist where email = $1`, [email]);
       return (rowCount ?? 0) > 0;

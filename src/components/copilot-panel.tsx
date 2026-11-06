@@ -1,5 +1,7 @@
 "use client";
 
+import type { DataMode } from "@/lib/modes";
+
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -42,7 +44,7 @@ function ToolChip({ name, state }: { name: string; state: "done" | "running" | "
 type InstantEntry = { id: InstantQuestion; question: string; answer?: InstantAnswer; error?: string };
 
 /** Without an OpenAI key: the suggested questions, answered by the same tools through a fixed template. */
-function InstantCopilot({ mode, dismissed }: { mode: "demo" | "sandbox"; dismissed: readonly string[] }) {
+function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readonly string[] }) {
   const [entries, setEntries] = useState<InstantEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -128,7 +130,7 @@ function InstantCopilot({ mode, dismissed }: { mode: "demo" | "sandbox"; dismiss
   );
 }
 
-export function CopilotPanel({ mode, enabled, dismissed = [] }: { mode: "demo" | "sandbox"; enabled: boolean; dismissed?: readonly string[] }) {
+export function CopilotPanel({ mode, enabled, dismissed = [] }: { mode: DataMode; enabled: boolean; dismissed?: readonly string[] }) {
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/copilot", body: { mode } }), [mode]);
   const { messages, sendMessage, status, error, stop } = useChat({ transport });
   const [input, setInput] = useState("");

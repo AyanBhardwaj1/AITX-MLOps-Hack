@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DATA_MODES, type DataMode } from "../modes";
 import { isStoreError, type Store } from "../store/types";
 import type { ShareSnapshot } from "./snapshot";
 import { hashShareToken } from "./token";
@@ -8,8 +9,8 @@ export const MAX_ACTIVE_LINKS = 20;
 export const EXPIRY_DAYS = [7, 30, 90] as const;
 const DAY_MS = 86_400_000;
 
-type Mode = "demo" | "sandbox";
-const mode = z.enum(["demo", "sandbox"]);
+type Mode = DataMode;
+const mode = z.enum(DATA_MODES);
 const request = z.discriminatedUnion("action", [
   z.object({
     mode,
@@ -23,7 +24,7 @@ const request = z.discriminatedUnion("action", [
 ]);
 
 export interface ShareDeps {
-  storeFor: (mode: Mode) => Pick<Store, "createShareLink" | "revokeShareLink">;
+  storeFor: (mode: Mode) => Pick<Store, "createShareLink" | "revokeShareLink"> | Promise<Pick<Store, "createShareLink" | "revokeShareLink">>;
   /** Today's numbers for this data source, frozen into the link. */
   snapshotFor: (mode: Mode, company?: string) => Promise<ShareSnapshot>;
   /** False where the app refuses to show the data (a real account with no password set). */
@@ -46,7 +47,7 @@ export async function handleShare(raw: unknown, deps: ShareDeps): Promise<ShareR
   if (req.mode === "demo") return req.action === "create" ? { status: 200, body: { url: "/s/demo", sample: true } } : { status: 404, body: { error: "Demo links can't be revoked." } };
   if (!deps.canWrite(req.mode)) return { status: 403, body: { error: "Set APP_PASSWORD before making share links." } };
   if (!deps.storageReady()) return { status: 503, body: { error: "Set DATABASE_URL to make share links: without a database they wouldn't survive." } };
-  const store = deps.storeFor(req.mode);
+  const store = await deps.storeFor(req.mode);
   if (req.action === "revoke") {
     try {
       await store.revokeShareLink(req.id);

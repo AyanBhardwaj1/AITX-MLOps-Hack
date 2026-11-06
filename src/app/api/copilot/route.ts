@@ -1,6 +1,8 @@
 import { createAgentUIStreamResponse } from "ai";
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { z } from "zod";
+import { dataModeSchema } from "@/lib/modes";
 import { sanitizeChatMessages } from "@/lib/agent/chat-input";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { createCopilot, type SaveDraft } from "@/lib/server/copilot";
@@ -17,7 +19,7 @@ const allow = createRateLimiter({ limit: 10, windowMs: 60_000 });
 
 const body = z.object({
   messages: z.unknown(),
-  mode: z.enum(["demo", "sandbox"]).default("demo"),
+  mode: dataModeSchema,
 });
 
 export async function POST(request: Request) {
@@ -41,8 +43,16 @@ export async function POST(request: Request) {
   const messages = sanitizeChatMessages(parsed.data.messages);
   if (!messages.ok) return NextResponse.json({ error: messages.error }, { status: 400 });
 
-  const { analysis } = await loadAnalysis(parsed.data.mode);
-  const store = getStore(scopeFor(parsed.data.mode));
+  let analysis: Awaited<ReturnType<typeof loadAnalysis>>["analysis"];
+  let store: ReturnType<typeof getStore>;
+  try {
+    ({ analysis } = await loadAnalysis(parsed.data.mode));
+    store = getStore(await scopeFor(parsed.data.mode));
+  } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
+    throw err;
+  }
   // Findings must exist in the store so drafts can link to them; a database hiccup shouldn't block chat.
   const statuses = await store.syncFindings(analysis.findings).catch((err) => {
     console.error("[copilot] finding sync failed", err);

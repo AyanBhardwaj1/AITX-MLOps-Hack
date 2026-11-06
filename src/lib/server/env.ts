@@ -23,6 +23,11 @@ const schema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   /** Which data the daily Autopilot reviews: the demo company or the configured Rho feed. */
   AUTOPILOT_CRON_MODE: z.enum(["demo", "sandbox"]).default("demo"),
+  /** Supabase project URL and anon (publishable) key: turn on sign-in with email magic links. */
+  NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20).optional(),
+  /** "open": anyone can sign up; "invite" (default): only emails invited from the waitlist. */
+  SIGNUPS: z.enum(["open", "invite"]).default("invite"),
   /** Public contact for privacy and support requests, shown on the legal pages. */
   CONTACT_EMAIL: z.email().optional(),
   /** Slack incoming webhook for the Monday digest (https://hooks.slack.com/services/...). */
@@ -48,5 +53,7 @@ export const hasJira = () => {
   return Boolean(e.JIRA_BASE_URL && e.JIRA_EMAIL && e.JIRA_API_TOKEN && e.JIRA_PROJECT_KEY);
 };
 export const hasSlack = () => Boolean(env().SLACK_WEBHOOK_URL);
+/** Accounts (sign-in, companies, uploads) are on when Supabase Auth is configured. */
+export const accountsEnabled = () => Boolean(env().NEXT_PUBLIC_SUPABASE_URL && env().NEXT_PUBLIC_SUPABASE_ANON_KEY);
 /** Sending to Slack on demand needs the site password too; the scheduled digest uses CRON_SECRET instead. */
 export const canSendSlackFromApp = () => hasSlack() && Boolean(env().APP_PASSWORD);

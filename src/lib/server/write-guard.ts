@@ -9,7 +9,8 @@ import { env } from "./env";
  * each other's changes. The public demo keeps each visitor's changes to themselves instead.
  */
 export function canWriteRealData(mode: DataMode): boolean {
-  if (mode === "demo") return true;
+  // Company mode: scopeFor() only resolves the signed-in user's own company.
+  if (mode === "demo" || mode === "company") return true;
   const e = env();
   if (!e.APP_PASSWORD) return false;
   try {

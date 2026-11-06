@@ -59,9 +59,9 @@ export function isCrossSiteWrite(method: string, headers: Headers, host: string 
 }
 
 /** Pages anyone may see even when APP_PASSWORD protects the app: the marketing site, legal pages and the free grader. */
-const PUBLIC_PAGES = new Set(["/", "/grader", "/privacy", "/terms", "/security", "/robots.txt", "/sitemap.xml"]);
+const PUBLIC_PAGES = new Set(["/", "/grader", "/privacy", "/terms", "/security", "/robots.txt", "/sitemap.xml", "/login", "/auth/callback"]);
 /** API routes with their own protection (rate limits, a cron secret) or nothing private to show. */
-const PUBLIC_APIS = new Set(["/api/waitlist", "/api/health"]);
+const PUBLIC_APIS = new Set(["/api/waitlist", "/api/health", "/api/auth/login", "/api/auth/logout"]);
 
 /** Investor share pages: /s/demo or /s/<token>, one segment only. The token itself is the access check. */
 const SHARE_PAGE = /^\/s\/[A-Za-z0-9_-]{1,64}$/;

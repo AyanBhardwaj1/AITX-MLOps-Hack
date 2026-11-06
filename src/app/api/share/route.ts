@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { accessErrorResponse } from "@/lib/server/errors";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { parseMode } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
@@ -23,12 +24,14 @@ export async function GET(request: Request) {
   if (!canWriteRealData(mode)) return NextResponse.json({ error: "Set APP_PASSWORD before making share links." }, { status: 403 });
   if (!persistentStorageReady()) return NextResponse.json({ error: "Set DATABASE_URL to make share links." }, { status: 503 });
   try {
-    const links = await getStore(scopeFor(mode)).listShareLinks();
+    const links = await getStore(await scopeFor(mode)).listShareLinks();
     return NextResponse.json(
       { links: links.map(({ payload: _payload, ...l }) => ({ ...l, state: shareLinkState(l) })) },
       { headers: noStore },
     );
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[share] list failed", err);
     return NextResponse.json({ error: "Couldn’t load your links." }, { status: 500 });
   }
@@ -40,7 +43,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   try {
     const result = await handleShare(body, {
-      storeFor: (mode) => getStore(scopeFor(mode)),
+      storeFor: async (mode) => getStore(await scopeFor(mode)),
       snapshotFor: (mode, company) => snapshotFor(mode, company),
       canWrite: canWriteRealData,
       now: () => new Date(),
@@ -49,6 +52,8 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result.body, { status: result.status, headers: noStore });
   } catch (err) {
+    const known = accessErrorResponse(err);
+    if (known) return known;
     console.error("[share] change failed", err);
     return NextResponse.json({ error: "Couldn’t do that just now. Try again." }, { status: 500 });
   }

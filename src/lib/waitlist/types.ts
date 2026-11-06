@@ -34,4 +34,7 @@ export interface WaitlistStore {
   /** "exists" when the email is already on the list; the earlier entry is kept unchanged. */
   add(entry: WaitlistEntry): Promise<"added" | "exists">;
   has(email: string): Promise<boolean>;
+  /** Allows this waitlisted email to create an account (invite-only sign-ups). False if it isn't on the list. */
+  invite(email: string): Promise<boolean>;
+  isInvited(email: string): Promise<boolean>;
 }
