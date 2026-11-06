@@ -127,7 +127,8 @@ function ofxAmount(raw: string): number | null {
   // Both marks ("1,234.56") can only mean comma thousands, which some banks write anyway.
   if (/^[+-]?\d{1,3}(,\d{3})+\.\d*$/.test(s)) s = s.replaceAll(",", "");
   const m = /^([+-]?)(\d*)(?:[.,](\d*))?$/.exec(s);
-  if (!m || (!m[2] && !m[3]) || m[2]!.length > 13) return null;
+  // Under $100 billion (eleven digits of dollars), as the CSV reader and cash allow, so sums stay exact.
+  if (!m || (!m[2] && !m[3]) || m[2]!.replace(/^0+(?=\d)/, "").length > 11) return null;
   const fraction = (m[3] ?? "").replace(/0+$/, "");
   if (fraction.length > 2) return null;
   const cents = Number(m[2] || "0") * 100 + Number(fraction.padEnd(2, "0"));

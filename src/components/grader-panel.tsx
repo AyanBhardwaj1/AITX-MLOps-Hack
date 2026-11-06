@@ -5,7 +5,7 @@ import { useId, useState } from "react";
 import { combineBalances, looksLikeOfx, readOfxBalances } from "@/lib/csv/ofx";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader";
-import { formatDollars } from "@/lib/money";
+import { formatDollars, parseCashInput } from "@/lib/money";
 import { cashPnlCsv } from "@/lib/export/csv";
 import { BurnBridgeCard } from "./burn-bridge-card";
 import { MoneyInCard } from "./money-in-card";
@@ -54,8 +54,8 @@ export function GraderPanel() {
 
   function run(input = files, cashDollars = cash) {
     try {
-      const cents = Math.round(Number(cashDollars.replace(/[$,\s]/g, "")) * 100);
-      if (!cashDollars.trim() || !Number.isFinite(cents)) throw new Error("Enter today's total cash balance (all bank accounts).");
+      const cents = parseCashInput(cashDollars);
+      if (cents === null) throw new Error("Enter today's total cash balance (all bank accounts), in dollars: 952,350 or 952350.00.");
       setResult(gradeCsvFiles(input, cents));
       setError(null);
     } catch (err) {

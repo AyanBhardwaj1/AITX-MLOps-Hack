@@ -64,7 +64,9 @@ describe("import hunt: amounts and currencies", () => {
   it("refuses amounts too big to be exact", () => {
     expect(parseAmountCents("99999999999999999999")).toBeNull();
     expect(parseAmountCents("90071992547409.93")).toBeNull();
-    expect(parseAmountCents("1,234,567,890,123.45")).toBe(123456789012345);
+    // Under $100 billion a row (as cash is capped), so a month's sum stays exact too.
+    expect(parseAmountCents("1,234,567,890,123.45")).toBeNull();
+    expect(parseAmountCents("12,345,678,901.23")).toBe(1_234_567_890_123);
   });
 });
 

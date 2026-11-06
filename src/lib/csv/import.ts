@@ -123,8 +123,9 @@ export function parseAmountCents(raw: string): number | null {
   // Commas only as thousands separators: "12,50" (a decimal comma) would otherwise read as 1,250.
   if (s.includes(",") && !/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(s)) return null;
   s = s.replaceAll(",", "");
-  // Thirteen digits of dollars at most, so every amount is exact in cents.
-  if (!/^\d{1,13}(\.\d{1,2})?$/.test(s)) return null;
+  // Eleven digits of dollars at most (under $100 billion, as cash is capped), so every amount and
+  // any month's sum of them stays exact in cents.
+  if (!/^\d{1,11}(\.\d{1,2})?$/.test(s)) return null;
   const cents = Math.round(Number(s) * 100);
   return negative ? -cents : cents;
 }

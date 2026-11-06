@@ -26,3 +26,11 @@ export function parseDollarsToCents(text: string): Cents | null {
   const cents = Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
   return Number.isSafeInteger(cents) && cents <= MAX_CASH_CENTS ? cents : null;
 }
+
+/** Today's cash as typed in the grader: dollars as parseDollarsToCents reads them, or below zero (an overdraft) with a leading "-". */
+export function parseCashInput(text: string): Cents | null {
+  const t = text.trim();
+  const negative = t.startsWith("-");
+  const cents = parseDollarsToCents(negative ? t.slice(1) : t);
+  return cents === null ? null : negative ? -cents : cents;
+}

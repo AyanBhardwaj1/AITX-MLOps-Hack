@@ -51,6 +51,20 @@ const day = (iso: string) => iso.replaceAll("-", "");
 const nextDay = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
 const stamp = (d: Date) => `${d.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x";
+/** FNV-1a, 32-bit, as hex: a short stable tag. */
+const fnv = (s: string) => {
+  let h = 0x811c9dc5;
+  for (const ch of s) {
+    h ^= ch.codePointAt(0)!;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+};
+/**
+ * A UID part. Plain names (letters, digits, spaces, hyphens) keep their slug, so calendars imported
+ * before still update; anything the slug would lose (张伟, Zoë, a.b) also carries a hash of the text.
+ */
+const uidPart = (s: string) => (/^[A-Za-z0-9 -]*$/.test(s) ? slug(s) : `${slug(s)}-${fnv(s)}`);
 
 export function renewalsCalendar({ renewals, company, now, link }: { renewals: readonly Renewal[]; company: string; now: Date; link?: string }): string {
   const today = now.toISOString().slice(0, 10);
@@ -71,7 +85,7 @@ export function renewalsCalendar({ renewals, company, now, link }: { renewals: r
     lines.push(
       "BEGIN:VEVENT",
       // The same vendor, card and date keep one identity, so importing a fresh copy updates it.
-      `UID:renewal-${slug(r.vendorKey)}-${slug(r.cardholder ?? "")}-${day(r.dueDate)}@runway`,
+      `UID:renewal-${uidPart(r.vendorKey)}-${uidPart(r.cardholder ?? "")}-${day(r.dueDate)}@runway`,
       `DTSTAMP:${stamp(now)}`,
       `DTSTART;VALUE=DATE:${day(r.dueDate)}`,
       `DTEND;VALUE=DATE:${day(nextDay(r.dueDate))}`,

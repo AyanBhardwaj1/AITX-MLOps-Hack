@@ -124,3 +124,11 @@ describe("quotes inside a field", () => {
     expect(parseCsv('a,b\n"x, ""y""","line\nbreak"\n')).toEqual([["a", "b"], ['x, "y"', "line\nbreak"]]);
   });
 });
+
+describe("amounts too large to be real", () => {
+  it("refuses a row over $100 billion, so sums of rows stay exact in cents", () => {
+    expect(parseAmountCents("-99,999,999,999.99")).toBe(-9_999_999_999_999);
+    expect(parseAmountCents("-100000000000.00")).toBeNull();
+    expect(parseAmountCents("9999999999999.99")).toBeNull();
+  });
+});

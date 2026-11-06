@@ -283,3 +283,12 @@ describe("OFX review fixes", () => {
     expect(performance.now() - started).toBeLessThan(2_000);
   });
 });
+
+describe("OFX amounts too large to be real", () => {
+  it("skips a row over $100 billion", () => {
+    const big = sgmlChecking.replace("<TRNAMT>-1,234.56", "<TRNAMT>-9999999999999.99");
+    const { transactions, skipped } = importStatement(big, { accountId: "a" });
+    expect(transactions.some((t) => Math.abs(t.amount.amount) > 1e13)).toBe(false);
+    expect(skipped.length).toBeGreaterThan(0);
+  });
+});

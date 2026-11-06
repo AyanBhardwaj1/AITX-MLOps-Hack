@@ -135,3 +135,19 @@ describe("twice-a-month from February", () => {
     expect(days.some((d) => d.endsWith("02") || d.endsWith("01"))).toBe(false);
   });
 });
+
+describe("event identity", () => {
+  const uids = (rs: Renewal[]) => lines(renewalsCalendar({ renewals: rs, company: "Acme", now: NOW })).filter((l) => l.startsWith("UID:"));
+  it("keeps two people's renewals apart when their names aren't in the Latin alphabet", () => {
+    const ids = uids([renewal({ cardholder: "张伟" }), renewal({ cardholder: "李娜" })]);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+  });
+  it("keeps vendor keys apart that differ only in punctuation or accents", () => {
+    expect(new Set(uids([renewal({ vendorKey: "a.b" }), renewal({ vendorKey: "a-b" })])).size).toBe(2);
+    expect(new Set(uids([renewal({ cardholder: "Zoë" }), renewal({ cardholder: "Zo" })])).size).toBe(2);
+  });
+  it("leaves plain names' identities as they were, so an imported calendar still updates", () => {
+    expect(uids([renewal({ cardholder: "Daniel Rivera" })])[0]).toMatch(/^UID:renewal-[a-z0-9-]+-daniel-rivera-\d{8}@runway$/);
+  });
+});
