@@ -46,3 +46,14 @@ export function describeRunwayCost(cost: RunwayCost | null): string {
 
 /** Shown when someone picks Transfer for a vendor: it takes that vendor's spending out of burn. */
 export const TRANSFER_NOTE = "Transfers between your own accounts don't count: neither this vendor's money out nor its money in will count toward burn or runway.";
+
+/**
+ * Months of runway gained, as the difference of the two figures shown (12.2 → 12.7 is +0.5), so
+ * every place that states the gain agrees with the runways it shows. Null when runway would have no
+ * end; 0 when it already has none.
+ */
+export function shownGainMonths(before: number, after: number): number | null {
+  if (!Number.isFinite(before)) return 0;
+  if (!Number.isFinite(after)) return null;
+  return Math.round((Number(after.toFixed(1)) - Number(before.toFixed(1))) * 10) / 10;
+}

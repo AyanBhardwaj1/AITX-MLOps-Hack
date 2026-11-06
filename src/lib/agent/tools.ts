@@ -6,7 +6,7 @@ import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
 import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod, runwayCostOf, type RunwayCost } from "../finance/runway";
-import { describeRunwayCost } from "../format";
+import { describeRunwayCost, shownGainMonths } from "../format";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget, suggestBudgets } from "../finance/budgets";
@@ -113,7 +113,8 @@ export function simulatePlan(a: Analysis, input: z.infer<typeof simulatePlanInpu
     oneTimeRecoveryCents: chosen.reduce((s, f) => s + f.oneTimeCents, 0),
     currentRunwayMonths: round1(a.snapshot.runwayMonths),
     newRunwayMonths: round1(sim.runwayMonths),
-    addedMonths: round1(sim.deltaMonths),
+    // As the dashboard shows it: the difference of the two shown runways.
+    addedMonths: shownGainMonths(a.snapshot.runwayMonths, sim.runwayMonths),
     newZeroCashDate: sim.zeroCashDate,
   };
 }

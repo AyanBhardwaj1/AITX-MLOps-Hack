@@ -13,7 +13,7 @@ import type { MonthHistory } from "@/lib/finance/history";
 import type { Renewal } from "@/lib/finance/renewals";
 import type { Change } from "@/lib/insights/changes";
 import type { SavingsSummary } from "@/lib/insights/savings";
-import { burnBasis, categoryName, describeRunwayCost, formatDate, formatMoney } from "@/lib/format";
+import { burnBasis, categoryName, describeRunwayCost, formatDate, formatMoney, shownGainMonths } from "@/lib/format";
 import { formatCents, formatDollars } from "@/lib/money";
 import type { FindingStatus } from "@/lib/store/types";
 import type { Finding } from "@/lib/types";
@@ -180,7 +180,10 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   // Days of runway each recurring charge costs (gained if it stopped); none when runway has no end.
   const runwayCost = (monthlyCents: number) => describeRunwayCost(runwayCostOf(data.snapshot, monthlyCents));
   // The gain as the two shown figures differ (12.4 − 12.2 = +0.2), not each rounded on its own.
-  const shownDelta = (after: number) => (Number.isFinite(after) ? (Number(after.toFixed(1)) - Number(data.snapshot.runwayMonths.toFixed(1))).toFixed(1) : "∞");
+  const shownDelta = (after: number) => {
+    const gain = shownGainMonths(data.snapshot.runwayMonths, after);
+    return gain === null ? "∞" : gain.toFixed(1);
+  };
   const stressed = useMemo(() => stressRunway(data.snapshot, STRESS_REVENUE_DROP), [data.snapshot]);
   const oneTime = live.reduce((s, f) => s + f.oneTimeCents, 0);
   const totalAnalysisMs = Object.values(data.timingsMs).reduce((s, v) => s + v, 0);

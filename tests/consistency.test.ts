@@ -83,3 +83,20 @@ describe("data ending on a month's last day completes that month", () => {
     expect(aiSpendTrend(txns, "2026-10-31", 3)!.months.at(-1)).toEqual({ month: "2026-10", cents: 50_00 });
   });
 });
+
+describe("the gain from acting on findings", () => {
+  it("is the same figure on the dashboard and in the Autopilot memo: the two shown runways' difference", async () => {
+    const { generateDemoCompany } = await import("@/lib/seed/demo-company");
+    const { analyze } = await import("@/lib/pipeline");
+    const { simulatePlan } = await import("@/lib/agent/tools");
+    const { simulateSavings } = await import("@/lib/finance/runway");
+    const { shownGainMonths } = await import("@/lib/format");
+    const d = generateDemoCompany();
+    const a = analyze({ accounts: d.accounts, transactions: d.transactions, asOf: d.asOf });
+    const plan = simulatePlan(a, { findingIds: a.findings.map((f) => f.id), extraMonthlyCutsCents: 0 });
+    const after = simulateSavings(a.snapshot, plan.monthlySavingsCents).runwayMonths;
+    // The dashboard shows 12.2 → 12.7, so the memo must say +0.5, not the unrounded 0.42 → 0.4.
+    expect(plan.addedMonths).toBe(shownGainMonths(a.snapshot.runwayMonths, after));
+    expect(plan.addedMonths).toBe(Number((Number(after.toFixed(1)) - Number(a.snapshot.runwayMonths.toFixed(1))).toFixed(1)));
+  });
+});
