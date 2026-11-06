@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
     const run = await executeAutopilot(parsed.data.mode, "manual");
-    return NextResponse.json(run, { status: run.status === "failed" ? 502 : 200 });
+    return NextResponse.json(run, { status: run.status === "failed" ? 502 : 200, headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
-    return NextResponse.json({ runs: await getStore(await scopeFor(mode)).listRuns(RECENT_RUNS) });
+    return NextResponse.json({ runs: await getStore(await scopeFor(mode)).listRuns(RECENT_RUNS) }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;

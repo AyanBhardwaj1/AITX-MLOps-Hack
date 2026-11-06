@@ -20,7 +20,8 @@ export async function GET(request: Request) {
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
     // Drafts for findings the team dismissed are hidden (and can't be approved); reopening the finding brings them back.
-    return NextResponse.json({ actions: await getStore(await scopeFor(mode)).listActions(LIST_LIMIT, { inbox: true }) });
+    // A company's own data: never kept by a shared cache.
+    return NextResponse.json({ actions: await getStore(await scopeFor(mode)).listActions(LIST_LIMIT, { inbox: true }) }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;

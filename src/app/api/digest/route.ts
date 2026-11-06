@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const digest = await buildDigestFor(mode);
     // A company sends to its own Slack, if it connected one.
     const own = mode === "company" ? (await companySlackStatus()).connected : null;
-    return NextResponse.json({ ...digest, slackConfigured: own ?? hasSlack(), canSend: own ?? canSendSlackFromApp() });
+    return NextResponse.json({ ...digest, slackConfigured: own ?? hasSlack(), canSend: own ?? canSendSlackFromApp() }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;

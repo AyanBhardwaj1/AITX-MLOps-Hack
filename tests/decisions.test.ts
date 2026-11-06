@@ -96,3 +96,23 @@ describe("drafts follow their finding", () => {
     expect((await getStore("demo").listActions(50)).find((a) => a.id === d!.id)!.status).toBe("draft");
   });
 });
+
+describe("company data isn't kept by shared caches", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key-for-tests-0000000000");
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("VERCEL", "");
+    vi.stubEnv("SIGNUPS", "open");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("the Inbox and run history say no-store", async () => {
+    as(crypto.randomUUID(), "cache@acme.example");
+    const actions = await import("@/app/api/actions/route");
+    const autopilot = await import("@/app/api/autopilot/route");
+    expect((await actions.GET(new Request("http://localhost/api/actions?mode=company"))).headers.get("cache-control")).toBe("no-store");
+    expect((await autopilot.GET(new Request("http://localhost/api/autopilot?mode=company"))).headers.get("cache-control")).toBe("no-store");
+  });
+});

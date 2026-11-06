@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   try {
     const { dataset, analysis } = await loadAnalysis(mode, { visitorFixes: true });
     const savings = await savingsFor(mode, dataset, analysis);
-    return NextResponse.json(buildInvestorUpdate(investorUpdateInput(analysis, { company: await companyName(mode), verifiedSavingsCents: savings.verifiedMonthlyCents })));
+    return NextResponse.json(buildInvestorUpdate(investorUpdateInput(analysis, { company: await companyName(mode), verifiedSavingsCents: savings.verifiedMonthlyCents })), { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;
