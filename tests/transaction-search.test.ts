@@ -105,4 +105,18 @@ describe("transaction search", () => {
     expect(matchingTransactions(many, parseTxnQuery({ page: "2" }))).toHaveLength(PAGE_SIZE + 7);
     expect(matchingTransactions(txns, parseTxnQuery({ q: "zoom" })).map((t) => t.id)).toEqual(["t2", "t1"]);
   });
+
+  it("ranks where the matched money went by vendor, counting spend the dashboard way", () => {
+    const r = searchTransactions(
+      [...txns, txn("t7", "2026-10-11", -20_000, "Zoom", "software"), txn("x", "2026-10-12", -99_999_00, "Savings", "transfer", { type: "transfer" })],
+      parseTxnQuery({ direction: "out" }),
+    );
+    expect(r.topVendors).toEqual([
+      { key: "gusto", name: "Gusto", outCents: 900_000_00 },
+      { key: "zoom", name: "Zoom", outCents: 14_990 * 2 + 20_000 },
+      { key: "uber", name: "Uber", outCents: 8_250 },
+    ]);
+    // Narrowed to one vendor already, there's nothing to rank.
+    expect(searchTransactions(txns, parseTxnQuery({ vendor: "zoom" })).topVendors).toEqual([]);
+  });
 });

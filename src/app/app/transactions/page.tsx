@@ -137,10 +137,26 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             Out <span className="font-medium text-ink">{formatMoney(result.outCents)}</span> · In{" "}
             <span className="font-medium text-ink">{formatMoney(result.inCents)}</span>
           </p>
+          {result.topVendors.length > 1 && (
+            <div className="basis-full text-xs">
+              <span className="text-muted">Most spent with: </span>
+              <ul className="inline">
+                {result.topVendors.map((v, i) => (
+                  <li key={v.key} className="inline">
+                    {i > 0 && <span className="text-muted"> · </span>}
+                    <Link href={hrefFor(mode, { ...query, vendor: v.key }, 1)} className="font-medium text-brand hover:underline">
+                      {v.name}
+                    </Link>{" "}
+                    <span className="tabular text-muted">{formatMoney(v.outCents)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {result.uncounted > 0 && (
             <p className="basis-full text-xs text-muted">
-              Totals leave out {result.uncounted.toLocaleString("en-US")} transfer{result.uncounted === 1 ? "" : "s"} between your accounts or pending
-              row{result.uncounted === 1 ? "" : "s"}, as the dashboard does.
+              Totals leave out {result.uncounted === 1 ? "1 row that's" : `${result.uncounted.toLocaleString("en-US")} rows that are`} still pending or
+              a transfer between your accounts, as the dashboard does.
             </p>
           )}
         </div>

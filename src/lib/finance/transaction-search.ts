@@ -4,6 +4,7 @@ import { countsTowardBurn } from "./runway";
 /** Rows per page: enough to scan a month at a glance, small enough to render instantly. */
 export const PAGE_SIZE = 50;
 const MAX_QUERY_CHARS = 100;
+const TOP_VENDORS = 5;
 
 export interface TxnQuery {
   q: string;
@@ -30,6 +31,8 @@ export interface TxnSearchResult {
   inCents: Cents;
   /** Matches left out of the totals by that rule. */
   uncounted: number;
+  /** Where the matched money went: the biggest vendors by spend (none once narrowed to one vendor). */
+  topVendors: { key: string; name: string; outCents: Cents }[];
   /** Months that have transactions, newest first, for the month picker. */
   months: string[];
   /** The filtered vendor's display name, when there is one and it has transactions. */
@@ -82,14 +85,23 @@ export function searchTransactions(txns: readonly EnrichedTxn[], query: TxnQuery
   let inCents = 0;
   let uncounted = 0;
   const counts = (t: EnrichedTxn) => countsTowardBurn(t) || (query.category === "transfer" && t.status === "posted");
+  const byVendor = new Map<string, { key: string; name: string; outCents: number }>();
   for (const t of found) {
     if (!counts(t)) uncounted += 1;
-    else if (t.amountCents < 0) outCents -= t.amountCents;
+    else if (t.amountCents < 0) {
+      outCents -= t.amountCents;
+      const v = byVendor.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, outCents: 0 };
+      v.outCents -= t.amountCents;
+      byVendor.set(t.vendor.key, v);
+    }
     else inCents += t.amountCents;
   }
   const pages = Math.max(1, Math.ceil(found.length / PAGE_SIZE));
   const page = Math.min(query.page, pages);
   const months = [...new Set(txns.map((t) => t.postedAt.slice(0, 7)))].sort().reverse();
+  const topVendors = query.vendor
+    ? []
+    : [...byVendor.values()].sort((a, b) => b.outCents - a.outCents || a.name.localeCompare(b.name)).slice(0, TOP_VENDORS);
   const vendorName = query.vendor ? (txns.find((t) => t.vendor.key === query.vendor)?.vendor.name ?? null) : null;
-  return { rows: found.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total: found.length, page, pages, outCents, inCents, uncounted, months, vendorName };
+  return { rows: found.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), total: found.length, page, pages, outCents, inCents, uncounted, topVendors, months, vendorName };
 }
