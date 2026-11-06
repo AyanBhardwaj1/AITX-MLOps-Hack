@@ -6,6 +6,7 @@ import { findingsCsv, matchesCsv, recurringCsv, uploadsCsv } from "@/lib/export/
 import { matchingTransactions, parseTxnQuery } from "@/lib/finance/transaction-search";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadAnalysis, loadTransactions, type DataMode } from "@/lib/server/data";
+import { companyDataExport } from "@/lib/server/company-data";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
 
@@ -13,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions", "matches"]) });
+const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findings", "transactions", "matches", "everything"]) });
 
 /** The transactions a search on /app/transactions matched, with the same filters from the address. */
 async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<NextResponse> {
@@ -47,11 +48,20 @@ export async function GET(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const params = new URL(request.url).searchParams;
   const parsed = query.safeParse({ mode: params.get("mode") ?? undefined, kind: params.get("kind") });
-  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings, transactions or matches" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Choose kind=recurring, findings, transactions, matches or everything" }, { status: 400 });
   const { mode, kind } = parsed.data;
-  if (kind === "transactions" && mode !== "company") return NextResponse.json({ error: "Transactions download only for your company's uploads." }, { status: 400 });
+  if ((kind === "transactions" || kind === "everything") && mode !== "company") return NextResponse.json({ error: "This download is only for your company's own data." }, { status: 400 });
   try {
     if (kind === "transactions") return await transactionsExport();
+    if (kind === "everything") {
+      return new NextResponse(JSON.stringify(await companyDataExport(), null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="runway-company-data-${new Date().toISOString().slice(0, 10)}.json"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
     if (kind === "matches") return await matchesExport(mode, params);
     const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
     let body: string;

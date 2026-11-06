@@ -62,6 +62,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <div className="mt-6">
         <SlackPanel owner={company.role === "owner"} initial={await companySlackStatus()} />
       </div>
+      <section aria-labelledby="data-copy-title" className="mt-6 rounded-xl border border-line bg-panel p-5">
+        <h2 id="data-copy-title" className="font-semibold">
+          A copy of your data
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Everything Runway holds for {company.name} in one file: the team, transactions and cash, budgets, category fixes, decisions,
+          drafts, investor links (without their secret part) and this activity log.
+        </p>
+        <a href="/api/export?mode=company&kind=everything" download className="mt-3 inline-block rounded-lg border border-line px-4 py-2 text-sm transition-colors hover:bg-canvas">
+          Download everything (JSON)
+        </a>
+      </section>
       <CompanySettings name={company.name} owner={company.role === "owner"} />
     </main>
   );

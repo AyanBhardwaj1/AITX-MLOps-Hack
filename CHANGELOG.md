@@ -28,7 +28,9 @@ demo, the free grader and the public site work exactly as before.
   the Monday digest names any budget that's over or heading over. Copilot answers "Are we on
   budget this month?" from the same numbers. The demo has a sample set.
 - **Your data, your call.** See what's stored per account, delete one account's rows or everything,
-  and download it all as a CSV that uploads back cleanly.
+  and download it all as a CSV that uploads back cleanly. Settings downloads a copy of everything
+  the company holds (team, transactions, cash, budgets, fixes, decisions, drafts, links, activity)
+  as one JSON file, secrets left out.
 - **Teams.** Invite up to nine teammates by email; they see and work on the same data. The owner can
   hand the company to a teammate; members can leave. Every accepted or dismissed finding shows who
   decided it and when.

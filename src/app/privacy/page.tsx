@@ -89,7 +89,8 @@ export default function PrivacyPage() {
           heading: "Your choices",
           body: (
             <p>
-              You can ask what we hold about you, ask for a copy, or ask for it to be deleted, at any time. <ContactLine email={email} />
+              You can download a copy of everything held for your company yourself, from its settings page. You can also ask what we hold
+              about you, ask for a copy, or ask for it to be deleted, at any time. <ContactLine email={email} />
             </p>
           ),
         },
