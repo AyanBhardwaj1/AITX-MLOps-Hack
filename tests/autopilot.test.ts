@@ -27,6 +27,13 @@ describe("runAutopilot", () => {
     expect(checkMemoNumbers(run.memo.text, run.memoFacts).ok).toBe(true);
   });
 
+  it("writes the memo's dates the way the dashboard does, and they still pass the number check", async () => {
+    const run = await runAutopilot({ loadData });
+    expect(run.memo.text).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+    expect(run.memo.text).toMatch(/As of [A-Z][a-z]{2} \d{1,2}, \d{4}\./);
+    expect(checkMemoNumbers(run.memo.text, run.memoFacts).ok).toBe(true);
+  });
+
   it("rejects an LLM memo that invents a number and falls back to the template", async () => {
     const writeMemo = vi.fn(async () => ({ text: "You will save $1,000,000 and gain 40 months.", model: "fake" }));
     const run = await runAutopilot({ loadData, writeMemo });

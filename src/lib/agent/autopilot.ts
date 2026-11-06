@@ -1,5 +1,6 @@
 import { upcomingRenewals } from "../finance/renewals";
 import { formatCents, formatDollars } from "../money";
+import { formatDate } from "../format";
 import { analyze, type Analysis } from "../pipeline";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
 import type { FindingStatus } from "../store/types";
@@ -27,17 +28,20 @@ export interface StepRecord {
 export interface MemoFacts {
   company: string;
   asOf: string;
+  /** Dates as the dashboard writes them ("Oct 26, 2026"), for the memo's text. */
+  asOfText: string;
   cashText: string;
   netBurnText: string;
   runwayMonthsText: string;
   zeroCashDate: string | null;
+  zeroCashDateText: string | null;
   monthlySavingsText: string;
   oneTimeText: string;
   newRunwayText: string;
   addedMonthsText: string;
   findings: { title: string; savingsText: string }[];
   /** Annual or large renewals due soon: decide before they hit. */
-  renewals: { vendorName: string; dueDate: string; amountText: string; cadence: string }[];
+  renewals: { vendorName: string; dueDate: string; dueDateText: string; amountText: string; cadence: string }[];
   allowedMoney: string[];
   allowedMonths: string[];
 }
@@ -110,10 +114,12 @@ export function buildMemoFacts(a: Analysis, company: string): MemoFacts {
   return {
     company,
     asOf: a.asOf,
+    asOfText: formatDate(a.asOf),
     cashText: formatDollars(s.cashCents),
     netBurnText: formatDollars(s.netBurnCents),
     runwayMonthsText: `${oneDecimal(s.runwayMonths)} months`,
     zeroCashDate: s.zeroCashDate,
+    zeroCashDateText: s.zeroCashDate ? formatDate(s.zeroCashDate) : null,
     monthlySavingsText: formatDollars(plan.monthlySavingsCents),
     oneTimeText: formatCents(plan.oneTimeRecoveryCents),
     newRunwayText: `${oneDecimal(plan.newRunwayMonths ?? Number.POSITIVE_INFINITY)} months`,
@@ -124,7 +130,7 @@ export function buildMemoFacts(a: Analysis, company: string): MemoFacts {
     })),
     renewals: upcomingRenewals(a.streams, a.asOf)
       .filter((r) => r.decide)
-      .map((r) => ({ vendorName: r.vendorName, dueDate: r.dueDate, amountText: formatCents(r.amountCents), cadence: r.cadence })),
+      .map((r) => ({ vendorName: r.vendorName, dueDate: r.dueDate, dueDateText: formatDate(r.dueDate), amountText: formatCents(r.amountCents), cadence: r.cadence })),
     allowedMoney: [...new Set(cents.flatMap((c) => [formatCents(c), formatDollars(c)]))],
     allowedMonths: [...new Set([s.runwayMonths, plan.newRunwayMonths ?? 0, plan.addedMonths ?? 0].map(oneDecimal))],
   };
@@ -133,9 +139,9 @@ export function buildMemoFacts(a: Analysis, company: string): MemoFacts {
 export function templateMemo(f: MemoFacts): string {
   return [
     `# Runway Review: ${f.company}`,
-    `As of ${f.asOf}.`,
+    `As of ${f.asOfText}.`,
     "",
-    `**Cash** ${f.cashText} · **Net burn** ${f.netBurnText}/month · **Runway** ${f.runwayMonthsText}${f.zeroCashDate ? ` (cash runs out around ${f.zeroCashDate})` : ""}`,
+    `**Cash** ${f.cashText} · **Net burn** ${f.netBurnText}/month · **Runway** ${f.runwayMonthsText}${f.zeroCashDateText ? ` (cash runs out around ${f.zeroCashDateText})` : ""}`,
     "",
     "## What Autopilot found",
     ...(f.findings.length ? f.findings.map((x) => `- ${x.title}: ${x.savingsText}`) : ["- Nothing new this run."]),
@@ -145,7 +151,7 @@ export function templateMemo(f: MemoFacts): string {
       ? `Monthly savings of ${f.monthlySavingsText} would make the company cash-flow positive. One-time refunds to claim: ${f.oneTimeText}.`
       : `Monthly savings of ${f.monthlySavingsText} take runway to ${f.newRunwayText} (+${f.addedMonthsText}). One-time refunds to claim: ${f.oneTimeText}.`,
     ...(f.renewals.length
-      ? ["", "## Decide before it renews", ...f.renewals.map((r) => `- ${r.vendorName} (${r.cadence}): ${r.amountText} on ${r.dueDate}`)]
+      ? ["", "## Decide before it renews", ...f.renewals.map((r) => `- ${r.vendorName} (${r.cadence}): ${r.amountText} on ${r.dueDateText}`)]
       : []),
     "",
     "Each finding has a ticket below. Nothing is cancelled or paid until a person approves it.",
@@ -168,7 +174,7 @@ export async function runAutopilot(deps: AutopilotDeps): Promise<AutopilotRun> {
   }
 
   const emptyFacts: MemoFacts = {
-    company: "", asOf: "", cashText: "", netBurnText: "", runwayMonthsText: "", zeroCashDate: null, monthlySavingsText: "",
+    company: "", asOf: "", asOfText: "", cashText: "", netBurnText: "", runwayMonthsText: "", zeroCashDate: null, zeroCashDateText: null, monthlySavingsText: "",
     oneTimeText: "", newRunwayText: "", addedMonthsText: "", findings: [], renewals: [], allowedMoney: [], allowedMonths: [],
   };
   let label = "unknown";
