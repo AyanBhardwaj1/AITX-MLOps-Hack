@@ -215,3 +215,19 @@ describe("import hunt, branch review", () => {
     expect(r.transactions.find((t) => t.counterparty_name.includes("WELLS"))!.transaction_type).toBe("credit_repayment");
   });
 });
+
+describe("import hunt, final review", () => {
+  it("bank-named files ending in a date or a year are one account's overlapping exports", () => {
+    const shared = Array.from({ length: 10 }, (_, i) => `2026-02-${String(i + 10).padStart(2, "0")},VENDOR ${i},-${i + 1}0.00`);
+    for (const names of [["chase0401.csv", "chase0501.csv"], ["chase2025.csv", "chase2026.csv"]]) {
+      const g = gradeCsvFiles(
+        [
+          { name: names[0]!, text: csv(["2026-01-05,GUSTO PAYROLL,-5000.00", ...shared]) },
+          { name: names[1]!, text: csv([...shared, "2026-03-05,GUSTO PAYROLL,-5000.00"]) },
+        ],
+        100_000_00,
+      );
+      expect(g.transactions, names.join(" + ")).toBe(12);
+    }
+  });
+});

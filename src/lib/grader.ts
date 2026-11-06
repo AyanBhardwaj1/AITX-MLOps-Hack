@@ -61,7 +61,8 @@ const BANK_FILE_PREFIX = /^(?:chase|amex|citi|discover|capitalone|bofa|wellsfarg
 
 function graderAccountLabel(name: string): string {
   const label = fileAccountLabel(name);
-  const lastFour = /^([a-z]+)(\d{4})(?=[^\d]|$)/i.exec(name);
+  // The bank's own shape only ("Chase1234_Activity…"): "chase0401.csv" or "chase2025.csv" is a date.
+  const lastFour = /^([a-z]+)(\d{4})_activity/i.exec(name);
   // Only a bank's own naming carries an account number ("Chase1234_Activity…"); digits after any
   // other word are usually a date ("checking0401.csv", "Activity2025.csv").
   const account = lastFour !== null && BANK_FILE_PREFIX.test(lastFour[1]!);
@@ -153,9 +154,6 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
       errors.push(`${f.name}: ${err instanceof Error ? err.message : "couldn't read this file"}`);
     }
   });
-  // Overlapping exports of one account repeat rows: the nth copy of a row (same day, description
-  // and amount) an earlier file of the same account already has is the same transaction. Other
-  // accounts' rows are never merged (the same $8.75 seat on two people's cards is two charges).
   // Overlapping exports repeat rows: the nth copy of a row (same day, description and amount) an
   // earlier file already has is the same transaction, unless the two files are named as
   // different accounts (and aren't one account by their rows): the same $8.75 seat on two
