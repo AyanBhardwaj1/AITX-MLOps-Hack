@@ -48,6 +48,8 @@ export function InboxPanel({
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  // The demo doesn't save decisions (every visitor shares it): this visitor's stay on screen here.
+  const [demoDecided, setDemoDecided] = useState<Record<string, StoredAction>>({});
 
   // Refresh whenever the tab is opened, so drafts made by Copilot or Autopilot show up.
   useEffect(() => {
@@ -78,6 +80,7 @@ export function InboxPanel({
       const body = (await res.json()) as { action?: StoredAction; error?: string; warning?: string };
       if (!res.ok || !body.action) throw new Error(body.error ?? `Couldn't save (${res.status})`);
       setActions((prev) => prev?.map((a) => (a.id === id ? body.action! : a)) ?? null);
+      if (mode === "demo") setDemoDecided((prev) => ({ ...prev, [id]: body.action! }));
       setError(body.warning ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save that");
@@ -86,14 +89,16 @@ export function InboxPanel({
     }
   }
 
-  const pending = actions?.filter((a) => a.status === "draft").length ?? 0;
-  const ordered = actions ? orderInbox(actions, impactByFinding) : null;
+  const shown = actions?.map((a) => demoDecided[a.id] ?? a) ?? null;
+  const pending = shown?.filter((a) => a.status === "draft").length ?? 0;
+  const ordered = shown ? orderInbox(shown, impactByFinding) : null;
 
   return (
     <div className="max-h-[560px] space-y-3 overflow-y-auto p-4 text-sm">
       <p className="text-muted">
         Drafts from Copilot and Autopilot. {jira ? "Approving a ticket files it in Jira." : "Approved drafts are ready to copy and send."} Nothing is sent
         without your approval.
+        {mode === "demo" && " On the demo, your decisions show here but aren't saved for the next visitor."}
       </p>
       {error && <p className="rounded-md bg-warn-soft px-3 py-2 text-warn">{error}</p>}
       {actions === null && !error && <p className="text-muted">Loading…</p>}

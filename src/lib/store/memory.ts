@@ -90,6 +90,13 @@ export function createMemoryStore(): Store {
     async listActions(limit) {
       return [...actions].reverse().slice(0, limit);
     },
+    async getAction(id) {
+      try {
+        return { ...findAction(id) };
+      } catch {
+        return null;
+      }
+    },
     async decideAction(id, decision) {
       const action = findAction(id);
       if (action.status !== "draft") throw new StoreError(`Action is already ${action.status}`, "invalid_transition");

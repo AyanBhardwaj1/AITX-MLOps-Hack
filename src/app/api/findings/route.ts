@@ -19,9 +19,6 @@ const body = z.object({
   status: z.enum(["open", "accepted", "dismissed"]),
 });
 
-/** Drafts looked at when a finding is dismissed (the Inbox shows far fewer). */
-const MAX_PENDING_DRAFTS = 500;
-
 /** A person accepts or dismisses a finding. Dismissals survive later detector runs. */
 export async function POST(request: Request) {
   if (!allow(clientIp(request))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -31,13 +28,10 @@ export async function POST(request: Request) {
     const mode = parseMode(parsed.data.mode);
     // Who decided, from the verified session: only on a company's own data (the demo is anonymous).
     const actor = mode === "company" ? ((await sessionUser()) ?? undefined) : undefined;
+    // A dismissed finding's drafts aren't changed: the Inbox hides them and refuses to approve
+    // them, so changing your mind brings them back as they were.
     const store = getStore(await scopeFor(mode));
     await store.setFindingStatus(parsed.data.fingerprint, parsed.data.status, undefined, actor);
-    // The team said no: the finding's drafts still waiting in the Inbox go with it, so none is approved by mistake.
-    if (parsed.data.status === "dismissed") {
-      const pending = (await store.listActions(MAX_PENDING_DRAFTS)).filter((a) => a.findingFingerprint === parsed.data.fingerprint && a.status === "draft");
-      for (const a of pending) await store.decideAction(a.id, "rejected").catch(() => undefined);
-    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     const known = accessErrorResponse(err);

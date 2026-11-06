@@ -286,6 +286,11 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       return actionsWhere("", [], limit);
     },
 
+    async getAction(id) {
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+      return (await actionsWhere(`and a.id = $2`, [id]))[0] ?? null;
+    },
+
     async decideAction(id, decision) {
       if (!/^[0-9a-f-]{36}$/i.test(id)) throw new StoreError("Action not found", "not_found");
       await transition("action", "actions", "id", id, (from) => from === "draft", decision);

@@ -19,7 +19,12 @@ const allow = createRateLimiter({ limit: 30, windowMs: 60_000 });
 export async function GET(request: Request) {
   const mode = parseMode(new URL(request.url).searchParams.get("mode"));
   try {
-    return NextResponse.json({ actions: await getStore(await scopeFor(mode)).listActions(LIST_LIMIT) });
+    const store = getStore(await scopeFor(mode));
+    const actions = await store.listActions(LIST_LIMIT);
+    // Drafts for findings the team dismissed are hidden (and can't be approved); reopening the finding brings them back.
+    const fingerprints = [...new Set(actions.filter((a) => a.status === "draft" && a.findingFingerprint).map((a) => a.findingFingerprint!))];
+    const dismissed = new Set((await Promise.all(fingerprints.map(async (fp) => ((await store.findingStatus(fp)) === "dismissed" ? fp : null)))).filter((fp) => fp !== null));
+    return NextResponse.json({ actions: actions.filter((a) => !(a.status === "draft" && a.findingFingerprint && dismissed.has(a.findingFingerprint))) });
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;
@@ -27,9 +32,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Couldn't load the inbox." }, { status: 500 });
   }
 }
-
-/** Actions searched for the one being decided (the Inbox lists far fewer). */
-const MAX_LOOKUP = 500;
 
 const decideBody = z.object({
   mode: dataModeSchema,
@@ -48,7 +50,7 @@ export async function POST(request: Request) {
   try {
     const mode = parseMode(parsed.data.mode);
     const store = getStore(await scopeFor(mode));
-    const current = (await store.listActions(MAX_LOOKUP)).find((a) => a.id === parsed.data.id);
+    const current = await store.getAction(parsed.data.id);
     if (!current) return NextResponse.json({ error: "Action not found" }, { status: 404 });
     if (current.status !== "draft") return NextResponse.json({ error: `Action is already ${current.status}` }, { status: 409 });
     // Waste the team dismissed is never acted on, whatever drafts are left over.

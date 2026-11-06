@@ -94,6 +94,8 @@ export interface Store {
   listAcceptedFindings(): Promise<AcceptedFinding[]>;
   saveDrafts(drafts: readonly DraftInput[]): Promise<StoredAction[]>;
   listActions(limit: number): Promise<StoredAction[]>;
+  /** One action by id (null when this scope has none with it). */
+  getAction(id: string): Promise<StoredAction | null>;
   decideAction(id: string, decision: "approved" | "rejected"): Promise<StoredAction>;
   markActionSent(id: string, externalRef: string): Promise<void>;
   recordRun(run: RunInput): Promise<string>;

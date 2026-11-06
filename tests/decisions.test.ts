@@ -53,20 +53,35 @@ describe("drafts follow their finding", () => {
   const decide = (body: unknown) => new Request("http://localhost/api/actions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const draft = (fp: string) => ({ fingerprint: `cancel:${fp}`, findingFingerprint: fp, kind: "jira_ticket" as const, title: "Cancel it", body: "Please cancel.", createdBy: "autopilot" as const });
 
-  it("dismissing a finding rejects its pending drafts, and a dismissed finding's draft can't be approved", async () => {
+  it("a dismissed finding's drafts leave the Inbox and can't be approved; reopening brings them back", async () => {
     const findings = await import("@/app/api/findings/route");
     const actions = await import("@/app/api/actions/route");
     const { getStore } = await import("@/lib/server/store");
     const { scopeFor } = await import("@/lib/server/scope");
     as(crypto.randomUUID(), "maya@acme.example");
     const store = getStore(await scopeFor("company"));
-    await store.syncFindings([finding("zombie:loom"), finding("zombie:zoom")]);
-    const [loom, zoom] = await store.saveDrafts([draft("zombie:loom"), draft("zombie:zoom")]);
+    await store.syncFindings([finding("zombie:loom")]);
+    const [loom] = await store.saveDrafts([draft("zombie:loom")]);
+    const inbox = async () => ((await (await actions.GET(new Request("http://localhost/api/actions?mode=company"))).json()) as { actions: { id: string }[] }).actions.map((a) => a.id);
+    expect(await inbox()).toContain(loom!.id);
     expect((await findings.POST(post({ mode: "company", fingerprint: "zombie:loom", status: "dismissed" }))).status).toBe(200);
-    expect((await store.listActions(10)).find((a) => a.id === loom!.id)!.status).toBe("rejected");
-    // A draft whose finding was dismissed some other way (before this rule) can't be approved.
-    await store.setFindingStatus("zombie:zoom", "dismissed");
-    expect((await actions.POST(decide({ mode: "company", id: zoom!.id, decision: "approved" }))).status).toBe(409);
+    expect(await inbox()).not.toContain(loom!.id);
+    expect((await actions.POST(decide({ mode: "company", id: loom!.id, decision: "approved" }))).status).toBe(409);
+    // Changed their mind: the draft is back, still a draft, and can be approved.
+    expect((await findings.POST(post({ mode: "company", fingerprint: "zombie:loom", status: "open" }))).status).toBe(200);
+    expect(await inbox()).toContain(loom!.id);
+    expect((await actions.POST(decide({ mode: "company", id: loom!.id, decision: "approved" }))).status).toBe(200);
+  });
+
+  it("an older draft past the newest 500 can still be decided", async () => {
+    const actions = await import("@/app/api/actions/route");
+    const { getStore } = await import("@/lib/server/store");
+    const { scopeFor } = await import("@/lib/server/scope");
+    as(crypto.randomUUID(), "sam@acme.example");
+    const store = getStore(await scopeFor("company"));
+    const [oldest] = await store.saveDrafts([draft("zombie:old")]);
+    await store.saveDrafts(Array.from({ length: 501 }, (_, i) => draft(`zombie:n${i}`)));
+    expect((await actions.POST(decide({ mode: "company", id: oldest!.id, decision: "rejected" }))).status).toBe(200);
   });
 
   it("on the public demo a decision shows for that visitor but isn't saved for everyone", async () => {
