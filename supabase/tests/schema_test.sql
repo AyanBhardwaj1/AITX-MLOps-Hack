@@ -217,8 +217,42 @@ do $$ begin
   end;
 end $$;
 reset role;
--- The server records cash updates; it can't record kinds it doesn't know.
+-- The server records cash and budget changes; it can't record kinds it doesn't know.
 insert into public.company_activity (org_id, actor_email, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'a@acme.example', 'cash', 'Set today''s cash to $1');
+insert into public.company_activity (org_id, actor_email, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'a@acme.example', 'budget', 'Set the software budget to $1/mo');
+
+-- Budgets: server only, spending categories only, positive amounts.
+insert into public.company_budgets (org_id, category, monthly_minor) values ('00000000-0000-0000-0000-00000000000a', 'software', 500000);
+do $$ begin
+  begin
+    insert into public.company_budgets (org_id, category, monthly_minor) values ('00000000-0000-0000-0000-00000000000a', 'revenue', 1);
+    raise exception 'FAIL: a budget on revenue accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.company_budgets (org_id, category, monthly_minor) values ('00000000-0000-0000-0000-00000000000a', 'travel', 0);
+    raise exception 'FAIL: a zero budget accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+set role anon;
+do $$ begin
+  begin
+    perform count(*) from public.company_budgets;
+    raise exception 'FAIL: anon read company budgets';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set role authenticated;
+do $$ begin
+  begin
+    perform count(*) from public.company_budgets;
+    raise exception 'FAIL: a signed-in user read company budgets';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
 do $$ begin
   begin
     insert into public.company_activity (org_id, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'anything', 'x');

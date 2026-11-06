@@ -1,4 +1,5 @@
-import type { Finding } from "../types";
+import type { Category, Cents, Finding } from "../types";
+import type { Budget } from "../finance/budgets";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { ShareSnapshot } from "../share/snapshot";
 import type { RhoTransaction } from "../rho/schema";
@@ -122,6 +123,10 @@ export interface Store {
   setUploadCash(cashCents: number): Promise<"saved" | "unchanged" | "no_uploads">;
   /** Everything uploaded for this scope, or null when nothing has been. */
   loadUploads(): Promise<{ cashCents: number; /** When the cash was last entered or confirmed (ISO). */ cashEnteredAt: string; rows: RhoTransaction[] } | null>;
+  /** The company's monthly budgets, by category name. */
+  listBudgets(): Promise<Budget[]>;
+  /** Sets (or, with null, removes) one category's monthly budget; returns the amount it replaced. */
+  setBudget(category: Category, monthlyCents: Cents | null): Promise<Cents | null>;
   /** Appends to the company's activity log (server-written text only). */
   recordActivity(entry: { actorEmail: string | null; kind: ActivityKind; detail: string }): Promise<void>;
   /** The latest activity, newest first. */
@@ -164,7 +169,7 @@ export interface FindingDecision {
   at: string;
 }
 
-export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link" | "cash";
+export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link" | "cash" | "budget";
 
 export interface ActivityEntry {
   at: string;

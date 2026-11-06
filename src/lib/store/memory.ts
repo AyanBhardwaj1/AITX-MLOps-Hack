@@ -1,5 +1,5 @@
 import { CASH_ACCOUNT_ID } from "../uploads/rows";
-import type { Finding } from "../types";
+import type { Category, Cents, Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { RhoTransaction } from "../rho/schema";
 import { StoreError, type AcceptedFinding, type ActivityEntry, type Actor, type DraftInput, type FindingDecision, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
@@ -23,6 +23,7 @@ export function createMemoryStore(): Store {
   let slackWebhook: string | null = null;
   let lastDigestAt: string | null = null;
   const activity: ActivityEntry[] = [];
+  const budgets = new Map<Category, Cents>();
   const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
@@ -148,6 +149,15 @@ export function createMemoryStore(): Store {
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
       return { cashCents: uploadCash, cashEnteredAt, rows: [...uploads.values()].map((r) => structuredClone(r)) };
+    },
+    async listBudgets() {
+      return [...budgets].sort(([a], [b]) => a.localeCompare(b)).map(([category, monthlyCents]) => ({ category, monthlyCents }));
+    },
+    async setBudget(category, monthlyCents) {
+      const previous = budgets.get(category) ?? null;
+      if (monthlyCents === null) budgets.delete(category);
+      else budgets.set(category, monthlyCents);
+      return previous;
     },
     async recordActivity({ actorEmail, kind, detail }) {
       activity.unshift({ at: new Date().toISOString(), actorEmail, kind, detail: detail.slice(0, 300) });

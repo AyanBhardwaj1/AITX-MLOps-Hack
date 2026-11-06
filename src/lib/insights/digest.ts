@@ -1,7 +1,8 @@
 import { STALE_AFTER_DAYS } from "../freshness";
 import { monthlyHistory } from "../finance/history";
 import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
-import { formatDate } from "../format";
+import { categoryName, formatDate } from "../format";
+import type { BudgetRow } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import type { Cents, Finding, IsoDate } from "../types";
@@ -29,6 +30,8 @@ export interface DigestInput {
   appUrl?: string;
   /** Days since the latest uploaded transaction (company data only); two weeks or more is called out first. */
   staleDays?: number;
+  /** The company's budgets this month; only those over or heading over are named. */
+  budgets?: readonly BudgetRow[];
 }
 
 export interface Digest {
@@ -99,8 +102,25 @@ function blocks(d: DigestInput): Block[] {
     d.changes.length
       ? { kind: "ul", items: d.changes.map((c) => [{ bold: c.title }, `: ${c.detail}`]) }
       : { kind: "p", spans: ["Nothing unusual this week."] },
-    { kind: "h", text: "Waste to act on" },
   ];
+  if (d.budgets?.length) {
+    const off = d.budgets.filter((b) => b.status !== "under");
+    const label = (c: BudgetRow["category"]) => categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1);
+    out.push({ kind: "h", text: "Budgets" });
+    out.push(
+      off.length
+        ? {
+            kind: "ul",
+            items: off.map((b) =>
+              b.status === "over"
+                ? [{ bold: `${label(b.category)} over budget` }, `: ${formatDollars(b.monthToDateCents)} so far of ${formatDollars(b.monthlyCents)}.`]
+                : [{ bold: `${label(b.category)} heading over` }, `: ${formatDollars(b.projectedCents)} likely of ${formatDollars(b.monthlyCents)}.`],
+            ),
+          }
+        : { kind: "p", spans: [`Your ${d.budgets.length} budget${d.budgets.length === 1 ? " is" : "s are all"} on track.`] },
+    );
+  }
+  out.push({ kind: "h", text: "Waste to act on" });
   if (d.findings.length === 0) {
     out.push({ kind: "p", spans: ["No open waste findings."] });
   } else {

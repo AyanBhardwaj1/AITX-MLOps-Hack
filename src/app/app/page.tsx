@@ -10,6 +10,9 @@ import { redirect } from "next/navigation";
 import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
 import { cashFreshness, dataFreshness } from "@/lib/freshness";
+import { BUDGET_CATEGORIES, budgetStatus, type Budget } from "@/lib/finance/budgets";
+import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
+import type { Analysis } from "@/lib/pipeline";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
 import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
@@ -64,6 +67,28 @@ async function companyProgress(mode: DataMode, decidedFindings: number): Promise
     console.error("[page] couldn't work out getting-started progress", err instanceof Error ? err.message : "unknown error");
     return undefined;
   }
+}
+
+/** The demo's fixed sample, or a company's own (best effort: a storage hiccup shows none). */
+async function budgetsFor(mode: DataMode, a: Analysis): Promise<DashboardData["budgets"]> {
+  if (mode === "sandbox") return undefined;
+  let list: readonly Budget[] = DEMO_BUDGETS;
+  if (mode === "company") {
+    try {
+      list = await getStore(await scopeFor(mode)).listBudgets();
+    } catch (err) {
+      console.error("[page] couldn't load budgets", err instanceof Error ? err.message : "unknown error");
+      return undefined;
+    }
+  }
+  const set = new Set(list.map((b) => b.category));
+  return {
+    rows: budgetStatus(a.txns, a.asOf, list, a.streams),
+    unbudgeted: BUDGET_CATEGORIES.filter((c) => !set.has(c)),
+    editable: mode === "company",
+    sample: mode === "demo",
+    asOf: a.asOf,
+  };
 }
 
 async function buildData(mode: DataMode): Promise<DashboardData> {
@@ -129,6 +154,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     })),
     jobs: KNOWN_JOBS,
     categorySpend: categorySpend(a.txns, a.asOf),
+    budgets: await budgetsFor(mode, a),
     runwayHistory: runwayHistory({ txns: a.txns, cashAccountIds: cashAccountIds(dataset.accounts), cashCents: a.snapshot.cashCents, asOf: a.asOf }),
     forecast: forecastCash({
       cashCents: a.snapshot.cashCents,

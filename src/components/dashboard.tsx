@@ -38,6 +38,7 @@ import type { RunwayPoint } from "@/lib/finance/runway-history";
 import { ScenarioPlanner } from "./scenario-planner";
 import { ShareLinksPanel } from "./share-links-panel";
 import { ThisWeekCard } from "./this-week-card";
+import { BudgetsCard, type BudgetsData } from "./budgets-card";
 
 export interface EvidenceRow {
   id: string;
@@ -56,6 +57,8 @@ export interface DashboardData {
   freshness?: { daysOld: number; stale: boolean };
   /** A company's cash figure: entered by hand, so it ages on its own. */
   cashFreshness?: { daysOld: number; stale: boolean; enteredOn: string };
+  /** Monthly budgets: the demo's sample or a company's own; none on the sandbox feed. */
+  budgets?: BudgetsData;
   /** A signed-in company's first steps (company mode only). */
   gettingStarted?: { steps: GettingStartedStep[]; remaining: number };
   asOf: string;
@@ -339,6 +342,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
         <RunwayTrendCard points={data.runwayHistory} />
         <CategorySpendCard rows={data.categorySpend} mode={data.mode} />
+        {data.budgets && <BudgetsCard budgets={data.budgets} mode={data.mode} />}
         <RunwayGoalCard snapshot={data.snapshot} findings={data.findings.map((f) => ({ ...f, status: statuses[f.id] ?? f.status }))} />
         <ScenarioPlanner
           history={data.history}

@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import type { Finding } from "../types";
+import type { Category, Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { ShareSnapshot } from "../share/snapshot";
 import type { RhoTransaction } from "../rho/schema";
@@ -513,6 +513,33 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       );
       if (!cash.rows[0] || rows.length === 0) return null;
       return { cashCents: Number(cash.rows[0].balance_minor), cashEnteredAt: cash.rows[0].synced_at.toISOString(), rows: rows.map((r) => r.raw) };
+    },
+
+    async listBudgets() {
+      const org = await orgId();
+      const { rows } = await pool.query<{ category: Category; monthly_minor: string }>(
+        `select category, monthly_minor from public.company_budgets where org_id = $1 order by category`,
+        [org],
+      );
+      return rows.map((r) => ({ category: r.category, monthlyCents: Number(r.monthly_minor) }));
+    },
+
+    async setBudget(category, monthlyCents) {
+      const org = await orgId();
+      return inTransaction(pool, async (c) => {
+        const { rows } = await c.query<{ monthly_minor: string }>(
+          `select monthly_minor from public.company_budgets where org_id = $1 and category = $2 for update`,
+          [org, category],
+        );
+        if (monthlyCents === null) await c.query(`delete from public.company_budgets where org_id = $1 and category = $2`, [org, category]);
+        else
+          await c.query(
+            `insert into public.company_budgets (org_id, category, monthly_minor) values ($1, $2, $3)
+             on conflict (org_id, category) do update set monthly_minor = excluded.monthly_minor, updated_at = now()`,
+            [org, category, monthlyCents],
+          );
+        return rows[0] ? Number(rows[0].monthly_minor) : null;
+      });
     },
 
     async recordActivity({ actorEmail, kind, detail }) {

@@ -243,6 +243,23 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.loadUploads()).toBeNull();
     });
 
+    it("keeps one monthly budget per category, reporting what each change replaced", async () => {
+      const store = await makeStore();
+      expect(await store.listBudgets()).toEqual([]);
+      expect(await store.setBudget("software", 5_000_00)).toBeNull();
+      expect(await store.setBudget("travel", 2_000_00)).toBeNull();
+      expect(await store.setBudget("software", 6_000_00)).toBe(5_000_00);
+      expect(await store.listBudgets()).toEqual([
+        { category: "software", monthlyCents: 6_000_00 },
+        { category: "travel", monthlyCents: 2_000_00 },
+      ]);
+      expect(await store.setBudget("travel", null)).toBe(2_000_00);
+      expect(await store.setBudget("travel", null)).toBeNull();
+      // Budgets are settings, not data worked out from uploads: deleting the uploads keeps them.
+      await store.clearUploads();
+      expect(await store.listBudgets()).toEqual([{ category: "software", monthlyCents: 6_000_00 }]);
+    });
+
     it("keeps the company's own Slack webhook, and forgets it on request", async () => {
       const store = await makeStore();
       expect(await store.getSlackWebhook()).toBeNull();

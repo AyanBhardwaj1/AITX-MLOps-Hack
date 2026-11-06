@@ -97,6 +97,7 @@ await check("Database: migrations applied and read/write works", async () => {
       ["company_integrations", "slack_webhook_url"],
       ["company_integrations", "last_digest_at"],
       ["company_activity", "detail"],
+      ["company_budgets", "monthly_minor"],
     ];
     const { rows } = await pool.query<{ table_name: string; column_name: string }>(
       `select table_name, column_name from information_schema.columns where table_schema = 'public' and (table_name, column_name) in (select * from unnest($1::text[], $2::text[]))`,
@@ -109,7 +110,7 @@ await check("Database: migrations applied and read/write works", async () => {
     const { rows: checks } = await pool.query<{ def: string }>(
       `select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'company_activity_kind_check' and conrelid = 'public.company_activity'::regclass`,
     );
-    if (!checks[0]?.def.includes("'cash'")) throw new Error("company_activity can't record cash updates yet: run npm run db:migrate (see DEPLOY.md)");
+    if (!checks[0]?.def.includes("'budget'")) throw new Error("company_activity can't record cash or budget changes yet: run npm run db:migrate (see DEPLOY.md)");
     const store = createPostgresStore(pool, scope);
     const [draft] = await store.saveDrafts([
       { fingerprint: "verify", findingFingerprint: null, kind: "jira_ticket", title: "verify", body: "verify", createdBy: "autopilot" },

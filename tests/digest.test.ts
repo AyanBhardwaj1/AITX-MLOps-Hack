@@ -78,4 +78,15 @@ describe("weekly digest", () => {
   it("is deterministic", () => {
     expect(buildDigest(input)).toEqual(buildDigest(input));
   });
+
+  it("names budgets that are over or heading over, and stays quiet otherwise", () => {
+    const row = (category: "software" | "travel" | "cloud", status: "over" | "over_pace" | "under") => ({ category, monthlyCents: 5_000_00, monthToDateCents: 6_000_00, projectedCents: 7_000_00, lastMonthCents: 4_000_00, status });
+    const md = buildDigest({ ...input, budgets: [row("software", "over"), row("travel", "over_pace"), row("cloud", "under")] }).markdown;
+    expect(md).toContain("## Budgets");
+    expect(md).toContain("**Software over budget**: $6,000 so far of $5,000");
+    expect(md).toContain("**Travel heading over**: $7,000 likely of $5,000");
+    expect(md).not.toContain("Cloud");
+    expect(buildDigest({ ...input, budgets: [row("cloud", "under")] }).markdown).toContain("Your 1 budget is on track.");
+    expect(buildDigest(input).markdown).not.toContain("## Budgets");
+  });
 });

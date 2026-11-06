@@ -68,4 +68,23 @@ await suite("uploads", async ({ browser, step }) => {
     await stranger.goto(`${APP}/app/transactions?mode=company&q=slack`);
     await stranger.waitForURL(/\/login\?next=/);
   });
+  await step("the team sets, changes and removes a monthly budget", async () => {
+    await p.goto(`${APP}/app?mode=company`);
+    const card = p.getByRole("region", { name: "Budgets" });
+    await card.getByText("No budgets yet.").waitFor();
+    await card.getByLabel("Category").selectOption("software");
+    await card.getByLabel("Per month ($)").fill("1");
+    await card.getByRole("button", { name: "Add budget" }).click();
+    await card.getByRole("link", { name: "Software" }).waitFor();
+    await card.getByRole("button", { name: /Change the software budget/ }).click();
+    await card.getByLabel(/Monthly software budget/).fill("2,500");
+    await card.getByRole("button", { name: "Save" }).click();
+    await card.getByText(/of \$2,500 so far/).waitFor();
+    await card.getByRole("button", { name: /Change the software budget/ }).click();
+    await card.getByRole("button", { name: "Remove" }).click();
+    await card.getByText("No budgets yet.").waitFor();
+    await p.goto(`${APP}/app/settings`);
+    await p.getByText("Changed the software budget from $1 to $2,500/mo").waitFor();
+    await p.getByText("Removed the software budget").waitFor();
+  });
 });
