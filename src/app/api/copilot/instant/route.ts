@@ -5,6 +5,9 @@ import { dataModeSchema } from "@/lib/modes";
 import { instantAnswer, instantQuestionInput } from "@/lib/agent/instant";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadAnalysis } from "@/lib/server/data";
+import { scopeFor } from "@/lib/server/scope";
+import { getStore } from "@/lib/server/store";
+import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 
 export const runtime = "nodejs";
 
@@ -22,8 +25,12 @@ export async function POST(request: Request) {
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
-    const { analysis } = await loadAnalysis(parsed.data.mode, { visitorFixes: true });
-    return NextResponse.json(instantAnswer(analysis, parsed.data.question, new Set(parsed.data.dismissed)));
+    const { mode, question } = parsed.data;
+    const { analysis } = await loadAnalysis(mode, { visitorFixes: true });
+    // Read only for the budget question: the demo's sample, or the signed-in company's own.
+    const budgets =
+      question !== "budgets" || mode === "sandbox" ? [] : mode === "demo" ? DEMO_BUDGETS : await getStore(await scopeFor(mode)).listBudgets();
+    return NextResponse.json(instantAnswer(analysis, question, new Set(parsed.data.dismissed), budgets));
   } catch (err) {
     const known = accessErrorResponse(err);
     if (known) return known;

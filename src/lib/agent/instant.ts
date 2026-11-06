@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { categoryName, formatDate } from "../format";
+import { categoryName, formatDate, formatMoney } from "../format";
+import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { getChanges, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { getBudgets, getChanges, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -140,16 +141,35 @@ function whatChanged(a: Analysis): InstantAnswer {
   return { question: INSTANT_QUESTIONS.what_changed, tools: ["get_recent_changes"], text };
 }
 
-const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>) => InstantAnswer> = {
+function budgetsAnswer(a: Analysis, _dismissed: ReadonlySet<string>, budgets: readonly Budget[]): InstantAnswer {
+  const { budgets: rows } = getBudgets(a, budgets);
+  const tools = ["get_budgets"];
+  if (rows.length === 0)
+    return { question: INSTANT_QUESTIONS.budgets, tools, text: "No budgets are set yet. Add one per category on the dashboard's **Budgets** card and Runway tracks it from the bank data." };
+  const name = (c: string) => categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1);
+  const over = rows.filter((r) => r.status === "over");
+  const heading = rows.filter((r) => r.status === "over_pace");
+  const fine = rows.filter((r) => r.status === "under");
+  const lines = [`Budgets for ${formatDate(`${a.asOf.slice(0, 7)}-01`)} to ${formatDate(a.asOf)}:`];
+  if (over.length) lines.push("**Over budget**", `${over.map((r) => `- ${name(r.category)}: ${formatMoney(r.monthToDateCents)} so far of ${formatMoney(r.monthlyCents)}`).join("\n")}`);
+  if (heading.length)
+    lines.push("**Heading over**", `${heading.map((r) => `- ${name(r.category)}: likely ${formatMoney(r.projectedCents)} of ${formatMoney(r.monthlyCents)} (${formatMoney(r.monthToDateCents)} so far)`).join("\n")}`);
+  if (fine.length) lines.push(`On track: ${fine.map((r) => name(r.category)).join(", ")}.`);
+  lines.push("\"Likely\" adds recurring bills still due this month and one-off spend at its pace from day 7.");
+  return { question: INSTANT_QUESTIONS.budgets, tools, text: lines.join("\n\n") };
+}
+
+const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<string>, budgets: readonly Budget[]) => InstantAnswer> = {
   target_14: target14,
   pay_twice: payTwice,
   how_long: howLong,
   renewals,
   default_alive: defaultAlive,
   what_changed: whatChanged,
+  budgets: budgetsAnswer,
 };
 
-/** `dismissed`: finding ids the person said no to, never recommended. */
-export function instantAnswer(a: Analysis, question: InstantQuestion, dismissed: ReadonlySet<string> = new Set()): InstantAnswer {
-  return ANSWERS[question](a, dismissed);
+/** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own. */
+export function instantAnswer(a: Analysis, question: InstantQuestion, dismissed: ReadonlySet<string> = new Set(), budgets: readonly Budget[] = []): InstantAnswer {
+  return ANSWERS[question](a, dismissed, budgets);
 }

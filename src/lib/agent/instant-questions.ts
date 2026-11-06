@@ -6,5 +6,6 @@ export const INSTANT_QUESTIONS = {
   renewals: "What renews in the next 60 days?",
   default_alive: "Are we default alive?",
   what_changed: "What changed this week?",
+  budgets: "Are we on budget this month?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;

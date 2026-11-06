@@ -52,4 +52,17 @@ describe("instant answers (no LLM)", () => {
   it("rejects unknown question ids", () => {
     expect(instantQuestionInput.safeParse("drop_tables").success).toBe(false);
   });
+
+  it("answers the budget question from the same numbers as the card, naming what's over first", async () => {
+    const { DEMO_BUDGETS } = await import("@/lib/seed/demo-budgets");
+    const { budgetStatus } = await import("@/lib/finance/budgets");
+    const { formatMoney } = await import("@/lib/format");
+    const rows = budgetStatus(a.txns, a.asOf, DEMO_BUDGETS, a.streams);
+    const ans = instantAnswer(a, "budgets", new Set(), DEMO_BUDGETS);
+    expect(ans.tools).toEqual(["get_budgets"]);
+    const over = rows.find((r) => r.status === "over")!;
+    expect(ans.text).toContain(`${formatMoney(over.monthToDateCents)} so far of ${formatMoney(over.monthlyCents)}`);
+    expect(ans.text.indexOf("Over budget")).toBeLessThan(ans.text.indexOf("Heading over"));
+    expect(instantAnswer(a, "budgets").text).toMatch(/No budgets are set/);
+  });
 });
