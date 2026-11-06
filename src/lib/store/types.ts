@@ -134,6 +134,13 @@ export interface Store {
   claimBudgetAlert(category: Category, month: string): Promise<boolean>;
   /** Gives a claim back after the post failed, so the next run tries again. */
   releaseBudgetAlert(category: Category, month: string): Promise<void>;
+  /**
+   * Claims the one Slack reminder to upload a fresh export for data ending on `asOf`: true for
+   * exactly one caller; false once claimed, or with no Slack channel row.
+   */
+  claimStaleNudge(asOf: string): Promise<boolean>;
+  /** Gives the claim back after the post failed. */
+  releaseStaleNudge(asOf: string): Promise<void>;
   /** The runway line (months) last alerted on in Slack, or null. */
   runwayAlertLevel(): Promise<number | null>;
   /** Moves it from `from` to `to` only if it's still `from`; true when this call moved it. */

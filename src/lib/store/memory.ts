@@ -23,6 +23,7 @@ export function createMemoryStore(): Store {
   let slackWebhook: string | null = null;
   let lastDigestAt: string | null = null;
   let runwayAlertMonths: number | null = null;
+  let staleNudgedFor: string | null = null;
   const activity: ActivityEntry[] = [];
   const budgets = new Map<Category, Cents>();
   /** The month each budget's alert last went out for; cleared when the amount changes. */
@@ -167,6 +168,14 @@ export function createMemoryStore(): Store {
       if (!budgets.has(category) || alertedMonths.get(category) === month) return false;
       alertedMonths.set(category, month);
       return true;
+    },
+    async claimStaleNudge(asOf) {
+      if (slackWebhook === null || staleNudgedFor === asOf) return false;
+      staleNudgedFor = asOf;
+      return true;
+    },
+    async releaseStaleNudge(asOf) {
+      if (staleNudgedFor === asOf) staleNudgedFor = null;
     },
     async runwayAlertLevel() {
       return runwayAlertMonths;

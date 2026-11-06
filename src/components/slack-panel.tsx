@@ -29,7 +29,7 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
       </h2>
       <p className="mt-1 text-sm text-muted">
         Every Monday morning, what changed in your spending, your runway and the waste worth cutting, posted to a channel you choose, plus a
-        short note the day a budget goes over or runway drops under 12, 6 or 3 months. Only that text goes to Slack.
+        short note the day a budget goes over or runway drops under 12, 6 or 3 months, or a reminder when your data is two weeks old. Only that text goes to Slack.
       </p>
       <p className="mt-3 text-sm">
         {state.connected ? (

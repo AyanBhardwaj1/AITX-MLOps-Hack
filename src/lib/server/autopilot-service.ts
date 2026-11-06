@@ -10,6 +10,7 @@ import { companyName, getAccounts } from "./company";
 import { analyze, type Analysis } from "../pipeline";
 import { sendBudgetAlerts } from "./budget-alerts";
 import { sendRunwayAlert } from "./runway-alert";
+import { sendStaleNudge } from "./stale-nudge";
 import { appUrl } from "./digest-service";
 
 export interface PublicRun extends Omit<AutopilotRun, "memoFacts" | "findings" | "tickets"> {
@@ -42,6 +43,8 @@ export interface CompanyRunsResult {
   budgetAlerts: number;
   /** Companies told in their own Slack that runway dropped under 12, 6 or 3 months. */
   runwayAlerts: number;
+  /** Companies reminded in their own Slack that their data is two weeks old. */
+  staleNudges: number;
 }
 
 /**
@@ -52,7 +55,7 @@ export interface CompanyRunsResult {
 export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): Promise<CompanyRunsResult> {
   const deadline = Date.now() + budgetMs;
   const scopes = await listCompanyScopesWithUploads(MAX_COMPANIES_PER_RUN);
-  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0, budgetAlerts: 0, runwayAlerts: 0 };
+  const result: CompanyRunsResult = { ran: [], failed: [], skipped: 0, budgetAlerts: 0, runwayAlerts: 0, staleNudges: 0 };
   for (const [i, scope] of scopes.entries()) {
     if (Date.now() >= deadline) {
       result.skipped = scopes.length - i;
@@ -84,6 +87,13 @@ export async function runCompanyAutopilots({ budgetMs }: { budgetMs: number }): 
     } catch (err) {
       // The level was put back: tomorrow's run tries again.
       console.error("[runway-alert] company alert failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
+    }
+    try {
+      const nudge = await sendStaleNudge({ store, load: loadAnalysis, company: company ?? "your company", now: new Date(), link: appUrl("company")?.replace(/\/app(\?.*)?$/, "/app/upload") });
+      if (nudge.status === "sent") result.staleNudges += 1;
+    } catch (err) {
+      // The claim was given back: tomorrow's run tries again.
+      console.error("[stale-nudge] company reminder failed", { scope, error: err instanceof Error ? err.message : "unknown error" });
     }
     try {
       const run = await runAndPersist({ store, loadData, label: scope, trigger: "cron", company });

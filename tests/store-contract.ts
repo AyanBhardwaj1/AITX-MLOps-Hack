@@ -260,6 +260,20 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.listBudgets()).toEqual([{ category: "software", monthlyCents: 6_000_00 }]);
     });
 
+    it("claims the upload reminder once per export, and gives it back on request", async () => {
+      const store = await makeStore();
+      // Nothing to remind without a channel row.
+      expect(await store.claimStaleNudge("2026-10-24")).toBe(false);
+      await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");
+      const both = await Promise.all([store.claimStaleNudge("2026-10-24"), store.claimStaleNudge("2026-10-24")]);
+      expect(both.filter(Boolean)).toHaveLength(1);
+      expect(await store.claimStaleNudge("2026-10-24")).toBe(false);
+      await store.releaseStaleNudge("2026-10-24");
+      expect(await store.claimStaleNudge("2026-10-24")).toBe(true);
+      // A newer export that goes stale too gets its own reminder.
+      expect(await store.claimStaleNudge("2026-11-20")).toBe(true);
+    });
+
     it("moves the runway alert level only from the level the caller saw", async () => {
       const store = await makeStore();
       await store.setSlackWebhook("https://hooks.slack.com/services/T1/B1/x");

@@ -31,6 +31,8 @@ demo, the free grader and the public site work exactly as before.
   budget this month?" from the same numbers. The demo has a sample set. With the company's Slack
   connected, the daily job posts there the day a budget goes over (once per budget per month;
   changing the amount re-arms it).
+- **Upload reminder in Slack.** When a company's data is two weeks old (when the alerts go
+  quiet), the daily job reminds its Slack once for that export to upload a fresh one.
 - **Add to your home screen.** A web app manifest lets a phone install Runway; it opens on the
   app. It stays reachable on password-protected deployments.
 - **Spend by person.** Card spend per cardholder per month, over the same months as burn and
@@ -79,7 +81,7 @@ demo, the free grader and the public site work exactly as before.
   (`invite` or `open`), `OPERATOR_EMAILS` (who gets `/admin` to invite founders from the
   waitlist with a button instead of SQL; operators need no invite themselves). `DATABASE_URL` is required with accounts. See DEPLOY.md, "Accounts".
 - New migrations (run `npm run db:migrate`): accounts, teams, decision actor, rate limits, company
-  Slack, digest order, company activity, activity cash, company budgets, budget alerts, runway alerts, activity alerts.
+  Slack, digest order, company activity, activity cash, company budgets, budget alerts, runway alerts, activity alerts, stale nudge.
 - `npm run verify:live` now checks the Supabase Auth settings (email sign-in on, sign-ups allowed,
   Confirm email on) and that every migration is applied.
 - `npm run test:e2e` runs browser suites for sign-in, isolation, settings, teams and uploads against

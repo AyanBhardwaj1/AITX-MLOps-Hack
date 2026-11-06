@@ -242,6 +242,8 @@ do $$ begin
   end;
 end $$;
 update public.company_budgets set alerted_month = '2026-11' where org_id = '00000000-0000-0000-0000-00000000000a' and category = 'software';
+-- The upload reminder remembers the export date it was sent for.
+update public.company_integrations set stale_nudged_for = '2026-10-24' where org_id = '00000000-0000-0000-0000-00000000000a';
 -- Runway alerts remember the line last crossed: 12, 6 or 3 months only.
 insert into public.company_integrations (org_id, runway_alert_months) values ('00000000-0000-0000-0000-00000000000a', 6)
   on conflict (org_id) do update set runway_alert_months = 6;

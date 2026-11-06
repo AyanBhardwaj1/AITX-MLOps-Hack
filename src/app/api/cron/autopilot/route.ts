@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     {
       ...(run ? { status: run.status, runId: run.id, findings: run.findingsCount, drafted: run.tickets.length, persisted: run.persisted } : { skipped: "AUTOPILOT_CRON_MODE=sandbox is off when accounts are on" }),
       // Counts only: which companies ran stays in the server logs.
-      ...(companies ? { companies: { ran: companies.ran.length, failed: companies.failed.length, skipped: companies.skipped, budgetAlerts: companies.budgetAlerts, runwayAlerts: companies.runwayAlerts } } : {}),
+      ...(companies ? { companies: { ran: companies.ran.length, failed: companies.failed.length, skipped: companies.skipped, budgetAlerts: companies.budgetAlerts, runwayAlerts: companies.runwayAlerts, staleNudges: companies.staleNudges } } : {}),
     },
     { status: run?.status === "failed" ? 502 : 200 },
   );

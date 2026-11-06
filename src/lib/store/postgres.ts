@@ -592,6 +592,21 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       );
     },
 
+    async claimStaleNudge(asOf) {
+      const org = await orgId();
+      // One statement: of two overlapping runs, only one sees it unclaimed.
+      const { rowCount } = await pool.query(
+        `update public.company_integrations set stale_nudged_for = $2::date where org_id = $1 and stale_nudged_for is distinct from $2::date`,
+        [org, asOf],
+      );
+      return rowCount === 1;
+    },
+
+    async releaseStaleNudge(asOf) {
+      const org = await orgId();
+      await pool.query(`update public.company_integrations set stale_nudged_for = null where org_id = $1 and stale_nudged_for = $2::date`, [org, asOf]);
+    },
+
     async runwayAlertLevel() {
       const org = await orgId();
       const { rows } = await pool.query<{ months: number | null }>(`select runway_alert_months as months from public.company_integrations where org_id = $1`, [org]);
