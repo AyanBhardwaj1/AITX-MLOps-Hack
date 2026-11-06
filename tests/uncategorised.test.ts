@@ -63,6 +63,9 @@ describe("the card", () => {
     expect(html).toContain('href="/app/transactions?mode=company&amp;vendor=jane_doe_design"');
     expect(html).toContain("these 2 vendors are");
     expect(html).toContain('aria-label="Set category for Jane Doe Design"');
+    // With more vendors than shown, a link to all of them.
+    const many = { ...uncategorisedSpend(base, snap(base))!, vendorCount: 9 };
+    expect(renderToStaticMarkup(createElement(UncategorisedCard, { spend: many, mode: "company", burnMonths: 3 }))).toContain("category=other&amp;direction=out");
     const tiny = { monthlyCents: 1_00, shareOfGross: 0.001, vendorCount: 1, vendors: [{ key: "x", name: "X", monthlyCents: 1_00 }] };
     expect(renderToStaticMarkup(createElement(UncategorisedCard, { spend: tiny, mode: "company", burnMonths: 3 }))).toBe("");
   });

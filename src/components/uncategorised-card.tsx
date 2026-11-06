@@ -43,6 +43,14 @@ export function UncategorisedCard({ spend, mode, burnMonths }: { spend: Uncatego
           </li>
         ))}
       </ul>
+      {spend.vendorCount > spend.vendors.length && (
+        <p className="mt-2 text-xs text-muted">
+          +{spend.vendorCount - spend.vendors.length} more.{" "}
+          <Link href={`/app/transactions?mode=${mode}&category=other&direction=out`} className="font-medium text-brand hover:underline">
+            See every uncategorised charge
+          </Link>
+        </p>
+      )}
     </section>
   );
 }

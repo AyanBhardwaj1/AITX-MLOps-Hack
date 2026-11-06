@@ -114,6 +114,15 @@ demo, the free grader and the public site work exactly as before.
 - **Billing dates.** A late or early posting doesn't skip or shift a cycle, quarterly bills stay
   in their months, and month-end bills stay on the month's end.
 - A test runs 32 generated companies and checks the cards against each other to the cent.
+- **Scheduled payments wait for their date.** Uploaded rows dated after today aren't counted
+  until then (the dashboard says how many), so a payment due on the 1st can't turn the month
+  early or quiet the alerts.
+- **Safer approvals.** Dismissing a finding rejects its drafts still in the Inbox, and a dismissed
+  finding's draft can't be approved; Copilot won't draft for one either. On the public demo,
+  Inbox decisions show for the visitor but aren't saved for everyone.
+- **One digest a week.** A repeated or retried cron call doesn't post the Monday digest twice.
+  Budget alerts are claimed only for the amount the run read, and a new Slack channel hears
+  them afresh.
 
 ### For whoever runs it
 
