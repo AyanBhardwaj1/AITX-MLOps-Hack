@@ -229,3 +229,18 @@ describe("import hunt, upload path", () => {
     expect(r.transactions.find((t) => t.counterparty_name.includes("FROM CHASE"))!.transaction_type).toBe("credit_repayment");
   });
 });
+
+describe("import hunt, same-account matching", () => {
+  it("on a named checking account, a customer paying exactly a payoff's amount stays a customer", () => {
+    const rows = ["2026-10-01,GUSTO PAYROLL,-20000.00", "2026-10-02,AMEX AUTOPAY,-3000.00", "2026-10-05,ONLINE PAYMENT FROM ACME CORP,3000.00"];
+    const r = resolveCardPayoffs(importCsv(csv(rows), { accountId: "checking", resolvePayoffs: false }).transactions);
+    expect(r.transactions.find((t) => t.counterparty_name.includes("ACME"))!.transaction_type).toBe("ach_credit");
+    expect(r.cardSpendAsPayoffs).toBe(true);
+  });
+
+  it("the shared account name matches the upload path's default", async () => {
+    const { DEFAULT_ACCOUNT_LABEL } = await import("@/lib/uploads/rows");
+    const { SHARED_UPLOAD_ACCOUNT } = await import("@/lib/csv/import");
+    expect(SHARED_UPLOAD_ACCOUNT).toBe(DEFAULT_ACCOUNT_LABEL);
+  });
+});

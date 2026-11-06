@@ -42,6 +42,8 @@ const CARD_PAYOFF_PATTERN = /\b(CARD PAYMENT|AUTOPAY|E-?PAYMENT|PAYMENT\W+THANK 
 const PAYMENT_FROM = /\bPAYMENT\W+FROM\b/i;
 const FROM_OWN_ACCOUNT =
   /\bFROM\W+(?:(?:BUSINESS|OPERATING|PRIMARY)\s+)?(?:(?:CHECKING|CHECK|CHK|SAVINGS|SAV|ACCOUNT|ACCT|DDA|BANK)\b|[X*]+\d*\b|\d{4,}\b)/i;
+/** The account files without an account name share on the upload path (uploads/rows.ts DEFAULT_ACCOUNT_LABEL). */
+export const SHARED_UPLOAD_ACCOUNT = "uploaded";
 /** Days between a payoff leaving checking and arriving on the card. */
 const PAYOFF_LEG_DAYS = 10;
 /** Moving money between the company's own accounts: never burn. */
@@ -348,8 +350,10 @@ export function resolveCardPayoffs(input: readonly RhoTransaction[]): { transact
     const day = (t: RhoTransaction) => Date.parse(t.initiated_at.slice(0, 10));
     const unmatched = [...out];
     const matches = (t: RhoTransaction) => {
-      // Same account allowed: unnamed checking and card files share the default "uploaded" account.
-      const i = unmatched.findIndex((o) => o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
+      // Another account, or the shared default one (unnamed checking and card files are both
+      // "uploaded" on the company upload path); on a named account the same amount coming back is
+      // a customer, not a card.
+      const i = unmatched.findIndex((o) => (o.account_id !== t.account_id || t.account_id === SHARED_UPLOAD_ACCOUNT) && o.amount.amount === -t.amount.amount && Math.abs(day(o) - day(t)) <= PAYOFF_LEG_DAYS * 86_400_000);
       if (i < 0) return false;
       unmatched.splice(i, 1);
       return true;
