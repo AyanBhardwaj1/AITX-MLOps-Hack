@@ -2,6 +2,7 @@ import "server-only";
 import { buildDigest, digestInputFromAnalysis, type Digest } from "../insights/digest";
 import type { Change } from "../insights/changes";
 import { postToSlack, SlackError } from "../slack";
+import { dataFreshness } from "../freshness";
 import { analyze, type Analysis } from "../pipeline";
 import type { Store } from "../store/types";
 import { loadAnalysis, loadCompanyLabelled, type DataMode, type Dataset } from "./data";
@@ -23,7 +24,7 @@ function appUrl(mode: DataMode): string | undefined {
 }
 
 /** The digest from a company's data and its store, leaving out findings people decided on. */
-async function digestFrom({ store, dataset, analysis, company, link }: { store: Store; dataset: Dataset; analysis: Analysis; company: string; link: string | undefined }): Promise<DigestPreview> {
+async function digestFrom({ store, dataset, analysis, company, link, uploaded }: { store: Store; dataset: Dataset; analysis: Analysis; company: string; link: string | undefined; uploaded: boolean }): Promise<DigestPreview> {
   // Leave out dismissed findings and ones already acted on (tracked under "Acted on").
   let exclude = new Set<string>();
   try {
@@ -35,14 +36,16 @@ async function digestFrom({ store, dataset, analysis, company, link }: { store: 
   }
   const savings = await savingsFromStore(store, dataset, analysis);
   const input = digestInputFromAnalysis(analysis, { company, exclude, appUrl: link, savings });
-  return { ...buildDigest(input), changes: [...input.changes] };
+  // Uploaded data goes stale between uploads; say so before anyone trusts the numbers.
+  const staleDays = uploaded ? dataFreshness(analysis.asOf, new Date()).daysOld : undefined;
+  return { ...buildDigest({ ...input, staleDays }), changes: [...input.changes] };
 }
 
 /** The digest for one data source (resolved from the session for a company). */
 export async function buildDigestFor(mode: DataMode): Promise<DigestPreview> {
   const { dataset, analysis } = await loadAnalysis(mode);
   const company = mode === "demo" ? `${await companyName(mode)} (demo data)` : await companyName(mode);
-  return digestFrom({ store: getStore(await scopeFor(mode)), dataset, analysis, company, link: appUrl(mode) });
+  return digestFrom({ store: getStore(await scopeFor(mode)), dataset, analysis, company, link: appUrl(mode), uploaded: mode === "company" });
 }
 
 /** Builds and posts the digest to the operator's Slack (env). Throws when Slack isn't configured or rejects it. */
@@ -110,7 +113,7 @@ async function sendOneCompanyDigest(scope: string, result: CompanyDigestsResult)
     const dataset = await loadCompanyLabelled(scope);
     const analysis = analyze(dataset);
     const company = (await getAccounts().nameForScope(scope)) ?? "Your company";
-    const digest = await digestFrom({ store, dataset, analysis, company, link: appUrl("company") });
+    const digest = await digestFrom({ store, dataset, analysis, company, link: appUrl("company"), uploaded: true });
     await postToSlack(url, digest.slack);
     await store.markDigestSent();
     result.sent += 1;

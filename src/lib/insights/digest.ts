@@ -1,3 +1,4 @@
+import { STALE_AFTER_DAYS } from "../freshness";
 import { monthlyHistory } from "../finance/history";
 import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
 import { formatDate } from "../format";
@@ -26,6 +27,8 @@ export interface DigestInput {
   /** Verification of what people acted on, when known. */
   savings?: SavingsSummary;
   appUrl?: string;
+  /** Days since the latest uploaded transaction (company data only); two weeks or more is called out first. */
+  staleDays?: number;
 }
 
 export interface Digest {
@@ -85,8 +88,11 @@ function blocks(d: DigestInput): Block[] {
   const monthly = d.findings.reduce((s, f) => s + f.monthlySavingsCents, 0);
   const oneTime = d.findings.reduce((s, f) => s + f.oneTimeCents, 0);
   const top = d.findings.filter((f) => f.monthlySavingsCents > 0).toSorted((x, y) => y.monthlySavingsCents - x.monthlySavingsCents);
+  const stale = d.staleDays !== undefined && d.staleDays >= STALE_AFTER_DAYS;
   const out: Block[] = [
-    { kind: "p", spans: [`As of ${formatDate(d.asOf)}.`] },
+    stale
+      ? { kind: "p", spans: [{ bold: `Your transactions end on ${formatDate(d.asOf)}, ${d.staleDays} days ago` }, ", so these numbers may have drifted: upload a fresh export and update today's cash."] }
+      : { kind: "p", spans: [`As of ${formatDate(d.asOf)}.`] },
     { kind: "p", spans: runway },
     { kind: "p", spans: verdict(d.scenario) },
     { kind: "h", text: "What changed" },

@@ -39,6 +39,14 @@ describe("weekly digest", () => {
     expect(buildDigest({ ...input, changes: [] }).markdown).toContain("Nothing unusual this week.");
   });
 
+  it("says up front when the uploaded data is two weeks old or more", () => {
+    const stale = buildDigest({ ...input, staleDays: 27 });
+    expect(stale.markdown.split("\n\n")[1]).toMatch(/end on .*27 days ago.*upload a fresh export/i);
+    expect(stale.slack).toMatch(/27 days ago/);
+    expect(buildDigest({ ...input, staleDays: 5 }).markdown).not.toMatch(/days ago/);
+    expect(buildDigest(input).markdown).not.toMatch(/days ago/);
+  });
+
   it("renders Slack mrkdwn: single-asterisk bold and a link back to the app", () => {
     const { slack } = buildDigest(input);
     expect(slack).toContain(`*${a.snapshot.runwayMonths.toFixed(1)} months*`);
