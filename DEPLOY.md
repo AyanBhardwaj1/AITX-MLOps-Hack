@@ -30,7 +30,7 @@ Never commit `.env.local`; it's gitignored.
 | `AUTOPILOT_CRON_MODE` | Which data the daily run and the Monday digest review | `demo` (default) or `sandbox` (the configured Rho feed; skipped once accounts are on) |
 | `SLACK_WEBHOOK_URL` | Monday digest in Slack (13:30 UTC, about 8 AM in Austin; needs `CRON_SECRET`); "Send to Slack now" also needs `APP_PASSWORD` | Slack → Apps → Incoming Webhooks → add to a channel. Must start with `https://hooks.slack.com/services/` |
 | `CONTACT_EMAIL` | The contact address shown on the privacy, security and terms pages | An inbox you read, e.g. `hello@yourdomain.com`. Without it the pages point to GitHub issues and replies. |
-| `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | "Approve & file" creates a Jira issue | `https://<site>.atlassian.net`, your Atlassian email, id.atlassian.com → Security → API tokens, and the project key (e.g. `RUN`) |
+| `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | "Approve & file" creates a Jira issue (from the app only with `APP_PASSWORD` set, so anonymous visitors can't file into your project) | `https://<site>.atlassian.net`, your Atlassian email, id.atlassian.com → Security → API tokens, and the project key (e.g. `RUN`) |
 
 ## Steps
 
