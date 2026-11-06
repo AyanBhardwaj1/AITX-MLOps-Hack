@@ -43,6 +43,26 @@ row-level security keyed on `auth.uid()`, unused by the app.
   no data (it's deleted on the way). A company's `org_` scope is only ever created at sign-in, so a
   late write can't bring a deleted company back.
 
+## Later in the same release
+
+- **Teams and roles.** One owner, up to nine members per company (pending invites count). Members
+  work on the data; only the owner renames or deletes the company, deletes uploaded data, manages
+  the team, creates or revokes investor links and chooses the Slack channel. Ownership can be handed
+  to a member; the change re-checks both roles row by row inside a transaction, so concurrent
+  transfers or a transfer racing an invite acceptance can't leave zero or two owners.
+- **Work outside a request.** The daily Autopilot and the Monday digest run per company from the
+  server's own list of companies with uploaded rows (never from request input), least recently served
+  first, within a time budget. Each company's digest goes only to the Slack webhook its owner
+  connected (stored server-side, never shown in full, hooks.slack.com only, no redirects); a webhook
+  Slack reports gone is disconnected.
+- **Rate limits** for sign-in links and signups are shared through Postgres (fixed window, one upsert),
+  keyed by an HMAC under a secret derived from `DATABASE_URL`, after a per-instance check, and fall
+  back to the per-instance limit if the database is slow.
+- **Row identity** keeps the sign: changing the id scheme would make every stored row look new. Signs
+  are corrected explicitly (delete the account's rows, re-upload with "charges are positive").
+- **Verification.** `npm run test:e2e` drives sign-in, isolation, settings, teams and uploads in a real
+  browser against a local stand-in for Supabase Auth; it runs in CI.
+
 ## Alternatives
 
 - Browser Supabase client: simpler, but needs `connect-src` to Supabase and puts auth calls in the
