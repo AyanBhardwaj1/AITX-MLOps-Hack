@@ -95,6 +95,22 @@ demo, the free grader and the public site work exactly as before.
 - **Faster.** A company with ~18,000 transactions loads its dashboard in about 0.3 s (was 1.3 s), with
   identical numbers.
 
+### Numbers you can trust
+
+- **Every surface says the same number.** The forecast range is identical on the dashboard, in
+  Copilot and on a share page; the Slack runway alert rounds like the dashboard; cash below zero
+  is 0 months, not a negative runway; Copilot names the months its forecast learned from.
+- **Whole months only.** "Spending jumped", the investor update and "Where the money goes" never
+  compare against a month the data only partly covers, and an export ending on a month's last
+  day counts that month everywhere.
+- **Bank files read more safely.** A customer's "ONLINE PAYMENT FROM ACME" is money in, not a card
+  payoff that would hide the card's spend; a card's own payment rows stay payoffs; other
+  currencies are refused whatever the column is called; "12 50" and amounts too big to be exact
+  are refused rather than guessed; a later file's second identical charge is kept.
+- **Billing dates.** A late or early posting doesn't skip or shift a cycle, quarterly bills stay
+  in their months, and month-end bills stay on the month's end.
+- A test runs 32 generated companies and checks the cards against each other to the cent.
+
 ### For whoever runs it
 
 - New settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (accounts), `SIGNUPS`
