@@ -53,22 +53,6 @@ const HISTORY_MONTHS = 12;
  * monthly statements of "checking"). A bank's default name ("activity.csv", "transactions.csv")
  * says nothing about the account, so it never groups files on its own.
  */
-/**
- * The account a file's name points to. Banks' default names carry the account's last four digits
- * ("Chase1234_Activity2026….CSV"), which upload labels drop; here they tell two cards apart.
- */
-const BANK_FILE_PREFIX = /^(?:chase|amex|citi|discover|capitalone|bofa|wellsfargo|usbank|pnc|truist|mercury|brex|svb)$/i;
-
-function graderAccountLabel(name: string): string {
-  const label = fileAccountLabel(name);
-  // The bank's own shape only ("Chase1234_Activity…"): "chase0401.csv" or "chase2025.csv" is a date.
-  const lastFour = /^([a-z]+)(\d{4})_activity/i.exec(name);
-  // Only a bank's own naming carries an account number ("Chase1234_Activity…"); digits after any
-  // other word are usually a date ("checking0401.csv", "Activity2025.csv").
-  const account = lastFour !== null && BANK_FILE_PREFIX.test(lastFour[1]!);
-  return label === DEFAULT_ACCOUNT_LABEL && account ? `${lastFour[1]!.toLowerCase()} ${lastFour[2]}` : label;
-}
-
 /** Shared rows that make two files one account (or half the smaller file, for short ones). */
 const SAME_ACCOUNT_ROWS = 5;
 
@@ -88,10 +72,6 @@ function accountGroups(files: readonly { name: string; label: string; keys: stri
   for (const [pair, count] of shared) {
     const [a, b] = pair.split("|").map(Number) as [number, number];
     const smaller = Math.min(new Set(files[a]!.keys).size, new Set(files[b]!.keys).size);
-    // Files whose names carry different account digits are different accounts, however alike.
-    const digits = (label: string) => /\b\d{4}$/.exec(label)?.[0];
-    const [da, db] = [digits(files[a]!.label), digits(files[b]!.label)];
-    if (da && db && da !== db) continue;
     if (count >= Math.min(SAME_ACCOUNT_ROWS, Math.ceil(smaller / 2))) join(a, b);
   }
   const firstWithLabel = new Map<string, number>();
@@ -130,7 +110,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
   const errors: string[] = [];
   const inverted: string[] = [];
   const seenTexts = new Set<string>();
-  /** Each read file's transactions, deduplicated once the files are grouped into accounts. */
+  /** Each read file's transactions, deduplicated below once every file is read. */
   const read: RhoTransaction[][] = [];
   let skipped = 0;
   let duplicateFiles = 0;
@@ -147,7 +127,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
       // Card payoffs are decided over all files together below, never per file.
       const r = importStatement(f.text, { accountId: `upload_${i + 1}`, resolvePayoffs: false });
       read.push(r.transactions);
-      fileKeys.push({ name: f.name, label: graderAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
+      fileKeys.push({ name: f.name, label: fileAccountLabel(f.name), keys: r.transactions.map((t) => `${t.initiated_at.slice(0, 10)}|${t.counterparty_name}|${t.amount.amount}`) });
       skipped += r.skipped.length;
       if (r.mostlyPositive) inverted.push(f.name);
     } catch (err) {
@@ -155,14 +135,8 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
     }
   });
   // Overlapping exports repeat rows: the nth copy of a row (same day, description and amount) an
-  // earlier file already has is the same transaction, unless the two files are named as
-  // different accounts (and aren't one account by their rows): the same $8.75 seat on two
-  // people's cards is two charges.
-  const roots = accountGroups(fileKeys);
-  const apart = (i: number, j: number) => {
-    const [a, b] = [fileKeys[i]!.label, fileKeys[j]!.label];
-    return a !== DEFAULT_ACCOUNT_LABEL && b !== DEFAULT_ACCOUNT_LABEL && a !== b && roots[i] !== roots[j];
-  };
+  // earlier file already has is the same transaction, so a later file's second identical charge
+  // is still kept.
   const fileRows: Set<string>[] = [];
   read.forEach((txns, i) => {
     const copies = new Map<string, number>();
@@ -172,7 +146,7 @@ export function gradeCsvFiles(files: readonly GraderFile[], cashCents: Cents): G
       const n = copies.get(key) ?? 0;
       copies.set(key, n + 1);
       mine.add(`${key}#${n}`);
-      if (fileRows.some((rows, j) => !apart(i, j) && rows.has(`${key}#${n}`))) {
+      if (fileRows.some((rows) => rows.has(`${key}#${n}`))) {
         duplicateRows += 1;
         continue;
       }
