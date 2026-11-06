@@ -210,9 +210,12 @@ function form1099Answer(a: Analysis): InstantAnswer {
     text: [
       over.length > 0
         ? `**${over.length}** ${over.length === 1 ? "payee was" : "payees were"} paid ${threshold} or more by bank in ${prep.year} and may need a 1099 from you (due Jan 31, ${prep.year + 1}):`
-        : `No one paid by bank has reached ${threshold} in ${prep.year} yet.`,
+        : `No contractor, lawyer or landlord paid by bank has reached ${threshold} in ${prep.year} yet.`,
       over.map(line).join("\n"),
       close.length > 0 ? `Getting close:\n${close.map((r) => `- ${r.name}: ${formatDollars(r.paidCents)}`).join("\n")}` : "",
+      prep.unplaced.length > 0
+        ? `Paid ${threshold}+ by bank but not categorised (payroll services, taxes and loans land here too): ${prep.unplaced.map((u) => `${u.name} (${formatDollars(u.paidCents)})`).join(", ")}. If any is a contractor, set its category to Contractors and it joins the list.`
+        : "",
       `Corporations usually don't need one (law firms do), so ask each payee for a W-9. Card payments are reported by the card network and aren't listed.${
         prep.partialFrom ? ` The data starts ${formatDate(prep.partialFrom)}, so earlier payments aren't counted.` : ""
       } A list to check with your accountant, not tax advice.`,

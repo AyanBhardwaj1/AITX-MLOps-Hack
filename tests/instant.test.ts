@@ -130,4 +130,12 @@ describe("who needs a 1099", () => {
     const empty = { ...a, txns: a.txns.filter((t) => !["wilson_sonsini", "brazos_properties"].includes(t.vendor.key)) };
     expect(instantAnswer(empty, "form_1099").text).toMatch(/No contractor, lawyer or landlord/);
   });
+
+  it("names payees it couldn't place, and says to mark contractors", () => {
+    const year = a.asOf.slice(0, 4);
+    const freelancer = { ...a.txns[0]!, id: "jane", postedAt: `${year}-02-02`, amountCents: -9_000_00, type: "ach" as const, status: "posted" as const, vendor: { key: "jane_doe", name: "Jane Doe Design", category: "other" as const, job: null, source: "fallback" as const } };
+    const ans = instantAnswer({ ...a, txns: [...a.txns, freelancer] }, "form_1099").text;
+    expect(ans).toContain("Jane Doe Design");
+    expect(ans).toMatch(/Contractors/);
+  });
 });

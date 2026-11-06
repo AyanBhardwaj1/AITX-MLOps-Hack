@@ -221,9 +221,16 @@ describe("fifth review of the detector fixes", () => {
   it("with two quarterly charges, either month can be the billing month", () => {
     const a = ["2026-01-30", "2026-05-01"].map((d) => txn("GUSTO", d, -900_00));
     const b = ["2025-12-31", "2026-04-01"].map((d) => txn("GUSTO", d, -900_00));
-    const sa = detectStreams(a, "2026-05-02")[0];
-    const sb = detectStreams(b, "2026-04-02")[0];
-    if (sa) expect(sa.nextExpected).toBe("2026-07-30");
-    if (sb) expect(sb.nextExpected).toBe("2026-06-30");
+    expect(detectStreams(a, "2026-05-02")[0]!.nextExpected).toBe("2026-07-30");
+    expect(detectStreams(b, "2026-04-02")[0]!.nextExpected).toBe("2026-06-30");
+  });
+});
+
+describe("month-end bills", () => {
+  it("a bill on the 31st clamped in short months stays on the 31st; a 30th bill stays on the 30th", () => {
+    const q = ["2025-03-31", "2025-06-30", "2025-09-30"].map((d) => txn("GUSTO", d, -900_00));
+    expect(detectStreams(q, "2025-10-01")[0]!.nextExpected).toBe("2025-12-31");
+    const m = ["2026-09-30", "2026-10-30", "2026-11-30"].map((d) => txn("FIGMA", d, -100_00));
+    expect(detectStreams(m, "2026-12-01")[0]!.nextExpected).toBe("2026-12-30");
   });
 });

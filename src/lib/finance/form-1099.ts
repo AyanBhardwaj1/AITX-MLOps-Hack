@@ -28,6 +28,12 @@ export interface Prep1099 {
   /** Over the threshold first, biggest first; then those within half of it. */
   rows: Payee1099[];
   toFile: number;
+  /**
+   * Payees paid by bank over the line that Runway couldn't categorise ("other": payroll services,
+   * taxes, loans, shops, and freelancers it doesn't know), biggest first: any contractor among them
+   * joins the list once marked as one.
+   */
+  unplaced: { key: string; name: string; paidCents: Cents }[];
   /** The first date the data covers when that's after Jan 1: payments before it aren't counted. */
   partialFrom: IsoDate | null;
 }
@@ -51,6 +57,7 @@ const FORMS: Partial<Record<Category, Form1099>> = {
  */
 const CATALOG_REPORTABLE = new Set(["wilson_sonsini"]);
 
+const MAX_UNPLACED = 5;
 const BANK_PAID = new Set<EnrichedTxn["type"]>(["ach", "wire", "other"]);
 
 /** $600 for payments through 2025; $2,000 from 2026 (One Big Beautiful Bill Act §70433), indexed for inflation after 2026. */
@@ -75,13 +82,20 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
   const prefix = `${year}-`;
   const threshold = form1099Threshold(year);
   const payees = new Map<string, Omit<Payee1099, "overThreshold">>();
+  const unplaced = new Map<string, { key: string; name: string; paidCents: Cents }>();
   let first: IsoDate | null = null;
   for (const t of txns) {
     if (first === null || t.postedAt < first) first = t.postedAt;
     if (t.status !== "posted" || !t.postedAt.startsWith(prefix)) continue;
+    if (!BANK_PAID.has(t.type)) continue;
+    if (t.vendor.category === "other") {
+      const u = unplaced.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, paidCents: 0 };
+      u.paidCents -= t.amountCents;
+      unplaced.set(t.vendor.key, u);
+      continue;
+    }
     const form = formFor(t);
     if (!form) continue;
-    if (!BANK_PAID.has(t.type)) continue;
     const p = payees.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, form, paidCents: 0, payments: 0, firstPaid: null, lastPaid: null };
     p.paidCents -= t.amountCents;
     if (t.amountCents < 0) {
@@ -95,12 +109,17 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
     .filter((p) => p.paidCents * 2 >= threshold)
     .map((p) => ({ ...p, overThreshold: p.paidCents >= threshold }))
     .sort((a, b) => b.paidCents - a.paidCents || a.name.localeCompare(b.name));
-  if (rows.length === 0) return null;
+  const unplacedOver = [...unplaced.values()]
+    .filter((u) => u.paidCents >= threshold)
+    .sort((a, b) => b.paidCents - a.paidCents || a.name.localeCompare(b.name))
+    .slice(0, MAX_UNPLACED);
+  if (rows.length === 0 && unplacedOver.length === 0) return null;
   return {
     year,
     thresholdCents: threshold,
     rows,
     toFile: rows.filter((r) => r.overThreshold).length,
+    unplaced: unplacedOver,
     partialFrom: first !== null && first > `${year}-01-01` ? first : null,
   };
 }

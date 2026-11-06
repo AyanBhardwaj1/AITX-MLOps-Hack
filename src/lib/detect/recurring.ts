@@ -98,7 +98,11 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
   const last = events.at(-1)!.postedAt;
   const months = MONTHS_PER_CYCLE[rule.cadence];
   if (!months) return addDays(last, rule.nominalDays);
-  const days = events.map((e) => Number(e.postedAt.slice(8, 10)));
+  const posted = events.map((e) => Number(e.postedAt.slice(8, 10)));
+  // A bill on the 31st posts on the 30th (or 28th) in shorter months: once any charge landed on a
+  // 31st, a charge on its month's last day is that same month-end bill.
+  const monthEnd = posted.includes(31);
+  const days = events.map((e, i) => (monthEnd && posted[i]! === daysInMonth(e.postedAt) ? 31 : posted[i]!));
   // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
   const usual = mostCommon(days, (a, b) => b - a);
   // Quarterly and annual bills fall in some months only: the months most charges were in, by
@@ -121,6 +125,10 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
     .sort((a, b) => Math.abs(daysBetween(last, a)) - Math.abs(daysBetween(last, b)));
   if (forDate !== undefined && Math.abs(daysBetween(last, forDate)) <= MAX_BILLING_SHIFT_DAYS) return on(shiftMonth(forDate.slice(0, 7), months), usual);
   return on(shiftMonth(lastMonth, months), days.at(-1)!);
+}
+
+function daysInMonth(iso: string): number {
+  return new Date(Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), 0)).getUTCDate();
 }
 
 /** Every value seen most often. */

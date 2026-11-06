@@ -118,7 +118,7 @@ describe("1099 CSV", () => {
 });
 
 describe("review of the 1099 list", () => {
-  it("leaves out payees it can't place (payroll, taxes, loans, shops land in 'other'), and says how much went by card only in words", () => {
+  it("leaves out payees it can't place (payroll, taxes, loans, shops land in 'other'), naming them only as uncategorised", () => {
     const t = [
       txn("s", "2026-01-01", -1_00, "Start", { category: "software" }),
       txn("a", "2026-02-01", -15_000_00, "Justworks Payroll", { category: "other" }),
@@ -126,7 +126,25 @@ describe("review of the 1099 list", () => {
       txn("c", "2026-02-01", -3_000_00, "Sba Eidl", { category: "other" }),
       txn("d", "2026-02-01", -2_600_00, "Home Depot", { category: "other", type: "card" }),
     ];
-    expect(prep1099(t, 2026)).toBeNull();
+    const prep = prep1099(t, 2026)!;
+    expect(prep.rows).toEqual([]);
+    // Not listed as needing a 1099; named only as uncategorised, card spend not at all.
+    expect(prep.unplaced.map((u) => u.name)).toEqual(["Justworks Payroll", "Irs Usataxpymt", "Sba Eidl"]);
     expect(prep1099([...t, txn("e", "2026-03-01", -2_500_00, "Jane Doe Design")], 2026)!.rows.map((r) => r.name)).toEqual(["Jane Doe Design"]);
+  });
+});
+
+describe("payees Runway can't place", () => {
+  it("names bank payees it couldn't categorise over the line, so someone can mark a contractor", () => {
+    const t = [
+      txn("s", "2026-01-01", -1_00, "Start", { category: "software" }),
+      txn("a", "2026-02-01", -10_000_00, "Jane Doe Design", { category: "other" }),
+      txn("b", "2026-02-01", -1_500_00, "Small Shop", { category: "other" }),
+      txn("c", "2026-02-01", -9_000_00, "Card Shop", { category: "other", type: "card" }),
+    ];
+    const prep = prep1099(t, 2026)!;
+    expect(prep.rows).toEqual([]);
+    expect(prep.toFile).toBe(0);
+    expect(prep.unplaced.map((u) => [u.name, u.paidCents])).toEqual([["Jane Doe Design", 10_000_00]]);
   });
 });
