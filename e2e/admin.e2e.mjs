@@ -36,9 +36,9 @@ await suite("admin", async ({ browser, step }) => {
     assert.ok(await signIn(p, "newcomer@hooli.example"));
     await p.waitForURL(/\/app\/upload/);
     await operator.goto(`${APP}/admin`);
-    await operator.getByText("0 companies with uploaded data, 0 with their own Slack.").waitFor();
+    await operator.getByText("0 companies with uploaded data, 0 of them with their own Slack.").waitFor();
     await uploadSample(p);
     await operator.reload();
-    await operator.getByText("1 company with uploaded data, 0 with their own Slack.").waitFor();
+    await operator.getByText("1 company with uploaded data, 0 of them with their own Slack.").waitFor();
   });
 });

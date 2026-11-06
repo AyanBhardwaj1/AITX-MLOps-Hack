@@ -17,13 +17,13 @@ export async function generateMetadata(): Promise<Metadata> {
 const SHOWN = 200;
 /** Counted from the daily job's own lists; past this it just says "1,000+". */
 const COUNT_CAP = 1_000;
-const counted = (n: number) => (n >= COUNT_CAP ? `${COUNT_CAP.toLocaleString("en-US")}+` : n.toLocaleString("en-US"));
+const counted = (n: number) => (n > COUNT_CAP ? `${COUNT_CAP.toLocaleString("en-US")}+` : n.toLocaleString("en-US"));
 
 /** How many companies are using it: with data, and with their own Slack. Null if the database can't say. */
 async function usage(): Promise<string | null> {
   try {
-    const [data, slack] = await Promise.all([listCompanyScopesWithUploads(COUNT_CAP), listCompanyScopesWithSlack(COUNT_CAP)]);
-    return `${counted(data.length)} ${data.length === 1 ? "company" : "companies"} with uploaded data, ${counted(slack.length)} with their own Slack.`;
+    const [data, slack] = await Promise.all([listCompanyScopesWithUploads(COUNT_CAP + 1), listCompanyScopesWithSlack(COUNT_CAP + 1)]);
+    return `${counted(data.length)} ${data.length === 1 ? "company" : "companies"} with uploaded data, ${counted(slack.length)} of them with their own Slack.`;
   } catch (err) {
     console.error("[admin] couldn't count companies", err instanceof Error ? err.message : "unknown error");
     return null;
