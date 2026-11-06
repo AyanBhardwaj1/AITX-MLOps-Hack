@@ -114,9 +114,10 @@ export interface Store {
   revokeShareLink(id: string): Promise<boolean>;
   /**
    * Adds uploaded bank transactions (ids are content-derived, so repeats are skipped) and sets
-   * today's cash. Refused whole ("limit") if the stored total would pass `maxTotal`; atomic.
+   * today's cash (null keeps the stored figure; "needs_cash" when there is none yet). Refused whole
+   * ("limit") if the stored total would pass `maxTotal`; atomic.
    */
-  saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
+  saveUploads(cashCents: number | null, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit" | "needs_cash">;
   /** Sets today's cash without adding rows; "no_uploads" when nothing has been uploaded to attach it to. */
   setUploadCash(cashCents: number): Promise<"saved" | "unchanged" | "no_uploads">;
   /** Everything uploaded for this scope, or null when nothing has been. */

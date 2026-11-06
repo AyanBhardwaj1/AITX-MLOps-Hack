@@ -434,6 +434,10 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
         // One upload at a time per company, so the row cap can't be raced past.
         await c.query(`select pg_advisory_xact_lock(hashtextextended('uploads:' || $1::text, 0))`, [org]);
         const connectionId = await csvConnection(c, org, true);
+        if (cashCents === null) {
+          const { rowCount } = await c.query(`select 1 from public.accounts where connection_id = $1 and provider_account_id = $2`, [connectionId, CASH_ACCOUNT_ID]);
+          if (!rowCount) return "needs_cash" as const;
+        }
         const unique = [...new Map(rows.map((r) => [`${r.account_id}|${r.id}`, r])).values()];
         const { rows: counts } = await c.query<{ stored: string; fresh: string }>(
           `select (select count(*) from public.transactions where connection_id = $1) as stored,
@@ -463,12 +467,14 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
             unique.map((r) => JSON.stringify(r)),
           ],
         );
-        await c.query(
-          `insert into public.accounts (org_id, connection_id, provider_account_id, name, account_type, balance_minor)
-           values ($1, $2, $3, 'Cash (entered at upload)', 'checking', $4)
-           on conflict (connection_id, provider_account_id) do update set balance_minor = excluded.balance_minor, synced_at = now()`,
-          [org, connectionId, CASH_ACCOUNT_ID, cashCents],
-        );
+        if (cashCents !== null) {
+          await c.query(
+            `insert into public.accounts (org_id, connection_id, provider_account_id, name, account_type, balance_minor)
+             values ($1, $2, $3, 'Cash (entered at upload)', 'checking', $4)
+             on conflict (connection_id, provider_account_id) do update set balance_minor = excluded.balance_minor, synced_at = now()`,
+            [org, connectionId, CASH_ACCOUNT_ID, cashCents],
+          );
+        }
         const added = inserted.rowCount ?? 0;
         return { inserted: added, duplicates: rows.length - added };
       });
@@ -478,24 +484,22 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const org = await orgId();
       const connectionId = await csvConnection(pool, org, false);
       if (!connectionId) return "no_uploads";
-      // Only alongside stored rows: cash on its own has no dashboard to feed.
-      const { rows } = await pool.query<{ changed: boolean }>(
-        `with target as (
-           select a.ctid as at, a.balance_minor from public.accounts a
-            where a.connection_id = $1 and a.provider_account_id = $2
+      return inTransaction(pool, async (c) => {
+        // Lock first, then write in a separate statement: if another write holds the row, this waits
+        // and then sees its result (a single statement joining on the old row would miss it).
+        // Only alongside stored rows: cash on its own has no dashboard to feed.
+        const { rows } = await c.query<{ balance_minor: string }>(
+          `select balance_minor from public.accounts
+            where connection_id = $1 and provider_account_id = $2
               and exists (select 1 from public.transactions t where t.connection_id = $1 and t.removed_at is null)
-            for update
-         ), confirmed as (
-           -- The same figure still confirms the cash is current, so the time moves either way.
-           update public.accounts a set balance_minor = $3, synced_at = now()
-             from target where a.ctid = target.at
-           returning 1
-         )
-         select target.balance_minor <> $3 as changed from target where exists (select 1 from confirmed)`,
-        [connectionId, CASH_ACCOUNT_ID, cashCents],
-      );
-      if (!rows[0]) return "no_uploads";
-      return rows[0].changed ? "saved" : "unchanged";
+            for update`,
+          [connectionId, CASH_ACCOUNT_ID],
+        );
+        if (!rows[0]) return "no_uploads" as const;
+        // The same figure still confirms the cash is current, so the time moves either way.
+        await c.query(`update public.accounts set balance_minor = $3, synced_at = now() where connection_id = $1 and provider_account_id = $2`, [connectionId, CASH_ACCOUNT_ID, cashCents]);
+        return Number(rows[0].balance_minor) === cashCents ? ("unchanged" as const) : ("saved" as const);
+      });
     },
 
     async loadUploads() {

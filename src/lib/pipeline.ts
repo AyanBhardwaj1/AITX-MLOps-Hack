@@ -36,12 +36,18 @@ function timed<T>(fn: () => T): [T, number] {
 }
 
 /** Rho data in, runway and findings out. Pure and deterministic: no network, no LLM. */
+/**
+ * The transactions with their vendors, LLM labels and people's fixes applied: the first step of the
+ * analysis, on its own for pages that only list transactions (it skips the costly detection).
+ */
+export function enrichTransactions({ transactions, vendorLabels, corrections }: Pick<AnalyzeInput, "transactions" | "vendorLabels" | "corrections">): EnrichedTxn[] {
+  const mapped = transactions.map(mapTransaction).filter((t): t is EnrichedTxn => t !== null);
+  const labelled = vendorLabels?.size ? applyVendorLabels(mapped, vendorLabels) : mapped;
+  return corrections?.size ? applyCorrections(labelled, corrections) : labelled;
+}
+
 export function analyze({ accounts, transactions, asOf, vendorLabels, corrections }: AnalyzeInput): Analysis {
-  const [txns, mapMs] = timed(() => {
-    const mapped = transactions.map(mapTransaction).filter((t): t is EnrichedTxn => t !== null);
-    const labelled = vendorLabels?.size ? applyVendorLabels(mapped, vendorLabels) : mapped;
-    return corrections?.size ? applyCorrections(labelled, corrections) : labelled;
-  });
+  const [txns, mapMs] = timed(() => enrichTransactions({ transactions, vendorLabels, corrections }));
   const latest = txns.reduce<IsoDate>((max, t) => (t.postedAt > max ? t.postedAt : max), "0000-00-00");
   const effectiveAsOf = asOf ?? latest;
   const [snapshot, snapMs] = timed(() => computeSnapshot({ cashCents: cashBalanceCents(accounts), txns, asOf: effectiveAsOf }));

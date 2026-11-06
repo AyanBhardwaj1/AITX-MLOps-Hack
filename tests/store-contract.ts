@@ -201,10 +201,16 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(loaded!.cashCents).toBe(90_000_00);
       expect(loaded!.rows.map((r) => r.id).sort()).toEqual(["u_a", "u_b", "u_c"]);
       expect(loaded!.rows.find((r) => r.id === "u_c")).toEqual(row("u_c", -300));
+      // Without a cash figure the stored one stays (an upload from a tab opened before a teammate's update).
+      expect(await store.saveUploads(null, [row("u_c", -300)], 10)).toEqual({ inserted: 0, duplicates: 1 });
+      expect((await store.loadUploads())!.cashCents).toBe(90_000_00);
       // The cap counts what is stored; a save that would pass it is refused whole.
       expect(await store.saveUploads(1, [row("u_d", -1), row("u_e", -1)], 4)).toBe("limit");
       expect((await store.loadUploads())!.rows).toHaveLength(3);
       await store.clearUploads();
+      expect(await store.loadUploads()).toBeNull();
+      // A first upload has to say how much cash there is.
+      expect(await store.saveUploads(null, [row("u_z", -1)], 10)).toBe("needs_cash");
       expect(await store.loadUploads()).toBeNull();
     });
 

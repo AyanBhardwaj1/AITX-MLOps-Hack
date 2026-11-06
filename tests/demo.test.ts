@@ -75,3 +75,15 @@ describe("pipeline on the demo company", () => {
     expect(score.wrong.map((w) => w.vendorKey).sort()).toEqual(["blue_bottle"]);
   });
 });
+
+describe("enriching transactions without the analysis", () => {
+  it("gives exactly the transactions the full analysis works from, for pages that only list them", async () => {
+    const { analyze, enrichTransactions } = await import("@/lib/pipeline");
+    const { generateDemoCompany } = await import("@/lib/seed/demo-company");
+    const demo = generateDemoCompany();
+    const corrections = new Map([["zoom", { vendorKey: "zoom", category: "marketing" as const, job: null }]]);
+    const full = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, corrections });
+    expect(enrichTransactions({ transactions: demo.transactions, corrections })).toEqual(full.txns);
+    expect(full.txns.find((t) => t.vendor.key === "zoom")!.vendor.category).toBe("marketing");
+  });
+});

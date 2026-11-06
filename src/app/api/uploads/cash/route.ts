@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 
 const MAX_BODY_BYTES = 1_000;
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const body = z.object({ cashCents: uploadChunk.shape.cashCents });
+const body = z.object({ cashCents: uploadChunk.shape.cashCents.unwrap() });
 
 /** Anyone on the team sets today's cash without uploading a file (cash moves daily, exports don't). */
 export async function POST(request: Request) {

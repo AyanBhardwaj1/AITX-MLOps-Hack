@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { searchTransactions, parseTxnQuery, type TxnQuery } from "@/lib/finance/transaction-search";
 import { categoryName, formatDate, formatMoney, formatMonth } from "@/lib/format";
 import { companyName, sessionUser } from "@/lib/server/company";
-import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
+import { loadTransactions, parseMode, type DataMode } from "@/lib/server/data";
 import { CATEGORIES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = {
-  title: "Transactions",
-  description: "Search and filter every transaction behind your runway.",
-  robots: { index: false, follow: false },
-};
-
 type Params = Record<string, string | string[] | undefined>;
+
+/** The page number is in the title, so moving between pages is announced like any navigation. */
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Params> }): Promise<Metadata> {
+  const { page } = parseTxnQuery(await searchParams);
+  return {
+    title: page > 1 ? `Transactions, page ${page}` : "Transactions",
+    description: "Search and filter every transaction behind your runway.",
+    robots: { index: false, follow: false },
+  };
+}
 
 /** The address for these filters (and a page), keeping the data source. */
 function hrefFor(mode: DataMode, query: TxnQuery, page: number): string {
@@ -33,16 +37,23 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const mode = parseMode(params.mode);
   if (mode === "company" && !(await sessionUser())) redirect(`/login?next=${encodeURIComponent("/app/transactions?mode=company")}`);
   const query = parseTxnQuery(params);
-  let loaded: Awaited<ReturnType<typeof loadAnalysis>>;
+  let loaded: Awaited<ReturnType<typeof loadTransactions>>;
   try {
-    loaded = await loadAnalysis(mode, { visitorFixes: true });
+    // Only the labelled transactions: none of the dashboard's detection work, so filtering stays quick.
+    loaded = await loadTransactions(mode, { visitorFixes: true });
   } catch (err) {
+    unstable_rethrow(err);
     if (err instanceof Error && err.name === "NoCompanyData") redirect("/app/upload");
     if (err instanceof Error && err.name === "NotInvited") redirect("/login?error=invite");
-    throw err;
+    if (mode === "company") throw err;
+    // Like the dashboard: a feed that's off or failing falls back to the demo company.
+    console.error("[transactions] couldn't load", { mode, error: err instanceof Error ? err.message : "unknown error" });
+    redirect("/app/transactions?mode=demo");
   }
-  const { dataset, analysis } = loaded;
-  const result = searchTransactions(analysis.txns, query);
+  const { dataset, txns } = loaded;
+  const result = searchTransactions(txns, query);
+  // A month from an old link that has no transactions still shows as chosen, not as "All".
+  const months = query.month && !result.months.includes(query.month) ? [query.month, ...result.months] : result.months;
   const accountNames = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
   const name = await companyName(mode);
   const filtered = query.q !== "" || query.category !== null || query.month !== null || query.direction !== "all" || query.vendor !== null;
@@ -80,7 +91,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
           <span className="text-muted">Month</span>
           <select name="month" defaultValue={query.month ?? ""} className={field}>
             <option value="">All</option>
-            {result.months.map((m) => (
+            {months.map((m) => (
               <option key={m} value={m}>
                 {formatMonth(m)}
               </option>
@@ -118,7 +129,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
       <section aria-labelledby="txn-results" className="mt-6 overflow-hidden rounded-xl border border-line bg-panel">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-line px-5 py-3 text-sm">
-          <h2 id="txn-results" className="font-semibold" aria-live="polite">
+          <h2 id="txn-results" className="font-semibold">
             {result.total.toLocaleString("en-US")} transaction{result.total === 1 ? "" : "s"}
             {filtered ? " match" : ""}
           </h2>
@@ -126,6 +137,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             Out <span className="font-medium text-ink">{formatMoney(result.outCents)}</span> · In{" "}
             <span className="font-medium text-ink">{formatMoney(result.inCents)}</span>
           </p>
+          {result.uncounted > 0 && (
+            <p className="basis-full text-xs text-muted">
+              Totals leave out {result.uncounted.toLocaleString("en-US")} transfer{result.uncounted === 1 ? "" : "s"} between your accounts or pending
+              row{result.uncounted === 1 ? "" : "s"}, as the dashboard does.
+            </p>
+          )}
         </div>
         {result.total === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-muted">Nothing matches these filters.</p>
@@ -181,9 +198,11 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 ← Newer
               </Link>
             ) : (
-              <span />
+              <span aria-disabled="true" className="text-muted/60">
+                ← Newer
+              </span>
             )}
-            <span className="tabular text-muted">
+            <span className="tabular text-muted" aria-current="page">
               Page {result.page} of {result.pages}
             </span>
             {result.page < result.pages ? (
@@ -191,7 +210,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 Older →
               </Link>
             ) : (
-              <span />
+              <span aria-disabled="true" className="text-muted/60">
+                Older →
+              </span>
             )}
           </nav>
         )}

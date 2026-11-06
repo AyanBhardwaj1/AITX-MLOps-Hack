@@ -69,7 +69,7 @@ describe("transaction search", () => {
     expect(q).toEqual({ q: "x".repeat(100), category: null, month: null, direction: "all", vendor: null, page: 1 });
     expect(parseTxnQuery({ vendor: "Zoom; drop" }).vendor).toBeNull();
     expect(parseTxnQuery({ q: ["zoom", "uber"], page: "2.5" })).toMatchObject({ q: "zoom", page: 1 });
-    expect(searchTransactions([], parseTxnQuery({}))).toMatchObject({ rows: [], total: 0, pages: 1, page: 1, outCents: 0, inCents: 0, months: [] });
+    expect(searchTransactions([], parseTxnQuery({}))).toMatchObject({ rows: [], total: 0, pages: 1, page: 1, outCents: 0, inCents: 0, uncounted: 0, months: [] });
   });
 
   it("narrows to one vendor exactly, by its key, from a dashboard link", () => {
@@ -80,5 +80,22 @@ describe("transaction search", () => {
     expect(r.rows.map((t) => t.id)).toEqual(["t2", "t1"]);
     expect(r.vendorName).toBe("Zoom");
     expect(searchTransactions(withLookalike, parseTxnQuery({ vendor: "nobody" })).vendorName).toBeNull();
+  });
+
+  it("totals spending like the dashboard: transfers between accounts and pending rows are listed but not counted", () => {
+    const withMoves = [
+      ...txns,
+      txn("x1", "2026-10-08", -50_000_00, "Savings", "transfer", { type: "transfer" }),
+      txn("x2", "2026-10-08", 50_000_00, "Savings", "transfer", { type: "transfer" }),
+      txn("p1", "2026-10-09", -1_000, "Zoom", "software", { status: "pending" }),
+    ];
+    const all = searchTransactions(withMoves, parseTxnQuery({}));
+    expect(all.total).toBe(8);
+    expect(all.outCents).toBe(14_990 * 2 + 900_000_00 + 8_250);
+    expect(all.inCents).toBe(25_000_00);
+    expect(all.uncounted).toBe(3);
+    // Asking for transfers on purpose totals them.
+    const moves = searchTransactions(withMoves, parseTxnQuery({ category: "transfer" }));
+    expect(moves).toMatchObject({ total: 2, outCents: 50_000_00, inCents: 50_000_00, uncounted: 0 });
   });
 });

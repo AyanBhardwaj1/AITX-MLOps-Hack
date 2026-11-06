@@ -1,9 +1,9 @@
 import "server-only";
-import { analyze, type Analysis } from "../pipeline";
+import { analyze, enrichTransactions, type Analysis } from "../pipeline";
 import { createRhoClient } from "../rho/client";
 import type { RhoAccount, RhoTransaction } from "../rho/schema";
 import type { AcceptedFinding } from "../store/types";
-import type { VendorInfo } from "../types";
+import type { EnrichedTxn, VendorInfo } from "../types";
 import { generateDemoCompany } from "../seed/demo-company";
 import { assertSafeToServe } from "../access";
 import { unknownMerchants } from "../enrich/vendor-labels";
@@ -116,7 +116,8 @@ export async function loadCompanyLabelled(scope: string): Promise<LabelledDatase
 async function withLabels(dataset: Dataset, corrections: ReadonlyMap<string, VendorCorrection> | undefined): Promise<LabelledDataset> {
   const withCorrections: LabelledDataset = corrections ? { ...dataset, corrections } : dataset;
   if (!hasOpenAI()) return withCorrections;
-  const unknown = unknownMerchants(analyze(dataset).txns);
+  // Only the vendors are needed here, not the whole analysis.
+  const unknown = unknownMerchants(enrichTransactions(dataset));
   if (unknown.length === 0) return withCorrections;
   // Rules first; only vendors they couldn't place go to the cheap model (cached per vendor).
   const vendorLabels = await labelUnknownVendors(unknown);
@@ -126,4 +127,10 @@ async function withLabels(dataset: Dataset, corrections: ReadonlyMap<string, Ven
 export async function loadAnalysis(mode: DataMode, options: LoadOptions = {}): Promise<{ dataset: LabelledDataset; analysis: Analysis }> {
   const dataset = await loadLabelledDataset(mode, options);
   return { dataset, analysis: analyze(dataset) };
+}
+
+/** Just the labelled transactions, for pages that list them: none of the analysis's detection work. */
+export async function loadTransactions(mode: DataMode, options: LoadOptions = {}): Promise<{ dataset: LabelledDataset; txns: EnrichedTxn[] }> {
+  const dataset = await loadLabelledDataset(mode, options);
+  return { dataset, txns: enrichTransactions(dataset) };
 }

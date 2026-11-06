@@ -105,13 +105,14 @@ async function parseFiles(files: readonly Picked[]): Promise<Parsed> {
 }
 
 async function send(
-  cashCents: number,
+  /** Null keeps the stored figure (the founder didn't change it). */
+  cashCents: number | null,
   rows: readonly UploadRow[],
 ): Promise<{ inserted: number; duplicates: number } | { error: string }> {
   const res = await fetch("/api/uploads", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cashCents, rows }),
+    body: JSON.stringify(cashCents === null ? { rows } : { cashCents, rows }),
   }).catch(() => null);
   const body = (await res?.json().catch(() => null)) as {
     inserted?: number;
@@ -138,9 +139,11 @@ export function UploadForm({
   const id = useId();
   const router = useRouter();
   const [files, setFiles] = useState<Picked[]>([]);
-  const [cash, setCash] = useState(
-    summary ? String(summary.cashCents / 100) : "",
-  );
+  // Untouched, the field shows the stored figure (kept fresh by refreshes) and an upload leaves it
+  // alone, so this page can't put back a figure a teammate has since updated.
+  const [cashDraft, setCashDraft] = useState<string | null>(null);
+  const cash = cashDraft ?? (summary ? String(summary.cashCents / 100) : "");
+  const setCash = (value: string) => setCashDraft(value);
   const [state, setState] = useState<State>({ kind: "idle" });
   const [deleting, setDeleting] = useState(false);
   // Remounts the file input after an upload, so it shows nothing chosen and the same file can be picked again.
@@ -149,8 +152,9 @@ export function UploadForm({
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    const cashCents = parseDollarsToCents(cash);
-    if (cashCents === null)
+    const sendCash = !summary || cashDraft !== null;
+    const cashCents = sendCash ? parseDollarsToCents(cash) : null;
+    if (sendCash && cashCents === null)
       return setState({
         kind: "error",
         message:
@@ -188,6 +192,7 @@ export function UploadForm({
       duplicates += r.duplicates;
     }
     setFiles([]);
+    setCashDraft(null);
     setInputKey((k) => k + 1);
     setState({ kind: "done", inserted, duplicates, notes });
     router.refresh();
@@ -295,7 +300,7 @@ export function UploadForm({
               </dd>
             </div>
           </dl>
-          {storageReady && <CashUpdate cashCents={summary.cashCents} onSaved={(cents) => setCash(String(cents / 100))} />}
+          {storageReady && <CashUpdate cashCents={summary.cashCents} onSaved={() => setCashDraft(null)} />}
           {summary.accounts.length > 0 && (
             <table className="mt-4 w-full text-left text-sm">
               <caption className="sr-only">Uploaded accounts</caption>
@@ -505,8 +510,9 @@ export function UploadForm({
             2. Today&apos;s total cash ($)
           </label>
           <p className="text-xs text-muted">
-            A CSV has no balance, so add up your bank accounts. Each upload
-            updates it.
+            {summary
+              ? "Change it if it has moved; left as it is, the stored figure stays."
+              : "A CSV has no balance, so add up your bank accounts."}
           </p>
           <input
             id={`${id}-cash`}

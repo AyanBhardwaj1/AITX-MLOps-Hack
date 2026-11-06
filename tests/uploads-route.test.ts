@@ -45,6 +45,9 @@ describe("POST /api/uploads", () => {
     const stored = await getStore(await scopeFor("company")).loadUploads();
     expect(stored?.rows).toHaveLength(4);
     expect(stored?.cashCents).toBe(400_000_00);
+    // Rows without a cash figure keep the stored one.
+    expect(await (await POST(post({ rows: [row({ date: "2026-10-02" })] }, "203.0.113.2"))).json()).toEqual({ inserted: 1, duplicates: 0 });
+    expect((await getStore(await scopeFor("company")).loadUploads())?.cashCents).toBe(400_000_00);
 
     // Another user's company sees none of it.
     as("user-b");
@@ -54,7 +57,7 @@ describe("POST /api/uploads", () => {
   it("rejects malformed bodies and rows without saving anything", async () => {
     const { POST } = await import("@/app/api/uploads/route");
     as("user-c");
-    for (const body of ["not json", { cashCents: 1 }, { cashCents: 1, rows: [row({ amountCents: 1.5 })] }, { cashCents: 1, rows: [row({ date: "2026-02-30" })] }]) {
+    for (const body of ["not json", { cashCents: 1 }, { cashCents: 1, rows: [row({ amountCents: 1.5 })] }, { cashCents: 1, rows: [row({ date: "2026-02-30" })] }, { rows: [row()] }]) {
       expect((await POST(post(body, "203.0.113.3"))).status).toBe(400);
     }
     const { scopeFor } = await import("@/lib/server/scope");

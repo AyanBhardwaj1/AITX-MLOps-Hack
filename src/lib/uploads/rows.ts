@@ -34,8 +34,11 @@ export const uploadRow = z.object({
 export type UploadRow = z.infer<typeof uploadRow>;
 
 export const uploadChunk = z.object({
-  /** Today's total cash across bank accounts (a CSV has no balance). */
-  cashCents: z.number().int().min(0).max(MAX_CASH_CENTS),
+  /**
+   * Today's total cash across bank accounts (a CSV has no balance). Left out when the founder
+   * didn't change it, so a page opened earlier can't put back a figure a teammate has since updated.
+   */
+  cashCents: z.number().int().min(0).max(MAX_CASH_CENTS).optional(),
   rows: z.array(uploadRow).min(1).max(MAX_CHUNK_ROWS),
 });
 export type UploadChunk = z.infer<typeof uploadChunk>;

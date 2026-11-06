@@ -40,7 +40,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Some rows couldn’t be read. Check the file and try again." }, { status: 400 });
   try {
     const store = getStore(scope);
-    const result = await store.saveUploads(parsed.data.cashCents, storedRowsFrom(parsed.data.rows), MAX_ROWS_PER_COMPANY);
+    const result = await store.saveUploads(parsed.data.cashCents ?? null, storedRowsFrom(parsed.data.rows), MAX_ROWS_PER_COMPANY);
+    if (result === "needs_cash") return NextResponse.json({ error: "Enter today's total cash with your first upload." }, { status: 400 });
     if (result === "limit") return NextResponse.json({ error: `A company can store up to ${MAX_ROWS_PER_COMPANY.toLocaleString("en-US")} transactions.` }, { status: 409 });
     if (result.inserted > 0) await logActivity(scope, "upload", `Uploaded ${result.inserted.toLocaleString("en-US")} transaction${result.inserted === 1 ? "" : "s"}`);
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });

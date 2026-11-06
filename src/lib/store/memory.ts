@@ -127,11 +127,14 @@ export function createMemoryStore(): Store {
       return [...shareLinks].reverse().slice(0, 50).map(withoutHash);
     },
     async saveUploads(cashCents, rows, maxTotal) {
+      if (cashCents === null && uploadCash === null) return "needs_cash";
       const fresh = [...new Map(rows.filter((r) => !uploads.has(r.id)).map((r) => [r.id, r])).values()];
       if (uploads.size + fresh.length > maxTotal) return "limit";
       for (const r of fresh) uploads.set(r.id, structuredClone(r));
-      uploadCash = cashCents;
-      cashEnteredAt = new Date().toISOString();
+      if (cashCents !== null) {
+        uploadCash = cashCents;
+        cashEnteredAt = new Date().toISOString();
+      }
       return { inserted: fresh.length, duplicates: rows.length - fresh.length };
     },
     async setUploadCash(cashCents) {
