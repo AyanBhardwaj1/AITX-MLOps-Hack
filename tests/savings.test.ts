@@ -102,12 +102,12 @@ describe("verifySavings", () => {
 
   it("only counts a refund dated after the double charge, and each refund once", () => {
     const charges = [txn("CANVA", "2026-08-10", 119.99), txn("CANVA", "2026-08-11", 119.99)];
-    const fp = `duplicate_charge:canva:acc:${charges[1]!.id}`;
+    const fp = `duplicate_charge:canva:${charges[1]!.id}`;
     const dup = accepted({ fingerprint: fp, kind: "duplicate_charge", vendorKeys: ["canva"], monthlySavingsCents: 0, oneTimeCents: 11_999, acceptedAt: "2026-08-12T00:00:00Z" });
     const earlierCredit = { ...txn("CANVA", "2026-08-01", 0), amountCents: 11_999 };
     expect(verifySavings([dup], [earlierCredit, ...charges], "2026-10-01").checks[0]!.status).toBe("waiting");
     const refund = { ...txn("CANVA", "2026-08-20", 0), amountCents: 11_999 };
-    const dup2 = { ...dup, fingerprint: `duplicate_charge:canva:acc:${charges[0]!.id}` };
+    const dup2 = { ...dup, fingerprint: `duplicate_charge:canva:${charges[0]!.id}` };
     const r = verifySavings([dup, dup2], [...charges, refund], "2026-10-01");
     expect(r.checks.filter((c) => c.status === "verified")).toHaveLength(1);
     expect(r.verifiedOneTimeCents).toBe(11_999);

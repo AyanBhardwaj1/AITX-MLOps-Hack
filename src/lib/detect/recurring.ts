@@ -1,4 +1,4 @@
-import { AVG_DAYS_PER_MONTH, addDays, daysBetween, compareIsoDates } from "../dates";
+import { AVG_DAYS_PER_MONTH, addDays, daysBetween, compareIsoDates, shiftMonth } from "../dates";
 import { coefficientOfVariation, median } from "../stats";
 import { UNITEMIZED_CARD_SPEND } from "../rho/map";
 import type { Cadence, EnrichedTxn, IsoDate, RecurringStream } from "../types";
@@ -84,7 +84,32 @@ function matchCadence(gaps: readonly number[], occurrences: number): CadenceRule
   return null;
 }
 
-function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate): RecurringStream {
+/** Calendar months per cycle, for cadences billed on a day of the month. */
+const MONTHS_PER_CYCLE: Partial<Record<RecurringStream["cadence"], number>> = { monthly: 1, quarterly: 3, annual: 12 };
+
+/**
+ * The next charge after `last`: for monthly, quarterly and annual bills, the same day of the month
+ * they're usually billed on (clamped in a short month, so a 31st bill is due Feb 28), stepping a
+ * further cycle when the last charge came early; otherwise a fixed number of days.
+ */
+function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate {
+  const last = events.at(-1)!.postedAt;
+  const months = MONTHS_PER_CYCLE[rule.cadence];
+  if (!months) return addDays(last, rule.nominalDays);
+  const days = events.map((e) => Number(e.postedAt.slice(8, 10)));
+  const counts = new Map<number, number>();
+  for (const d of days) counts.set(d, (counts.get(d) ?? 0) + 1);
+  // The usual billing day; on a tie the later day (a 31st clamped to the 30th is still the 31st).
+  const billingDay = [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]![0];
+  const on = (month: string) => {
+    const [y, m] = month.split("-").map(Number) as [number, number];
+    return `${month}-${String(Math.min(billingDay, new Date(Date.UTC(y, m, 0)).getUTCDate())).padStart(2, "0")}`;
+  };
+  const next = on(shiftMonth(last.slice(0, 7), months));
+  return daysBetween(last, next) < rule.nominalDays / 2 ? on(shiftMonth(last.slice(0, 7), 2 * months)) : next;
+}
+
+function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate, workspace?: "#2"): RecurringStream {
   const amounts = events.map((e) => -e.amountCents);
   const amountCv = coefficientOfVariation(amounts);
   // Usage-based bills drift; their recent charges predict the next one better than the full history.
@@ -104,23 +129,24 @@ function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate): R
     monthlyCostCents: Math.round((typicalAmountCents * AVG_DAYS_PER_MONTH) / rule.nominalDays),
     firstDate: first.postedAt,
     lastDate: last.postedAt,
-    nextExpected: addDays(last.postedAt, rule.nominalDays),
+    nextExpected: nextCharge(events, rule),
     active: daysBetween(last.postedAt, asOf) <= rule.nominalDays * ACTIVE_GRACE_CYCLES,
     txnIds: events.map((e) => e.id),
     cardholder: last.cardholder ?? null,
     cardholders: last.cardholder ? [last.cardholder] : [],
+    ...(workspace ? { workspace } : {}),
   };
 }
 
 /** Finds recurring streams: same vendor on the same card, regular cadence. Deterministic, no LLM. */
 export function detectStreams(txns: readonly EnrichedTxn[], asOf: IsoDate): RecurringStream[] {
   const streams: RecurringStream[] = [];
-  for (const events of billingEventsByStream(txns).values()) {
+  for (const [key, events] of billingEventsByStream(txns)) {
     // Lump card payoffs stand in for many purchases: spend, but never one subscription.
     if (events.length < 2 || events[0]!.vendor.key === UNITEMIZED_CARD_SPEND) continue;
     const gaps = events.slice(1).map((e, i) => daysBetween(events[i]!.postedAt, e.postedAt));
     const rule = matchCadence(gaps, events.length);
-    if (rule) streams.push(buildStream(events, rule, asOf));
+    if (rule) streams.push(buildStream(events, rule, asOf, key.endsWith("#2") ? "#2" : undefined));
   }
   return streams.sort((a, b) => b.monthlyCostCents - a.monthlyCostCents);
 }

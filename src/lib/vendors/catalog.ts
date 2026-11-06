@@ -66,7 +66,9 @@ export const VENDOR_CATALOG: readonly CatalogEntry[] = [
   { key: "united", name: "United Airlines", category: "travel", job: null, aliases: ["united airlines", "united air"] },
   { key: "uber", name: "Uber", category: "travel", job: null, aliases: ["uber trip", "uber"] },
   { key: "doordash", name: "DoorDash", category: "meals", job: null, aliases: ["doordash"] },
-  { key: "apple", name: "Apple", category: "hardware", job: null, aliases: ["apple store", "apple.com"] },
+  // Apple's subscription billing (App Store, iCloud) is software; the Apple Store is hardware.
+  { key: "apple_subscriptions", name: "Apple (App Store, iCloud)", category: "software", job: null, aliases: ["apple.com/bill", "itunes"] },
+  { key: "apple", name: "Apple", category: "hardware", job: null, aliases: ["apple store", "apple.com/us"] },
   // Money in and bank
   { key: "stripe", name: "Stripe payouts", category: "revenue", job: null, aliases: ["stripe"] },
   { key: "bank_fees", name: "Bank fees", category: "fees", job: null, aliases: ["wire fee", "service fee", "foreign transaction fee"] },

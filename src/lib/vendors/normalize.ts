@@ -1,7 +1,11 @@
 import type { VendorInfo } from "../types";
 import { VENDOR_CATALOG, type CatalogEntry } from "./catalog";
 
-const PROCESSOR_PREFIX = /^(sq|tst|paypal|pp|sp|py|amzn mktp us|amzn mktp|pos|checkcard)\s*\*\s*/;
+/** What a bank puts in front of the merchant ("PURCHASE AUTHORIZED ON 10/02 …", "CHECKCARD 0302 …"). */
+const BANK_BOILERPLATE = /^(?:(?:purchase|recurring payment|recurring purchase) authorized on \d{1,2}\/\d{1,2}|checkcard \d{4}|pos (?:debit|purchase)|debit card purchase|card purchase)\s+/;
+const PROCESSOR_PREFIX = /^(sq|tst|paypal|pp|sp|py|pos|checkcard)\s*\*\s*/;
+/** Amazon Marketplace descriptors end in an order reference, which must not become the vendor. */
+const AMAZON_MARKETPLACE = /^amzn mktp(?: us)?\s*\*\s*\S*/;
 const DOMAIN_SUFFIX = /\.(com|net|io|us|co|ai|app)\b/g;
 const PHONE = /\d{3}[-. ]\d{3}[-. ]\d{4}/g;
 const STORE_NUMBER = /#\s*\d+/g;
@@ -14,6 +18,8 @@ export function cleanDescriptor(raw: string): string {
   return raw
     .toLowerCase()
     .trim()
+    .replace(BANK_BOILERPLATE, "")
+    .replace(AMAZON_MARKETPLACE, "amazon")
     .replace(PROCESSOR_PREFIX, "")
     .replace(PHONE, " ")
     .replace(STORE_NUMBER, " ")

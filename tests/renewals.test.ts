@@ -35,7 +35,8 @@ describe("upcomingRenewals", () => {
   it("lists charges due in the window, soonest first, with days away", () => {
     const r = upcomingRenewals(streams, AS_OF, 60);
     expect(r.map((x) => x.vendorKey)).toEqual(["slack", "carta"]);
-    expect(r[0]).toMatchObject({ dueDate: "2026-11-02", daysAway: 7, amountCents: 48_000 });
+    // Billed on the 3rd: next due on the 3rd (a calendar month on), not 30 days after.
+    expect(r[0]).toMatchObject({ dueDate: "2026-11-03", daysAway: 8, amountCents: 48_000 });
   });
 
   it("flags annual renewals and large charges as decisions to make before they hit", () => {

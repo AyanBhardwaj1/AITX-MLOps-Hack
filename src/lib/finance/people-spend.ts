@@ -1,5 +1,6 @@
 import type { Cents, EnrichedTxn } from "../types";
 import { countsTowardBurn, inBurnPeriod, type Snapshot } from "./runway";
+import { searchable } from "./transaction-search";
 
 /**
  * Card spend by person: each cardholder's spending per month over exactly the months burn
@@ -36,8 +37,9 @@ export function peopleSpend(txns: readonly EnrichedTxn[], snapshot: Snapshot): P
   let unassigned = 0;
   for (const t of txns) {
     if (!countsTowardBurn(t) || !inBurnPeriod(snapshot, t)) continue;
-    const shown = (t.cardholder ?? "").normalize("NFKC").replace(/[\p{Cf}\p{Cc}]/gu, "").replace(/\s+/g, " ").trim();
-    const who = shown.toLowerCase();
+    const who = searchable(t.cardholder ?? "");
+    // Shown as typed, tidied the same way (minus the lower-casing).
+    const shown = (t.cardholder ?? "").normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").trim();
     if (!who) {
       if (t.amountCents < 0) unassigned -= t.amountCents;
       continue;

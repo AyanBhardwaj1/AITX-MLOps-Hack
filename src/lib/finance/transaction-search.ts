@@ -67,7 +67,12 @@ export function parseTxnQuery(params: Params): TxnQuery {
 }
 
 /** Text as people mean it: one form for accents, no invisible characters, single spaces, lower case. */
-export const searchable = (s: string) => s.normalize("NFKC").replace(/[\p{Cf}\p{Cc}]/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+export function searchable(s: string): string {
+  // Plain ASCII (nearly every bank row) needs only spaces and case: the fast path.
+  if (!/[^\x20-\x7e]/.test(s)) return s.replace(/ +/g, " ").trim().toLowerCase();
+  // Tabs and line breaks are spaces; invisible and other control characters go.
+  return s.normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").trim().toLowerCase();
+}
 
 function matches(t: EnrichedTxn, words: readonly string[], query: TxnQuery): boolean {
   if (query.vendor && t.vendor.key !== query.vendor) return false;

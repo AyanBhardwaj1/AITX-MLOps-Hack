@@ -29,7 +29,7 @@ const DOUBLE_CHARGE_MIN_CENTS = 2_000;
 
 const CONFIDENCE = { duplicate_tools: 0.8, price_creep: 0.7, zombie: 0.6, duplicate_charge: 0.9 } as const;
 
-const streamId = (s: RecurringStream) => `${s.vendorKey}|${s.cardholder ?? ""}`;
+const streamId = (s: RecurringStream) => `${s.vendorKey}${s.workspace ?? ""}|${s.cardholder ?? ""}`;
 const isSubscription = (s: RecurringStream) => s.active && !VARIABLE_BY_NATURE.has(s.category);
 
 type ClaimingFinding = Finding & { claims: string[] };
@@ -155,7 +155,8 @@ function priceCreep(streams: readonly RecurringStream[], txnsById: ReadonlyMap<s
     const pct = Math.round((perChargeIncrease / baseline) * 100);
     const whose = s.cardholder ? `:${s.cardholder.toLowerCase().replaceAll(" ", "_")}` : "";
     findings.push({
-      id: `price_creep:${s.vendorKey}${whose}`,
+      // A second workspace has its own id ("notion#2"), kept before the cardholder part.
+      id: `price_creep:${s.vendorKey}${s.workspace ?? ""}${whose}`,
       kind: "price_creep",
       title: `${s.vendorName} bill up ${pct}%`,
       // Bank data shows the bill, not the price list: a step can be a price rise or added seats.

@@ -81,6 +81,8 @@ export interface RecurringStream {
   /** The card this stream bills (null for ACH/wire). */
   cardholder: string | null;
   cardholders: string[];
+  /** A second workspace of the same vendor on the same card (its own stream, its own ids): "#2". */
+  workspace?: "#2";
 }
 
 export type FindingKind = "zombie" | "duplicate_tools" | "price_creep" | "duplicate_charge";

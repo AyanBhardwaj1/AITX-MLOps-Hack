@@ -57,7 +57,10 @@ type Outcome = Pick<SavingsCheck, "status" | "checkAfter" | "lastChargeDate">;
 const slug = (name: string | undefined) => (name ?? "").toLowerCase().replaceAll(" ", "_");
 
 function targets(f: AcceptedFinding): Target[] {
-  const holder = f.fingerprint.split(":")[f.kind === "zombie" ? 1 : 2] ?? null;
+  // A finding about a plan no card names (price_creep:figma) is about the charges with no
+  // cardholder, never "any card": another person's seat isn't the plan that crept.
+  const parts = f.fingerprint.split(":");
+  const holder = f.kind === "zombie" ? (parts[1] ?? null) : (parts[2] ?? "");
   switch (f.kind) {
     // Kept vendor first; the rest are the ones to cancel.
     case "duplicate_tools":
@@ -126,20 +129,34 @@ function checkPriceDrop(charges: readonly EnrichedTxn[], f: AcceptedFinding, acc
   return dropped ? { status: "verified", checkAfter, lastChargeDate: null } : { status: "still_charging", checkAfter: null, lastChargeDate: latest.postedAt };
 }
 
-/** A refund must come after the duplicate charge (its id ends the fingerprint), and each refund counts once. */
+/**
+ * Money back after a double charge. The charged transaction's id ends the fingerprint (ids hold
+ * colons themselves, so it's everything after the vendor key). Refunds already netted when the
+ * finding was made (the charge less what it said was owed) don't count again; the rest must
+ * cover what was owed. Each refund counts once across findings.
+ */
 function checkRefund(txns: readonly EnrichedTxn[], f: AcceptedFinding, acceptedOn: IsoDate, usedRefunds: Set<string>): Outcome {
-  const chargeId = f.fingerprint.split(":").at(-1);
-  const since = txns.find((t) => t.id === chargeId)?.postedAt ?? addDays(acceptedOn, -REFUND_LOOKBACK_DAYS);
-  const refund = txns.find(
-    (t) =>
-      t.status === "posted" &&
-      t.amountCents >= f.oneTimeCents * REFUND_SHARE &&
-      t.vendor.key === f.vendorKeys[0] &&
-      t.postedAt >= since &&
-      !usedRefunds.has(t.id),
-  );
-  if (refund) usedRefunds.add(refund.id);
-  return { status: refund ? "verified" : "waiting", checkAfter: null, lastChargeDate: null };
+  const vendorKey = f.vendorKeys[0];
+  const chargeId = f.fingerprint.slice(`duplicate_charge:${vendorKey}:`.length);
+  const charge = txns.find((t) => t.id === chargeId);
+  // The double charge's first leg can be a few days before the repeat; refunds count from then.
+  const since = charge ? addDays(charge.postedAt, -SAME_EVENT_DAYS) : addDays(acceptedOn, -REFUND_LOOKBACK_DAYS);
+  let alreadyNetted = charge ? Math.max(0, -charge.amountCents - f.oneTimeCents) : 0;
+  const refunds = txns
+    .filter((t) => t.status === "posted" && t.amountCents > 0 && t.vendor.key === vendorKey && t.postedAt >= since && !usedRefunds.has(t.id))
+    .sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
+  let back = 0;
+  const used: string[] = [];
+  for (const r of refunds) {
+    used.push(r.id);
+    const counted = Math.max(0, r.amountCents - alreadyNetted);
+    alreadyNetted = Math.max(0, alreadyNetted - r.amountCents);
+    back += counted;
+    if (back >= f.oneTimeCents * REFUND_SHARE) break;
+  }
+  const verified = f.oneTimeCents > 0 && back >= f.oneTimeCents * REFUND_SHARE;
+  if (verified) for (const id of used) usedRefunds.add(id);
+  return { status: verified ? "verified" : "waiting", checkAfter: null, lastChargeDate: null };
 }
 
 function check(f: AcceptedFinding, txns: readonly EnrichedTxn[], asOf: IsoDate, usedRefunds: Set<string>): Outcome {

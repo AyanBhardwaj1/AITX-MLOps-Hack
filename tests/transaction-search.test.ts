@@ -152,3 +152,20 @@ describe("searching names however they're typed", () => {
     expect(searchTransactions(rows, parseTxnQuery({ q: "maya chen" })).rows.map((t) => t.id).sort()).toEqual(["x1", "x2"]);
   });
 });
+
+describe("search normalising, second look", () => {
+  it("keeps tab- or newline-separated words apart", async () => {
+    const { searchable } = await import("@/lib/finance/transaction-search");
+    expect(searchable("Jane\tDoe")).toBe("jane doe");
+    expect(searchable("Jane\nDoe")).toBe("jane doe");
+    expect(searchable("Ma​ya")).toBe("maya");
+  });
+
+  it("stays fast on 100k transactions", () => {
+    const many = Array.from({ length: 100_000 }, (_, i) => txn(`y${i}`, "2026-10-01", -1_00, `Vendor ${i % 500}`, "software", { cardholder: i % 2 ? "Maya Chen" : "Sam Lee" }));
+    const started = performance.now();
+    searchTransactions(many, parseTxnQuery({ q: "maya" }));
+    // Generous: the full suite runs in parallel; this guards against a pathological slowdown.
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});

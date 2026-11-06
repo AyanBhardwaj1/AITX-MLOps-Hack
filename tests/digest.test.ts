@@ -138,3 +138,10 @@ describe("why burn moved, break-even", () => {
     expect(md).not.toContain("cash-flow positive");
   });
 });
+
+describe("why burn moved, no change", () => {
+  it("says unchanged rather than 'down $0'", () => {
+    const bridge = { month: "2026-10", previous: "2026-09", netBurnCents: -5_000_00, previousNetBurnCents: -5_000_00, changeCents: 0, drivers: [], otherCents: 0, revenueChangeCents: 0 };
+    expect(buildDigest({ ...input, bridge }).markdown).not.toContain("$0 on");
+  });
+});

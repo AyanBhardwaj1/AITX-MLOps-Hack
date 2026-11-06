@@ -123,7 +123,7 @@ function priceChanges(txns: readonly EnrichedTxn[], streams: readonly RecurringS
     if (after < before * (1 + PRICE_CHANGE_RATIO)) return [];
     return [
       {
-        id: `price_change:${s.vendorKey}|${s.cardholder ?? ""}`,
+        id: `price_change:${s.vendorKey}${s.workspace ?? ""}|${s.cardholder ?? ""}`,
         kind: "price_change" as const,
         severity: "warn" as const,
         title: `${s.vendorName} bill went up ${Math.round(((after - before) / before) * 100)}%`,
