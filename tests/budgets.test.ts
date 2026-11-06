@@ -139,7 +139,7 @@ describe("budgets", () => {
     /** Charges of `amount` on each date, as one detected stream. */
     const history = (category: EnrichedTxn["vendor"]["category"], dates: string[], amount: number, cadence: RecurringStream["cadence"]) => {
       const charges = dates.map((d, i) => txn(`${category}${i}`, d, -amount, category));
-      return { charges, stream: { ...stream(category, charges.map((c) => c.id), "2099-01-01", amount, cadence, dates.at(-1)!), occurrences: dates.length } as RecurringStream };
+      return { charges, stream: { ...stream(category, charges.map((c) => c.id), "2099-01-01", amount, cadence, dates.at(-1)!), firstDate: [...dates].sort()[0]!, occurrences: dates.length } as RecurringStream };
     };
     // Rent due on the 1st, paid the business day before when the 1st is a weekend.
     const rentDates = ["2026-05-01", "2026-06-01", "2026-06-30", "2026-07-31", "2026-09-01", "2026-10-01"];
@@ -177,8 +177,8 @@ describe("budgets", () => {
       const dates = ["2025-09-01", "2025-09-15", "2025-10-01", "2025-10-15", "2025-11-14", "2025-12-01", "2025-12-15", "2026-01-01", "2026-01-15", "2026-02-02", "2026-02-13"];
       const { charges, stream: s } = history("payroll", dates, 1_000_00, "semimonthly");
       const [mar] = budgetStatus(charges, "2026-02-20", [{ category: "payroll", monthlyCents: 1 }], [s]);
-      // February: 2nd and 13th are in; nothing more until March.
-      expect(mar!.projectedCents).toBe(2_000_00);
+      // February: the 2nd and 13th are in, and March 1 is a Sunday, so its payday posts Friday Feb 27.
+      expect(mar!.projectedCents).toBe(3_000_00);
     });
 
     it("steps a bill on a fixed 28-day interval instead of pinning it to a day of the month", () => {
@@ -201,6 +201,13 @@ describe("budgets", () => {
       const t = performance.now();
       budgetStatus(charges, "2026-07-10", [{ category: "software", monthlyCents: 1 }], [s]);
       expect(performance.now() - t).toBeLessThan(1_000);
+    });
+
+    it("isn't thrown by rent on the 1st that posts a day or two early near month ends", () => {
+      const dates = ["2025-08-29", "2025-09-30", "2025-10-31", "2025-11-28", "2026-01-01", "2026-01-30", "2026-02-27"];
+      const { charges, stream: s } = history("rent", dates, 10_000_00, "monthly");
+      // The next rent posts around Mar 30: March still expects one.
+      expect(budgetStatus(charges, "2026-03-02", [{ category: "rent", monthlyCents: 9_000_00 }], [s])[0]!.projectedCents).toBe(10_000_00);
     });
 
     it("follows a bill that moved its due day across the month boundary (the 28th to the 3rd)", () => {

@@ -110,6 +110,10 @@ describe("gradeCsvFiles", () => {
     const recentStart = new Date(Date.parse(`${cutoff}T00:00:00Z`) - 25 * 86_400_000).toISOString().slice(0, 10);
     const partial = gradeCsvFiles([{ name: "checking-ytd.csv", text: mercuryCsv(ytd) }, { name: "checking-recent.csv", text: mercuryCsv(checking.filter((t) => dateOf(t) >= recentStart)) }], cash);
     expect(partial.notes.some((n) => /days before the newest one/.test(n))).toBe(false);
+    // One coincidental shared row (a $15 fee on both) doesn't make two named accounts one.
+    const fee = { ...checking[0]!, id: "fee", counterparty_name: "MONTHLY SERVICE FEE", amount: { amount: -1_500, currency: "USD" }, initiated_at: "2026-03-01T12:00:00Z", posted_at: "2026-03-01T12:00:00Z" } as RhoTransaction;
+    const coincidence = gradeCsvFiles([{ name: "checking.csv", text: mercuryCsv([...checking, fee]) }, { name: "amex.csv", text: mercuryCsv([...early, fee]) }], cash);
+    expect(coincidence.notes.some((n) => /^The amex export ends/.test(n))).toBe(true);
     // An older export overlapping a newer one of the same account adds nothing, so says nothing.
     const older = checking.filter((t) => dateOf(t) <= cutoff);
     const overlap = gradeCsvFiles([{ name: "old.csv", text: mercuryCsv(older) }, { name: "new.csv", text: mercuryCsv(checking) }], cash);

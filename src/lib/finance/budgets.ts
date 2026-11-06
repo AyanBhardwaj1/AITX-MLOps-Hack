@@ -108,21 +108,9 @@ function usualDays(charges: readonly IsoDate[], semimonthly: boolean): number[] 
       if (cost < bestCost) [best, bestCost] = [semimonthly ? [a, b] : [a], cost];
     }
   }
-  // A bill that moved its due day: when the last three charges all sit exactly on another day the
-  // longer fit misses, the new day wins (otherwise the old one lingers for months).
-  if (!semimonthly && table.length >= 3) {
-    const lastThree = table.slice(-3);
-    if (lastThree.some((row) => row[best[0]!]! > 0)) {
-      let moved: number | null = null;
-      let movedCost = Number.POSITIVE_INFINITY;
-      for (let d = 1; d <= 31; d++) {
-        if (!lastThree.every((row) => row[d] === 0)) continue;
-        const cost = table.reduce((sum, row) => sum + row[d]!, 0);
-        if (cost < movedCost) [moved, movedCost] = [d, cost];
-      }
-      if (moved !== null) return [moved];
-    }
-  }
+  // No "the bill moved its day" rule: one tried here fired on ordinary posting jitter near month
+  // ends (rent on the 1st paid a day or two early), which is far more common than a real move. A
+  // moved bill is off by one charge until the recent charges outweigh the old ones in the fit.
   return best;
 }
 

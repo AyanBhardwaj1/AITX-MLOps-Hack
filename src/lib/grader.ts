@@ -46,28 +46,40 @@ const HISTORY_MONTHS = 12;
  * monthly statements of "checking"). A bank's default name ("activity.csv", "transactions.csv")
  * says nothing about the account, so it never groups files on its own.
  */
+/** Shared rows that make two files one account (or half the smaller file, for short ones). */
+const SAME_ACCOUNT_ROWS = 5;
+
 function accountsOf(files: readonly { name: string; label: string; keys: string[] }[]): Map<string, string[]> {
   const parent = files.map((_, i) => i);
   const root = (i: number): number => (parent[i] === i ? i : (parent[i] = root(parent[i]!)));
   const join = (a: number, b: number) => void (parent[root(a)] = root(b));
-  const firstWithKey = new Map<string, number>();
+  // Rows shared between each pair of files. Overlapping exports of one account share many; two
+  // accounts can share one by coincidence (the same $15 fee), which mustn't merge them.
+  const holders = new Map<string, number[]>();
+  files.forEach((f, i) => {
+    for (const k of new Set(f.keys)) holders.set(k, [...(holders.get(k) ?? []), i]);
+  });
+  const shared = new Map<string, number>();
+  for (const list of holders.values()) for (let x = 0; x < list.length; x++) for (let y = x + 1; y < list.length; y++) shared.set(`${list[x]}|${list[y]}`, (shared.get(`${list[x]}|${list[y]}`) ?? 0) + 1);
+  for (const [pair, count] of shared) {
+    const [a, b] = pair.split("|").map(Number) as [number, number];
+    const smaller = Math.min(new Set(files[a]!.keys).size, new Set(files[b]!.keys).size);
+    if (count >= Math.min(SAME_ACCOUNT_ROWS, Math.ceil(smaller / 2))) join(a, b);
+  }
   const firstWithLabel = new Map<string, number>();
   files.forEach((f, i) => {
-    for (const k of f.keys) {
-      const j = firstWithKey.get(k);
-      if (j === undefined) firstWithKey.set(k, i);
-      else join(i, j);
-    }
     if (f.label !== DEFAULT_ACCOUNT_LABEL) {
       const j = firstWithLabel.get(f.label);
       if (j === undefined) firstWithLabel.set(f.label, i);
       else join(i, j);
     }
   });
-  // Named by the account its files point to, or else by its first file's own name.
-  const groups = new Map<number, { name: string; keys: Set<string> }>();
+  // Named by the account any of its files point to, or else by its first file's own name.
+  const groups = new Map<number, { name: string; named: boolean; keys: Set<string> }>();
   files.forEach((f, i) => {
-    const g = groups.get(root(i)) ?? { name: f.label === DEFAULT_ACCOUNT_LABEL ? f.name : f.label, keys: new Set<string>() };
+    const named = f.label !== DEFAULT_ACCOUNT_LABEL;
+    const g = groups.get(root(i)) ?? { name: named ? f.label : f.name, named, keys: new Set<string>() };
+    if (named && !g.named) [g.name, g.named] = [f.label, true];
     for (const k of f.keys) g.keys.add(k);
     groups.set(root(i), g);
   });
