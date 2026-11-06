@@ -4,10 +4,22 @@ import { CASH_ACCOUNT_ID } from "./uploads/rows";
 export const STALE_AFTER_DAYS = 14;
 const DAY_MS = 86_400_000;
 
-export function dataFreshness(latestDate: string, now: Date): { daysOld: number; stale: boolean } {
+/** The furthest-ahead time zone (UTC+14): an upload's own day can be at most this far ahead of UTC. */
+const LATEST_OFFSET_MS = 14 * 3_600_000;
+
+/**
+ * How old uploaded data is. `uploadedAt` (an ISO timestamp, when an upload last added rows): rows
+ * dated after that day were scheduled payments, so once their date arrives they don't make old data
+ * fresh. The upload's day is the latest it could be anywhere (UTC+14), so a founder east of UTC
+ * keeps their own today. `through` is the date the data is judged current to.
+ */
+export function dataFreshness(latestDate: string, now: Date, uploadedAt?: string): { daysOld: number; stale: boolean; through: string } {
+  const uploaded = uploadedAt === undefined ? Number.NaN : Date.parse(uploadedAt);
+  const uploadedOn = Number.isNaN(uploaded) ? undefined : new Date(uploaded + LATEST_OFFSET_MS).toISOString().slice(0, 10);
+  const through = uploadedOn !== undefined && uploadedOn < latestDate ? uploadedOn : latestDate;
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const daysOld = Math.max(0, Math.floor((today - Date.parse(`${latestDate}T00:00:00Z`)) / DAY_MS));
-  return { daysOld, stale: daysOld >= STALE_AFTER_DAYS };
+  const daysOld = Math.max(0, Math.floor((today - Date.parse(`${through}T00:00:00Z`)) / DAY_MS));
+  return { daysOld, stale: daysOld >= STALE_AFTER_DAYS, through };
 }
 
 /** Cash moves faster than transactions: a week-old figure is worth confirming. */

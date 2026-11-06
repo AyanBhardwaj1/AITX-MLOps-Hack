@@ -243,6 +243,26 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.loadUploads()).toBeNull();
     });
 
+    it("knows when an upload last added rows, whether or not cash came with it", async () => {
+      const store = await makeStore();
+      const row = (id: string, date: string) => ({
+        id, money_movement_id: null, account_id: "uploaded", account_name: "uploaded", account_type: "checking" as const,
+        amount: { amount: -100, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: "VENDOR",
+        initiated_at: `${date}T12:00:00Z`, posted_at: `${date}T12:00:00Z`, card_id: null, card_name: null, user_full_name: null,
+      });
+      const at = async () => Date.parse((await store.loadUploads())!.rowsAddedAt);
+      await store.saveUploads(100_000_00, [row("r1", "2026-08-01")], 10);
+      const first = await at();
+      await new Promise((r) => setTimeout(r, 20));
+      // A cash-only update and a repeat of the same export add nothing: the time stays.
+      await store.setUploadCash(90_000_00);
+      await store.saveUploads(null, [row("r1", "2026-08-01")], 10);
+      expect(await at()).toBe(first);
+      // A fresh export uploaded without touching cash moves it.
+      await store.saveUploads(null, [row("r2", "2026-09-01")], 10);
+      expect(await at()).toBeGreaterThan(first);
+    });
+
     it("keeps one monthly budget per category, reporting what each change replaced", async () => {
       const store = await makeStore();
       expect(await store.listBudgets()).toEqual([]);

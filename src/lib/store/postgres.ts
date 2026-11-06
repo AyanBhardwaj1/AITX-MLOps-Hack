@@ -518,12 +518,18 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const connectionId = await csvConnection(pool, org, false);
       if (!connectionId) return null;
       const cash = await pool.query<{ balance_minor: string; synced_at: Date }>(`select balance_minor, synced_at from public.accounts where connection_id = $1 and provider_account_id = $2`, [connectionId, CASH_ACCOUNT_ID]);
-      const { rows } = await pool.query<{ raw: RhoTransaction }>(
-        `select raw from public.transactions where connection_id = $1 and removed_at is null order by posted_on, id`,
-        [connectionId],
-      );
+      const [{ rows }, added] = await Promise.all([
+        pool.query<{ raw: RhoTransaction }>(`select raw from public.transactions where connection_id = $1 and removed_at is null order by posted_on, id`, [connectionId]),
+        // Rows are only ever inserted (a repeat is skipped), so updated_at is when each arrived.
+        pool.query<{ at: Date | null }>(`select max(updated_at) as at from public.transactions where connection_id = $1 and removed_at is null`, [connectionId]),
+      ]);
       if (!cash.rows[0] || rows.length === 0) return null;
-      return { cashCents: Number(cash.rows[0].balance_minor), cashEnteredAt: cash.rows[0].synced_at.toISOString(), rows: rows.map((r) => r.raw) };
+      return {
+        cashCents: Number(cash.rows[0].balance_minor),
+        cashEnteredAt: cash.rows[0].synced_at.toISOString(),
+        rowsAddedAt: (added.rows[0]?.at ?? cash.rows[0].synced_at).toISOString(),
+        rows: rows.map((r) => r.raw),
+      };
     },
 
     async listBudgets() {

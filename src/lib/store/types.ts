@@ -127,7 +127,14 @@ export interface Store {
   /** Sets today's cash without adding rows; "no_uploads" when nothing has been uploaded to attach it to. */
   setUploadCash(cashCents: number): Promise<"saved" | "unchanged" | "no_uploads">;
   /** Everything uploaded for this scope, or null when nothing has been. */
-  loadUploads(): Promise<{ cashCents: number; /** When the cash was last entered or confirmed (ISO). */ cashEnteredAt: string; rows: RhoTransaction[] } | null>;
+  loadUploads(): Promise<{
+    cashCents: number;
+    /** When the cash was last entered or confirmed (ISO). */
+    cashEnteredAt: string;
+    /** When an upload last added rows (ISO); a cash-only update or a repeat of the same export doesn't move it. */
+    rowsAddedAt: string;
+    rows: RhoTransaction[];
+  } | null>;
   /** The company's monthly budgets, by category name. */
   listBudgets(): Promise<Budget[]>;
   /** Sets (or, with null, removes) one category's monthly budget; returns the amount it replaced. */

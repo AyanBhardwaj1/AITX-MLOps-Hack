@@ -67,7 +67,7 @@ export interface DashboardData {
   /** The company this dashboard is about (the demo company, or the signed-in founder's own). */
   companyName: string;
   /** How old a company's uploaded data is (company mode only). */
-  freshness?: { daysOld: number; stale: boolean };
+  freshness?: { daysOld: number; stale: boolean; through: string };
   /** Uploaded rows dated after today (scheduled payments), not counted until their date. */
   futureRows?: number;
   /** A company's uploaded accounts whose exports end two weeks or more before the newest one. */
@@ -343,7 +343,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
 
         {data.freshness?.stale && (
           <p role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
-            Your transactions end on {formatDate(data.asOf)}, {data.freshness.daysOld} days ago, so runway may have drifted.{" "}
+            Your transactions end on {formatDate(data.freshness.through)}, {data.freshness.daysOld} days ago, so runway may have drifted.{" "}
             <Link href="/app/upload" className="font-medium underline">
               Upload a fresh export
             </Link>{" "}

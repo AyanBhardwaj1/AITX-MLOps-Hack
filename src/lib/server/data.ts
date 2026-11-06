@@ -29,6 +29,8 @@ export interface Dataset {
   actedOn?: AcceptedFinding[];
   /** A company's uploads: when today's cash was last entered or confirmed (ISO). */
   cashEnteredAt?: string;
+  /** A company's uploads: when an upload last added rows (ISO), for judging how fresh the data is. */
+  rowsAddedAt?: string;
   /** A company's uploads: rows left out for being dated after today (scheduled payments). */
   futureRows?: number;
 }
@@ -63,7 +65,7 @@ async function loadCompanyDataset(scope: string): Promise<Dataset> {
   const data = uploadedDataset({ ...uploads, today: new Date().toISOString().slice(0, 10) });
   // Only rows dated after today: nothing has happened yet to analyse, as with no uploads at all.
   if (data.transactions.length === 0) throw new NoCompanyData();
-  return { ...data, cashEnteredAt: uploads.cashEnteredAt, label: "company" };
+  return { ...data, cashEnteredAt: uploads.cashEnteredAt, rowsAddedAt: uploads.rowsAddedAt, label: "company" };
 }
 
 export type LabelledDataset = Dataset & { vendorLabels?: ReadonlyMap<string, VendorInfo>; corrections?: ReadonlyMap<string, VendorCorrection> };
