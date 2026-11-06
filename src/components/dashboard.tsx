@@ -36,6 +36,7 @@ import { VendorHistoryPanel } from "./vendor-history-panel";
 import type { VendorHistory } from "@/lib/finance/vendor-history";
 import type { RunwayPoint } from "@/lib/finance/runway-history";
 import { ScenarioPlanner } from "./scenario-planner";
+import type { ScenarioPlan } from "@/lib/finance/scenario-link";
 import { ShareLinksPanel } from "./share-links-panel";
 import { ThisWeekCard } from "./this-week-card";
 import { BudgetsCard, type BudgetsData } from "./budgets-card";
@@ -59,6 +60,8 @@ export interface DashboardData {
   laggingAccounts?: { name: string; lastDate: string; daysBehind: number }[];
   /** A company's cash figure: entered by hand, so it ages on its own. */
   cashFreshness?: { daysOld: number; stale: boolean; enteredOn: string };
+  /** The scenario planner's settings from the address (a bookmarked or shared plan). */
+  scenario?: ScenarioPlan;
   /** Monthly budgets: the demo's sample or a company's own; none on the sandbox feed. */
   budgets?: BudgetsData;
   /** A signed-in company's first steps (company mode only). */
@@ -361,6 +364,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           cashCents={data.snapshot.cashCents}
           asOf={data.asOf}
           wasteSavingsCents={allSim.monthlySavingsCents}
+          initial={data.scenario}
         />
 
         <InvestorUpdateCard mode={data.mode} />

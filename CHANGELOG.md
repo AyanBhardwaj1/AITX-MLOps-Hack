@@ -28,6 +28,9 @@ demo, the free grader and the public site work exactly as before.
   the Monday digest names any budget that's over or heading over. The card also says what runway
   the budgets would buy if spending came down to them. Copilot answers "Are we on
   budget this month?" from the same numbers. The demo has a sample set.
+- **Plans you can send.** The "default alive" planner keeps its settings in the address, so a
+  plan (hires, a raise, growth, cuts) can be bookmarked or sent to a cofounder with "Copy link to
+  this plan".
 - **Your data, your call.** See what's stored per account, delete one account's rows or everything,
   and download it all as a CSV that uploads back cleanly. Settings downloads a copy of everything
   the company holds (team, transactions, cash, budgets, fixes, decisions, drafts, links, activity)

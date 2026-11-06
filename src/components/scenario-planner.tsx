@@ -1,16 +1,15 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { MonthHistory } from "@/lib/finance/history";
 import { estimateRevenueGrowthDetail, projectScenario } from "@/lib/finance/scenario";
 import { formatCompactDollars, formatDate, formatMonth } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
+import { DEFAULT_SCENARIO, MAX_HIRES, MAX_START_MONTH, scenarioParams, type ScenarioPlan } from "@/lib/finance/scenario-link";
 
-const DEFAULT_HIRE_COST_DOLLARS = 15_000;
-const MAX_HIRES = 20;
-const MAX_START_MONTH = 24;
 const CHART_MONTHS = 36;
+const PLAN_KEYS = ["sc_growth", "sc_hires", "sc_cost", "sc_start", "sc_raise", "sc_raisemonth", "sc_cut"];
 const pct = (g: number) => `${(g * 100).toFixed(1)}%`;
 /** Number inputs can be empty or out of range mid-edit; clamp to something the model accepts. */
 const num = (v: string, lo: number, hi: number) => Math.min(hi, Math.max(lo, Number.isFinite(Number(v)) ? Number(v) : lo));
@@ -24,22 +23,43 @@ export function ScenarioPlanner({
   cashCents,
   asOf,
   wasteSavingsCents,
+  initial = DEFAULT_SCENARIO,
 }: {
   history: MonthHistory[];
   cashCents: number;
   asOf: string;
   wasteSavingsCents: number;
+  /** A plan from the address (a bookmarked or shared link). */
+  initial?: ScenarioPlan;
 }) {
   const id = useId();
   const estimate = useMemo(() => estimateRevenueGrowthDetail(history), [history]);
   // null = use the measured rate unrounded, so the verdict matches the digest and Copilot exactly.
-  const [growthPct, setGrowthPct] = useState<string | null>(null);
-  const [hires, setHires] = useState("0");
-  const [hireCost, setHireCost] = useState(String(DEFAULT_HIRE_COST_DOLLARS));
-  const [hireStart, setHireStart] = useState("1");
-  const [raise, setRaise] = useState("0");
-  const [raiseMonth, setRaiseMonth] = useState("6");
-  const [cutWaste, setCutWaste] = useState(false);
+  const [growthPct, setGrowthPct] = useState<string | null>(initial.growthPct);
+  const [hires, setHires] = useState(initial.hires);
+  const [hireCost, setHireCost] = useState(initial.hireCost);
+  const [hireStart, setHireStart] = useState(initial.hireStart);
+  const [raise, setRaise] = useState(initial.raise);
+  const [raiseMonth, setRaiseMonth] = useState(initial.raiseMonth);
+  const [cutWaste, setCutWaste] = useState(initial.cutWaste);
+  const [copied, setCopied] = useState("");
+
+  // The address follows the plan (other parameters kept), so it can be bookmarked or sent.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    for (const k of PLAN_KEYS) url.searchParams.delete(k);
+    for (const [k, v] of scenarioParams({ growthPct, hires, hireCost, hireStart, raise, raiseMonth, cutWaste })) url.searchParams.set(k, v);
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
+  }, [growthPct, hires, hireCost, hireStart, raise, raiseMonth, cutWaste]);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied("Link copied. Anyone on your team who opens it sees this plan.");
+    } catch {
+      setCopied("Couldn't copy: copy the address from the address bar instead.");
+    }
+  }
 
   const result = projectScenario({
     asOf,
@@ -127,6 +147,14 @@ export function ScenarioPlanner({
               Also fix the waste found ({formatDollars(wasteSavingsCents)}/month)
             </label>
           )}
+          <div className="col-span-2 flex flex-wrap items-center gap-2 text-sm">
+            <button type="button" onClick={() => void copyLink()} className="rounded-lg border border-line px-3 py-1.5 transition-colors hover:bg-canvas">
+              Copy link to this plan
+            </button>
+            <span role="status" className="text-xs text-muted">
+              {copied}
+            </span>
+          </div>
         </form>
 
         <div className="min-w-0 lg:col-span-3">

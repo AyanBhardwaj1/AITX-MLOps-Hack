@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { companyName, currentCompany, currentTeam, sessionUser } from "@/lib/server/company";
 import { gettingStarted } from "@/lib/onboarding";
 import { cashFreshness, dataFreshness, laggingAccounts } from "@/lib/freshness";
+import { parseScenarioParams } from "@/lib/finance/scenario-link";
 import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
@@ -217,5 +218,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         ? `${err.message} Showing the demo company instead.`
         : `Couldn't reach the Rho ${mode} feed, so this is the demo company instead.`;
   }
-  return <Dashboard data={data} notice={notice} />;
+  return <Dashboard data={{ ...data, scenario: parseScenarioParams(await searchParams) }} notice={notice} />;
 }
