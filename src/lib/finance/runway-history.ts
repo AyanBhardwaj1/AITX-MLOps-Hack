@@ -1,4 +1,4 @@
-import { monthKey, shiftMonth } from "../dates";
+import { monthKey, shiftMonth, compareIsoDates } from "../dates";
 import type { Cents, EnrichedTxn, IsoDate } from "../types";
 import { computeSnapshot } from "./runway";
 
@@ -26,7 +26,7 @@ interface Input {
 const DEFAULT_MONTHS = 6;
 
 export function runwayHistory({ txns, cashAccountIds, cashCents, asOf, months = DEFAULT_MONTHS }: Input): RunwayPoint[] {
-  const cashMoves = txns.filter((t) => t.status === "posted" && cashAccountIds.has(t.accountId)).toSorted((a, b) => a.postedAt.localeCompare(b.postedAt));
+  const cashMoves = txns.filter((t) => t.status === "posted" && cashAccountIds.has(t.accountId)).toSorted((a, b) => compareIsoDates(a.postedAt, b.postedAt));
   const current = monthKey(asOf);
   const dates = [...Array.from({ length: months }, (_, i) => `${shiftMonth(current, i - months + 1)}-01`), asOf].filter((d, i, all) => all.indexOf(d) === i);
   return dates.map((date) => {

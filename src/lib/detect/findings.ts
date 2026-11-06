@@ -1,4 +1,4 @@
-import { AVG_DAYS_PER_MONTH, daysBetween } from "../dates";
+import { AVG_DAYS_PER_MONTH, daysBetween, compareIsoDates } from "../dates";
 import { formatCents } from "../money";
 import { coefficientOfVariation, median } from "../stats";
 import type { Category, EnrichedTxn, Finding, IsoDate, RecurringStream } from "../types";
@@ -173,7 +173,7 @@ function priceCreep(streams: readonly RecurringStream[], txnsById: ReadonlyMap<s
 function duplicateCharges(txns: readonly EnrichedTxn[], streams: readonly RecurringStream[]): Finding[] {
   const sorted = txns
     .filter((t) => isOutflow(t) && !VARIABLE_BY_NATURE.has(t.vendor.category) && -t.amountCents >= DOUBLE_CHARGE_MIN_CENTS)
-    .sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
+    .sort((a, b) => compareIsoDates(a.postedAt, b.postedAt) || a.id.localeCompare(b.id));
   const cardKey = (t: EnrichedTxn) => `${t.vendor.key}|${t.accountId}|${t.cardholder ?? ""}`;
   // Same vendor AND same card: two people buying the same thing is not a double charge.
   const pairs: [EnrichedTxn, EnrichedTxn][] = [];
@@ -187,7 +187,7 @@ function duplicateCharges(txns: readonly EnrichedTxn[], streams: readonly Recurr
   // schedule, not a billing error. Two one-off repeats months apart are still two double charges.
   const recurring = new Set(streams.flatMap((st) => st.txnIds));
   // Refunds from the vendor after the double charge reduce what's left to recover; each counts once.
-  const refunds = txns.filter((t) => t.amountCents > 0 && t.status === "posted" && t.type !== "transfer").sort((a, b) => a.postedAt.localeCompare(b.postedAt));
+  const refunds = txns.filter((t) => t.amountCents > 0 && t.status === "posted" && t.type !== "transfer").sort((a, b) => compareIsoDates(a.postedAt, b.postedAt));
   const usedRefunds = new Set<string>();
   const findings: Finding[] = [];
   for (const [prev, t] of pairs) {
@@ -225,8 +225,7 @@ function withoutClaims({ claims: _claims, ...finding }: ClaimingFinding): Findin
  * (overlapping tools first, then idle cards, then price creep) so totals never double count.
  * Output is sorted by id so results are stable across runs.
  */
-export function detectFindings(txns: readonly EnrichedTxn[], asOf: IsoDate): Finding[] {
-  const streams = detectStreams(txns, asOf);
+export function detectFindings(txns: readonly EnrichedTxn[], asOf: IsoDate, streams: readonly RecurringStream[] = detectStreams(txns, asOf)): Finding[] {
   const txnsById = new Map(txns.map((t) => [t.id, t]));
   const dups = duplicateTools(streams);
   const claimed = new Set(dups.flatMap((f) => f.claims));

@@ -36,3 +36,9 @@ export function addMonths(d: IsoDate, n: number): IsoDate {
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return `${target}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
 }
+
+/**
+ * Orders ISO dates (YYYY-MM-DD). Plain comparison gives the same order as localeCompare for these
+ * strings at a fraction of the cost, which matters when sorting tens of thousands of transactions.
+ */
+export const compareIsoDates = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);

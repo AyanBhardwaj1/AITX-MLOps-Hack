@@ -1,4 +1,4 @@
-import { AVG_DAYS_PER_MONTH, addDays, daysBetween } from "../dates";
+import { AVG_DAYS_PER_MONTH, addDays, daysBetween, compareIsoDates } from "../dates";
 import { coefficientOfVariation, median } from "../stats";
 import { UNITEMIZED_CARD_SPEND } from "../rho/map";
 import type { Cadence, EnrichedTxn, IsoDate, RecurringStream } from "../types";
@@ -53,13 +53,17 @@ export function billingEventsByStream(txns: readonly EnrichedTxn[]): Map<string,
   const byStream = new Map<string, EnrichedTxn[]>();
   const repeats = new Map<string, EnrichedTxn[]>();
   // Same-day charges: the larger one is the main subscription, so the result never depends on id order.
-  const sorted = txns.filter(isOutflow).sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.amountCents - b.amountCents || a.id.localeCompare(b.id));
+  const sorted = txns.filter(isOutflow).sort((a, b) => compareIsoDates(a.postedAt, b.postedAt) || a.amountCents - b.amountCents || a.id.localeCompare(b.id));
   for (const t of sorted) {
     const key = `${t.vendor.key}|${t.cardholder ?? ""}`;
     const list = byStream.get(key) ?? [];
     const prev = list.at(-1);
     if (!prev || daysBetween(prev.postedAt, t.postedAt) > SAME_EVENT_DAYS) list.push(t);
-    else repeats.set(key, [...(repeats.get(key) ?? []), t]);
+    else {
+      const extra = repeats.get(key);
+      if (extra) extra.push(t);
+      else repeats.set(key, [t]);
+    }
     byStream.set(key, list);
   }
   for (const [key, extra] of repeats) {

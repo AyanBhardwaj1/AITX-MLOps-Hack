@@ -1,4 +1,4 @@
-import { monthKey, shiftMonth } from "../dates";
+import { monthKey, shiftMonth, compareIsoDates } from "../dates";
 import type { Cents, EnrichedTxn, IsoDate, RecurringStream } from "../types";
 
 /** One recurring charge's story: what it cost each month, its latest bills and when the price moved. */
@@ -28,7 +28,7 @@ export function vendorHistory(stream: RecurringStream, txnsById: ReadonlyMap<str
   const charges = stream.txnIds
     .map((id) => txnsById.get(id))
     .filter((t) => t !== undefined)
-    .toSorted((a, b) => a.postedAt.localeCompare(b.postedAt) || a.id.localeCompare(b.id));
+    .toSorted((a, b) => compareIsoDates(a.postedAt, b.postedAt) || a.id.localeCompare(b.id));
   const current = monthKey(asOf);
   const monthly = Array.from({ length: MONTHS }, (_, i) => ({ month: shiftMonth(current, i - MONTHS + 1), cents: 0 }));
   const byMonth = new Map(monthly.map((m) => [m.month, m]));

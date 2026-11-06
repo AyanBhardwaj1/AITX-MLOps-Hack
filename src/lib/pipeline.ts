@@ -45,10 +45,11 @@ export function analyze({ accounts, transactions, asOf, vendorLabels, correction
   const latest = txns.reduce<IsoDate>((max, t) => (t.postedAt > max ? t.postedAt : max), "0000-00-00");
   const effectiveAsOf = asOf ?? latest;
   const [snapshot, snapMs] = timed(() => computeSnapshot({ cashCents: cashBalanceCents(accounts), txns, asOf: effectiveAsOf }));
-  const [detected, detectMs] = timed(() => ({
-    streams: detectStreams(txns, effectiveAsOf),
-    findings: detectFindings(txns, effectiveAsOf),
-  }));
+  const [detected, detectMs] = timed(() => {
+    // Streams once: the findings are worked out from the same ones.
+    const streams = detectStreams(txns, effectiveAsOf);
+    return { streams, findings: detectFindings(txns, effectiveAsOf, streams) };
+  });
   return {
     asOf: effectiveAsOf,
     asOfFromData: asOf === undefined,
