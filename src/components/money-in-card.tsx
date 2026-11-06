@@ -10,7 +10,8 @@ const pct = (share: number) => `${Math.round(share * 100)}%`;
 const runway = (months: number) => (Number.isFinite(months) ? `${months.toFixed(1)} months` : "no end in sight");
 
 /** Money in per payer over burn's months, and how much runway hangs on the biggest customer. */
-export function MoneyInCard({ money, mode, runwayMonths }: { money: MoneyIn | null; mode: string; runwayMonths: number }) {
+/** `mode` null (the grader: files stay in the browser) shows payers without links. */
+export function MoneyInCard({ money, mode, runwayMonths }: { money: MoneyIn | null; mode: string | null; runwayMonths: number }) {
   if (!money) return null;
   const top = money.topCustomer;
   return (
@@ -33,9 +34,13 @@ export function MoneyInCard({ money, mode, runwayMonths }: { money: MoneyIn | nu
         {money.payers.map((p) => (
           <li key={p.key} className="flex items-baseline justify-between gap-3 py-1.5">
             <span className="min-w-0 truncate">
-              <Link href={`/app/transactions?mode=${mode}&vendor=${encodeURIComponent(p.key)}&direction=in`} className="hover:text-brand hover:underline">
-                {p.name}
-              </Link>
+              {mode === null ? (
+                p.name
+              ) : (
+                <Link href={`/app/transactions?mode=${mode}&vendor=${encodeURIComponent(p.key)}&direction=in`} className="hover:text-brand hover:underline">
+                  {p.name}
+                </Link>
+              )}
               {p.processor && <span className="ml-1.5 rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">many customers</span>}
             </span>
             <span className="tabular shrink-0">

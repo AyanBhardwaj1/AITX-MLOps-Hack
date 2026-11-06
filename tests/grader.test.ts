@@ -155,3 +155,17 @@ describe("why burn moved, in the grader", () => {
     expect(g.bridge!.drivers.reduce((s, d) => s + d.changeCents, 0) + g.bridge!.otherCents - g.bridge!.revenueChangeCents).toBe(g.bridge!.changeCents);
   });
 });
+
+describe("grader: who pays you", () => {
+  it("names a big customer and the runway without them, with no links (files stay in the browser)", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { MoneyInCard } = await import("@/components/money-in-card");
+    const rows = ["2026-07", "2026-08", "2026-09", "2026-10"].flatMap((m) => [`${m}-01,GUSTO PAYROLL,-40000.00`, `${m}-10,ONLINE PAYMENT FROM ACME CORP,30000.00`, `${m}-12,INITECH LLC,5000.00`]);
+    const g = gradeCsvFiles([{ name: "checking.csv", text: ["date,description,amount", ...rows, "2026-10-31,FIGMA,-1.00"].join("\n") }], 600_000_00);
+    expect(g.moneyIn!.topCustomer!.share).toBeGreaterThan(0.8);
+    const html = renderToStaticMarkup(createElement(MoneyInCard, { money: g.moneyIn, mode: null, runwayMonths: g.runwayMonths }));
+    expect(html).toContain("If it stopped paying");
+    expect(html).not.toContain("<a ");
+  });
+});

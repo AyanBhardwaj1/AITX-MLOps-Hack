@@ -8,6 +8,7 @@ import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader"
 import { formatDollars } from "@/lib/money";
 import { cashPnlCsv } from "@/lib/export/csv";
 import { BurnBridgeCard } from "./burn-bridge-card";
+import { MoneyInCard } from "./money-in-card";
 import { CashFromFiles } from "./cash-from-files";
 import { GraderSignup } from "./grader-signup";
 
@@ -208,6 +209,7 @@ export function GraderPanel() {
             </div>
 
             <BurnBridgeCard bridge={result.bridge} mode={null} />
+            <MoneyInCard money={result.moneyIn} mode={null} runwayMonths={result.runwayMonths} />
 
             {(result.notes.length > 0 || result.errors.length > 0) && (
               <div className="rounded-xl border border-line bg-canvas p-4 text-sm">
