@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { monthKey, shiftMonth } from "../dates";
+import { openMonth, shiftMonth } from "../dates";
 import type { Cents, IsoDate } from "../types";
 import type { MonthHistory } from "./history";
 import { zeroCashDate } from "./runway";
@@ -40,7 +40,7 @@ export interface ScenarioInput extends ScenarioOptions {
   /** Complete months, oldest first (from monthlyHistory). */
   history: readonly MonthHistory[];
   /** Today's burn (the snapshot's): the base when the history has no whole month yet. */
-  burn?: { grossBurnCents: Cents; netBurnCents: Cents };
+  burn?: { grossBurnCents: Cents; netBurnCents: Cents; burnPeriod?: { from: IsoDate } | null; burnMonths?: number };
 }
 
 export interface ScenarioPoint {
@@ -98,8 +98,22 @@ function firstWholeMonth(history: readonly MonthHistory[]): number {
   return first === -1 ? history.length : first === 0 ? 0 : first + 1;
 }
 
-export function estimateRevenueGrowthDetail(history: readonly MonthHistory[]): GrowthEstimate {
-  const start = Math.max(firstWholeMonth(history), history.length - GROWTH_WINDOW_MONTHS);
+/**
+ * The first whole month of data. When the data is shorter than the headline's averaging window,
+ * that window starts at it, and the headline's rule wins (a first month starting on the 1st counts;
+ * the start is dated from any transaction, a transfer included). Otherwise it's read from the history.
+ */
+function wholeFrom(history: readonly MonthHistory[], burn: ScenarioInput["burn"]): number {
+  const guess = firstWholeMonth(history);
+  if (!burn?.burnPeriod || !burn.burnMonths) return guess;
+  const from = burn.burnPeriod.from.slice(0, 7);
+  const i = history.findIndex((m) => m.month >= from);
+  const headline = i === -1 ? history.length : i;
+  return burn.burnMonths < BASE_MONTHS ? headline : Math.min(guess, headline);
+}
+
+export function estimateRevenueGrowthDetail(history: readonly MonthHistory[], firstWhole = firstWholeMonth(history)): GrowthEstimate {
+  const start = Math.max(firstWhole, history.length - GROWTH_WINDOW_MONTHS);
   const window = history.slice(start);
   const lastGap = window.findLastIndex((m) => m.inflowCents <= 0);
   const run = window.slice(lastGap + 1);
@@ -121,6 +135,9 @@ export function estimateRevenueGrowthDetail(history: readonly MonthHistory[]): G
 
 export const estimateRevenueGrowth = (history: readonly MonthHistory[]) => estimateRevenueGrowthDetail(history).rate;
 
+/** The measured growth a plan starts from, over the same months projectScenario reads (see wholeFrom). */
+export const measuredGrowth = (history: readonly MonthHistory[], burn?: ScenarioInput["burn"]) => estimateRevenueGrowthDetail(history, wholeFrom(history, burn));
+
 interface Resolved {
   asOf: IsoDate;
   cashCents: Cents;
@@ -132,7 +149,8 @@ interface Resolved {
 
 function simulate(r: Resolved): Pick<ScenarioResult, "points" | "runOutMonths" | "breakEvenMonth"> {
   const { options: o } = r;
-  const start = monthKey(r.asOf);
+  // Month 0 is the first month not yet complete, as the history reads it (data through the 31st completes that month).
+  const start = openMonth(r.asOf);
   const points: ScenarioPoint[] = [];
   let cash = r.cashCents;
   // Start of the current profitable run; reset whenever a month loses money.
@@ -145,10 +163,12 @@ function simulate(r: Resolved): Pick<ScenarioResult, "points" | "runOutMonths" |
     const net = revenue - expenses + raise;
     if (revenue < expenses) profitableSince = null;
     else profitableSince ??= m;
-    if (cash + net < 0) {
+    // Only a losing month runs cash out: cash already below zero in a month that makes money is
+    // climbing back (as the dashboard calls it cash-flow positive), not running out.
+    if (cash + net < 0 && net < 0) {
       points.push({ monthOffset: m, month: shiftMonth(start, m), revenueCents: revenue, expensesCents: expenses, cashCents: 0 });
-      // Fraction of this month the starting cash covers.
-      return { points, runOutMonths: m + cash / -net, breakEvenMonth: null };
+      // Fraction of this month the starting cash covers; none if it's already below zero (runway 0, as the dashboard's).
+      return { points, runOutMonths: m + Math.max(0, cash) / -net, breakEvenMonth: null };
     }
     cash += net;
     points.push({ monthOffset: m, month: shiftMonth(start, m), revenueCents: revenue, expensesCents: expenses, cashCents: cash });
@@ -175,11 +195,12 @@ function growthNeeded(r: Resolved): number | null {
 
 export function projectScenario(input: ScenarioInput): ScenarioResult {
   const options = scenarioOptions.parse(input);
-  const whole = input.history.slice(Math.max(firstWholeMonth(input.history), input.history.length - BASE_MONTHS));
+  const firstWhole = wholeFrom(input.history, input.burn);
+  const whole = input.history.slice(Math.max(firstWhole, input.history.length - BASE_MONTHS));
   // No whole month: today's burn when given (below), else the partial months, never "no spend".
   const recent = whole.length || input.burn ? whole : input.history.slice(-BASE_MONTHS);
   const avg = (f: (m: MonthHistory) => number) => (recent.length ? Math.round(recent.reduce((s, m) => s + f(m), 0) / recent.length) : 0);
-  const basis = options.revenueGrowth === undefined ? estimateRevenueGrowthDetail(input.history) : null;
+  const basis = options.revenueGrowth === undefined ? estimateRevenueGrowthDetail(input.history, firstWhole) : null;
   const resolved: Resolved = {
     asOf: input.asOf,
     cashCents: input.cashCents,

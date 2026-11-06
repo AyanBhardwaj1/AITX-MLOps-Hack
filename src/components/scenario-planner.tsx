@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { MonthHistory } from "@/lib/finance/history";
-import { estimateRevenueGrowthDetail, projectScenario } from "@/lib/finance/scenario";
+import { measuredGrowth, projectScenario, type ScenarioInput } from "@/lib/finance/scenario";
 import { formatCompactDollars, formatDate, formatMonth } from "@/lib/format";
 import { formatDollars } from "@/lib/money";
 import { DEFAULT_SCENARIO, MAX_HIRES, MAX_START_MONTH, growthRateFor, normalizeScenario, SCENARIO_KEYS, scenarioParams, type ScenarioPlan } from "@/lib/finance/scenario-link";
@@ -30,12 +30,12 @@ export function ScenarioPlanner({
   asOf: string;
   wasteSavingsCents: number;
   /** Today's burn: the base when there's no whole month of history yet. */
-  burn?: { grossBurnCents: number; netBurnCents: number };
+  burn?: ScenarioInput["burn"];
   /** A plan from the address (a bookmarked or shared link). */
   initial?: ScenarioPlan;
 }) {
   const id = useId();
-  const estimate = useMemo(() => estimateRevenueGrowthDetail(history), [history]);
+  const estimate = useMemo(() => measuredGrowth(history, burn), [history, burn]);
   // null = use the measured rate unrounded, so the verdict matches the digest and Copilot exactly.
   const [growthPct, setGrowthPct] = useState<string | null>(initial.growthPct);
   const [hires, setHires] = useState(initial.hires);

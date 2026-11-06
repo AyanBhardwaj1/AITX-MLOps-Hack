@@ -428,7 +428,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           cashCents={data.snapshot.cashCents}
           asOf={data.asOf}
           wasteSavingsCents={allSim.monthlySavingsCents}
-          burn={{ grossBurnCents: data.snapshot.grossBurnCents, netBurnCents: data.snapshot.netBurnCents }}
+          burn={{ grossBurnCents: data.snapshot.grossBurnCents, netBurnCents: data.snapshot.netBurnCents, burnPeriod: data.snapshot.burnPeriod, burnMonths: data.snapshot.burnMonths }}
           initial={data.scenario}
         />
 

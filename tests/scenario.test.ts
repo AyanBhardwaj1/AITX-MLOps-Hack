@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { MonthHistory } from "@/lib/finance/history";
+import { monthlyHistory, type MonthHistory } from "@/lib/finance/history";
+import { computeSnapshot } from "@/lib/finance/runway";
+import type { EnrichedTxn } from "@/lib/types";
+import { resolveVendor } from "@/lib/vendors/normalize";
 import { estimateRevenueGrowth, estimateRevenueGrowthDetail, projectScenario, type ScenarioInput } from "@/lib/finance/scenario";
 
 const month = (i: number) => `2026-${String(i + 1).padStart(2, "0")}`;
@@ -155,5 +158,50 @@ describe("projectScenario", () => {
   it("rejects nonsense inputs", () => {
     expect(() => projectScenario(base({ hires: [{ monthlyCostCents: -1, startMonth: 0, count: 1 }] }))).toThrow();
     expect(() => projectScenario(base({ raise: { amountCents: 1, month: -2 } }))).toThrow();
+  });
+});
+
+describe("the plan starts from the dashboard's own numbers", () => {
+  const txn = (id: string, postedAt: string, amountCents: number, description: string, type = "ach") =>
+    ({ id, accountId: "a", postedAt, amountCents, description, type, status: "posted", vendor: resolveVendor(description) }) as EnrichedTxn;
+  const plan = (txns: EnrichedTxn[], asOf: string, cashCents: number, revenueGrowth?: number) => {
+    const snap = computeSnapshot({ cashCents, txns, asOf });
+    return { snap, s: projectScenario({ asOf, cashCents, history: monthlyHistory(txns, asOf, 12), burn: snap, revenueGrowth }) };
+  };
+
+  it("counts a first month that starts on the 1st, as the headline burn does", () => {
+    const txns = [txn("r", "2026-08-01", -40_000_00, "BRAZOS PROPERTIES RENT"), ...["08", "09", "10"].map((m) => txn(`p${m}`, `2026-${m}-15`, -60_000_00, "GUSTO PAYROLL"))];
+    const { snap, s } = plan(txns, "2026-11-05", 1_000_000_00, 0);
+    expect(s.baseExpensesCents).toBe(snap.grossBurnCents);
+    expect(s.zeroCashDate).toBe(snap.zeroCashDate);
+  });
+
+  it("takes where the data starts from any transaction, a transfer included, as the headline does", () => {
+    const txns = [
+      txn("t", "2026-07-20", 500_000_00, "TRANSFER FROM SAVINGS", "transfer"),
+      txn("r", "2026-08-01", -40_000_00, "BRAZOS PROPERTIES RENT"),
+      ...["08", "09", "10"].map((m) => txn(`p${m}`, `2026-${m}-15`, -60_000_00, "GUSTO PAYROLL")),
+    ];
+    const { snap, s } = plan(txns, "2026-11-05", 1_000_000_00, 0);
+    expect(s.baseExpensesCents).toBe(snap.grossBurnCents);
+  });
+
+  it("with cash already below zero, runs out today, or never if the company makes money", () => {
+    const pay = ["07", "08", "09"].map((m) => txn(`p${m}`, `2026-${m}-15`, -10_000_00, "GUSTO PAYROLL"));
+    const burning = plan(pay, "2026-10-20", -50_000_00, 0);
+    expect(burning.snap.runwayMonths).toBe(0);
+    expect(burning.s.runOutMonths).toBe(0);
+    expect(burning.s.zeroCashDate).toBe("2026-10-20");
+    const earning = plan([...pay, ...["07", "08", "09"].map((m) => txn(`s${m}`, `2026-${m}-20`, 12_000_00, "STRIPE PAYOUT"))], "2026-10-20", -50_000_00, 0);
+    expect(earning.snap.runwayMonths).toBe(Number.POSITIVE_INFINITY);
+    expect(earning.s.runOutMonths).toBeNull();
+    expect(earning.s.defaultAlive).toBe(true);
+  });
+
+  it("labels month 0 as the first month not yet complete, as the history does", () => {
+    const txns = ["08", "09", "10"].map((m) => txn(`p${m}`, `2026-${m}-15`, -10_000_00, "GUSTO PAYROLL"));
+    // Data through Oct 31: October is complete, so the plan's first month is November.
+    const { s } = plan(txns, "2026-10-31", 100_000_00, 0);
+    expect(s.points[0]!.month).toBe("2026-11");
   });
 });
