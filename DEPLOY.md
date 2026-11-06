@@ -66,7 +66,8 @@ In **Supabase**:
 1. **Authentication → URL Configuration:** set **Site URL** to your app (e.g. `https://runway-for-rho.vercel.app`) and add `https://runway-for-rho.vercel.app/auth/callback` under **Redirect URLs** (add `http://localhost:3000/auth/callback` too for local development).
 2. **Authentication → Sign In / Providers → Email:** keep Email enabled, **Allow new users to sign up** on, and **Confirm email** on. Runway only trusts an email Supabase has confirmed (team invites and invite-only sign-up key on it), so with Confirm email off, people signing up with a password would get no company at all. Runway decides who may create an account (`SIGNUPS`), and checks it again on the server when a company is created, so a sign-up made directly against Supabase doesn't get a company.
 3. **Authentication → Emails → SMTP Settings:** add your own SMTP sender before real users arrive. Supabase's built-in sender is for testing and allows only a few emails an hour.
-4. Run the migrations (`npm run db:migrate`) so the `invited_at` column and the `csv` connection type exist.
+4. Run the migrations (`npm run db:migrate`).
+5. Check it: with the Supabase and database values in `.env.local`, `npm run verify:live` reads your project's public Auth settings and fails if email sign-in or new sign-ups are off, or if "Confirm email" is off (which would let someone claim an invited address with a password sign-up). It also checks every migration is applied. The redirect URL can't be checked from outside; sign in once to confirm it.
 
 In **Vercel**: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (and `SIGNUPS` if you want `open`), then **Redeploy**: `NEXT_PUBLIC_*` values are built into the app, so a redeploy is required. The `service_role` key is never needed and must not be added.
 

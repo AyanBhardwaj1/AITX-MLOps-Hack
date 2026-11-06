@@ -10,6 +10,7 @@ import { generateText, Output } from "ai";
 import { Pool } from "pg";
 import { z } from "zod";
 import { assertSafeToServe } from "../src/lib/access";
+import { authSettingsProblems } from "../src/lib/auth/settings-check";
 import { jiraDedupeSearch } from "../src/lib/jira";
 import { analyze } from "../src/lib/pipeline";
 import { RHO_SANDBOX_URL, createRhoClient } from "../src/lib/rho/client";
@@ -83,10 +84,24 @@ await check("Database: migrations applied and read/write works", async () => {
   const pool = new Pool({ connectionString: url, max: 2, ssl: local ? undefined : ca ? { ca, rejectUnauthorized: true } : true });
   const scope = `verify_live_${Date.now()}`;
   try {
-    const { rows } = await pool.query<{ ok: boolean }>(
-      `select exists (select 1 from information_schema.columns where table_name = 'agent_runs' and column_name = 'findings_count') as ok`,
+    // One column from each migration that added something the app reads, newest last.
+    const required: [string, string][] = [
+      ["agent_runs", "findings_count"],
+      ["waitlist", "invited_at"],
+      ["memberships", "email"],
+      ["company_invites", "email"],
+      ["entity_events", "actor_email"],
+      ["rate_limits", "key_hash"],
+      ["company_integrations", "slack_webhook_url"],
+      ["company_integrations", "last_digest_at"],
+    ];
+    const { rows } = await pool.query<{ table_name: string; column_name: string }>(
+      `select table_name, column_name from information_schema.columns where table_schema = 'public' and (table_name, column_name) in (select * from unnest($1::text[], $2::text[]))`,
+      [required.map((r) => r[0]), required.map((r) => r[1])],
     );
-    if (!rows[0]?.ok) throw new Error("Tables are missing or outdated: apply supabase/migrations (see DEPLOY.md)");
+    const found = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
+    const missing = required.map(([t, c]) => `${t}.${c}`).filter((k) => !found.has(k));
+    if (missing.length) throw new Error(`Missing ${missing.join(", ")}: run npm run db:migrate (see DEPLOY.md)`);
     const store = createPostgresStore(pool, scope);
     const [draft] = await store.saveDrafts([
       { fingerprint: "verify", findingFingerprint: null, kind: "jira_ticket", title: "verify", body: "verify", createdBy: "autopilot" },
@@ -97,6 +112,19 @@ await check("Database: migrations applied and read/write works", async () => {
     await pool.query(`delete from public.organizations where slug = $1`, [scope]).catch(() => undefined);
     await pool.end();
   }
+});
+
+await check("Supabase Auth: settings for invite-only email sign-in", async () => {
+  const url = env("NEXT_PUBLIC_SUPABASE_URL");
+  const anon = env("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!url || !anon) return { skip: "NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY not set (accounts off)" };
+  if (!env("DATABASE_URL")) throw new Error("Accounts need DATABASE_URL too: companies, uploads and teams are stored there");
+  const res = await fetch(new URL("/auth/v1/settings", url), { headers: { apikey: anon }, signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`Supabase answered ${res.status}: check NEXT_PUBLIC_SUPABASE_URL and the anon key`);
+  const problems = authSettingsProblems(await res.json());
+  if (problems.length) throw new Error(problems.join(" "));
+  const signups = env("SIGNUPS") ?? "invite";
+  return `email sign-in on, sign-ups allowed, email confirmation required; SIGNUPS=${signups}. Also set the redirect URL <site>/auth/callback (not checkable from here)`;
 });
 
 await check("Jira: credentials, project and duplicate check", async () => {

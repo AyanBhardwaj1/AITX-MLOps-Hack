@@ -44,6 +44,8 @@ createServer(async (req, res) => {
     return send(200, { link: `${p.redirectTo}${sep}code=${p.code}` });
   }
   if (path === "/__log") return send(200, log);
+  // The public settings Runway's verify:live checks (the values DEPLOY.md asks for).
+  if (req.method === "GET" && path === "/settings") return send(200, { external: { email: true }, disable_signup: false, mailer_autoconfirm: false });
 
   if (req.method === "POST" && path === "/otp") {
     const email = String(body.email).toLowerCase();
