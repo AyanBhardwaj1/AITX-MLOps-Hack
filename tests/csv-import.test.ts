@@ -177,3 +177,12 @@ describe("quotes after a space, Excel text and a last line cut short", () => {
     expect(r.skipped).toEqual([3]);
   });
 });
+
+describe("a stray quote after a space", () => {
+  it("is text unless it closes on the same line before a comma, so no row silently vanishes", () => {
+    const r = importCsv('Date,Description,Amount\n2024-01-05, " ,-4.00\n2024-01-06,AWS,-1.00\n2024-01-07,"GUSTO",-2.00\n2024-01-08,STRIPE,5.00\n', { accountId: "a" });
+    expect(r.transactions.length + r.skipped.length).toBe(4);
+    expect(r.transactions.find((t) => t.counterparty_name === "AWS")).toBeDefined();
+    expect(parseCsv('a,b\n1, "x, y" ,2\n')).toEqual([["a", "b"], ["1", "x, y ", "2"]]);
+  });
+});

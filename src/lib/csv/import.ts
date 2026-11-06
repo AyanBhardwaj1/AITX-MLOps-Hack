@@ -64,6 +64,23 @@ export function parseCsv(text: string): string[][] {
   return parseCsvLines(text).rows;
 }
 
+/** Whether the quote at `at` closes before the line ends and is followed only by spaces, then a comma or the line's end. */
+function closesOnLine(src: string, at: number): boolean {
+  for (let j = at + 1; j < src.length; j++) {
+    const c = src[j];
+    if (c === "\n" || c === "\r") return false;
+    if (c !== '"') continue;
+    if (src[j + 1] === '"') {
+      j++;
+      continue;
+    }
+    let k = j + 1;
+    while (src[k] === " " || src[k] === "\t") k++;
+    return k >= src.length || src[k] === "," || src[k] === "\n" || src[k] === "\r";
+  }
+  return false;
+}
+
 /** parseCsv, plus the line in the file each row starts on (blank lines and CRLF counted). */
 export function parseCsvLines(text: string): { rows: string[][]; lines: number[] } {
   const rows: string[][] = [];
@@ -96,8 +113,9 @@ export function parseCsvLines(text: string): { rows: string[][]; lines: number[]
       } else if (ch === '"') quoted = false;
       else field += crlf ? "\r\n" : ch; // kept as written: it's part of the row's identity
       if (newline) line++;
-    } else if (ch === '"' && (field.trim() === "" || field === "=")) {
-      // A field opens quoted at its start, after any spaces ("a, \"b, c\"") or Excel's = (="0123").
+    } else if (ch === '"' && (field === "" || ((field.trim() === "" || field === "=") && closesOnLine(src, i)))) {
+      // A field opens quoted at its start; after spaces ("a, \"b, c\"") or Excel's = (="0123") only
+      // when it closes on the same line before a comma, so a stray quote there stays text.
       if (field !== "=") field = "";
       quoted = true;
       openedOn = line;
@@ -111,7 +129,7 @@ export function parseCsvLines(text: string): { rows: string[][]; lines: number[]
     } else field += ch;
   }
   if (quoted) {
-    // On the last line it only spoils that row: keep the quote as text, so the row is skipped and named.
+    // On the last line it only spoils that row: the quote is kept as text (the row is usually skipped and named).
     if (/[\r\n]/.test(field.trimEnd())) throw new Error(`The quote (") that opens a field on line ${openedOn} never closes, so the rest of the file can't be read. Fix that row and try again.`);
     field = `"${field.trimEnd()}`;
   }
