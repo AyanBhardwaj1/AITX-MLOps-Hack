@@ -23,7 +23,8 @@ export function createMemoryStore(): Store {
   const uploads = new Map<string, RhoTransaction>();
   let uploadCash: number | null = null;
   let cashEnteredAt = new Date(0).toISOString();
-  let rowsAddedAt = new Date(0).toISOString();
+  /** When each uploaded row arrived (ISO), so deleting an account leaves the others' time. */
+  const arrivedAt = new Map<string, string>();
   let slackWebhook: string | null = null;
   let lastDigestAt: string | null = null;
   let runwayAlertMonths: number | null = null;
@@ -151,7 +152,8 @@ export function createMemoryStore(): Store {
       const fresh = [...new Map(rows.filter((r) => !uploads.has(r.id)).map((r) => [r.id, r])).values()];
       if (uploads.size + fresh.length > maxTotal) return "limit";
       for (const r of fresh) uploads.set(r.id, structuredClone(r));
-      if (fresh.length) rowsAddedAt = new Date().toISOString();
+      const now = new Date().toISOString();
+      for (const r of fresh) arrivedAt.set(r.id, now);
       if (cashCents !== null) {
         uploadCash = cashCents;
         cashEnteredAt = new Date().toISOString();
@@ -168,6 +170,7 @@ export function createMemoryStore(): Store {
     },
     async loadUploads() {
       if (uploads.size === 0 || uploadCash === null) return null;
+      const rowsAddedAt = [...uploads.keys()].reduce((max, id) => ((arrivedAt.get(id) ?? "") > max ? arrivedAt.get(id)! : max), new Date(0).toISOString());
       return { cashCents: uploadCash, cashEnteredAt, rowsAddedAt, rows: [...uploads.values()].map((r) => structuredClone(r)) };
     },
     async listBudgets() {

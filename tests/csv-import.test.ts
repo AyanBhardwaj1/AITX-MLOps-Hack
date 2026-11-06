@@ -140,6 +140,7 @@ describe("amounts some banks write differently", () => {
     expect(parseAmountCents("12.")).toBe(1_200);
     expect(parseAmountCents("−12.00")).toBe(-1_200);
     expect(parseAmountCents("(.50)")).toBe(-50);
+    expect(parseAmountCents("1,234.")).toBe(123_400);
     // Still refused: nothing to read, or two points.
     for (const bad of [".", "-.", "1..2", "1.2.3"]) expect(parseAmountCents(bad)).toBeNull();
   });

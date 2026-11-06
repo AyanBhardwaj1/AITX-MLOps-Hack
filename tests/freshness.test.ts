@@ -75,3 +75,17 @@ describe("freshness after a scheduled row's date arrives", () => {
     expect(dataFreshness("2026-11-06", new Date("2026-11-19T01:00:00Z"), "2026-11-05T23:30:00Z")).toEqual({ daysOld: 13, stale: false, through: "2026-11-06" });
   });
 });
+
+describe("freshness stays put when a scheduled date arrives", () => {
+  it("is judged to the latest real row on or before the upload, before and after the scheduled date", () => {
+    // Uploaded Oct 3 (10am Central); real rows end Sep 30; one payment scheduled for Oct 20.
+    const dates = ["2026-09-15", "2026-09-30"];
+    const upload = "2026-10-03T15:00:00Z";
+    expect(dataFreshness("2026-09-30", new Date("2026-10-14T13:00:00Z"), upload, dates)).toEqual({ daysOld: 14, stale: true, through: "2026-09-30" });
+    expect(dataFreshness("2026-10-20", new Date("2026-10-21T13:00:00Z"), upload, [...dates, "2026-10-20"])).toEqual({ daysOld: 21, stale: true, through: "2026-09-30" });
+  });
+  it("never turns stale data fresh when the scheduled date arrives", () => {
+    const f = dataFreshness("2026-10-10", new Date("2026-10-10T13:00:00Z"), "2026-10-03T15:00:00Z", ["2026-09-15", "2026-10-10"]);
+    expect(f).toMatchObject({ stale: true, through: "2026-09-15" });
+  });
+});

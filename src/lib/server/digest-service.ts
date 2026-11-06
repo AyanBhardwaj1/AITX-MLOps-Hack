@@ -39,7 +39,7 @@ async function digestFrom({ store, dataset, analysis, company, link, uploaded, d
   const savings = await savingsFromStore(store, dataset, analysis);
   const input = digestInputFromAnalysis(analysis, { company, exclude, appUrl: link, savings });
   // Uploaded data goes stale between uploads; say so before anyone trusts the numbers.
-  const freshness = uploaded ? dataFreshness(analysis.asOf, new Date(), dataset.rowsAddedAt) : undefined;
+  const freshness = uploaded ? dataFreshness(analysis.asOf, new Date(), dataset.rowsAddedAt, analysis.txns.map((t) => t.postedAt)) : undefined;
   let list: readonly Budget[] = demo ? DEMO_BUDGETS : [];
   if (uploaded) {
     try {

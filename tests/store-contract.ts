@@ -259,8 +259,11 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       await store.saveUploads(null, [row("r1", "2026-08-01")], 10);
       expect(await at()).toBe(first);
       // A fresh export uploaded without touching cash moves it.
-      await store.saveUploads(null, [row("r2", "2026-09-01")], 10);
+      await store.saveUploads(null, [{ ...row("r2", "2026-09-01"), account_id: "card", account_name: "card" }], 10);
       expect(await at()).toBeGreaterThan(first);
+      // Deleting that account's rows leaves the time the remaining rows arrived.
+      await store.deleteUploadedAccount("card");
+      expect(await at()).toBe(first);
     });
 
     it("keeps one monthly budget per category, reporting what each change replaced", async () => {

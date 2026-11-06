@@ -34,9 +34,9 @@ export async function sendStaleNudge({
 }): Promise<StaleNudgeResult> {
   const url = await store.getSlackWebhook();
   if (!url) return { status: "no_slack" };
-  const { asOf: latest } = await load();
+  const { asOf: latest, txns } = await load();
   // One nudge per export: keyed by the date the data runs to, which a scheduled row's date arriving doesn't move.
-  const { daysOld, stale, through: asOf } = dataFreshness(latest, now, await rowsAddedAt?.());
+  const { daysOld, stale, through: asOf } = dataFreshness(latest, now, await rowsAddedAt?.(), txns?.map((t) => t.postedAt));
   if (!stale || !(await store.claimStaleNudge(asOf))) return { status: "none" };
   const text = [
     `*Runway for ${slackEscape(company)} needs fresh numbers*`,

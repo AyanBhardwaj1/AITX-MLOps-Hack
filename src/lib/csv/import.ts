@@ -144,7 +144,7 @@ export function parseAmountCents(raw: string): number | null {
     s = s.slice(0, -1);
   }
   // Commas only as thousands separators: "12,50" (a decimal comma) would otherwise read as 1,250.
-  if (s.includes(",") && !/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(s)) return null;
+  if (s.includes(",") && !/^\d{1,3}(,\d{3})+(\.\d{0,2})?$/.test(s)) return null;
   s = s.replaceAll(",", "");
   // Eleven digits of dollars at most (under $100 billion, as cash is capped), so every amount and
   // any month's sum of them stays exact in cents.

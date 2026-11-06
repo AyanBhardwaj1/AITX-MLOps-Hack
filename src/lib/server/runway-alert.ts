@@ -50,7 +50,7 @@ export async function sendRunwayAlert({
   if (!url) return { status: "no_slack" };
   const analysis = await load();
   // Whole days, by the same rule as the upload reminder, so the two never both post.
-  if (dataFreshness(analysis.asOf, now, await rowsAddedAt?.()).stale) return { status: "none" };
+  if (dataFreshness(analysis.asOf, now, await rowsAddedAt?.(), analysis.txns?.map((t) => t.postedAt)).stale) return { status: "none" };
   const entered = await cashEnteredAt?.();
   if (entered !== undefined) {
     const cash = cashFreshness(entered, now);

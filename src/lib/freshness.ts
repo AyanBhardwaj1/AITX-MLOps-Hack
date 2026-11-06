@@ -11,12 +11,22 @@ const LATEST_OFFSET_MS = 14 * 3_600_000;
  * How old uploaded data is. `uploadedAt` (an ISO timestamp, when an upload last added rows): rows
  * dated after that day were scheduled payments, so once their date arrives they don't make old data
  * fresh. The upload's day is the latest it could be anywhere (UTC+14), so a founder east of UTC
- * keeps their own today. `through` is the date the data is judged current to.
+ * keeps their own today. `through` is the date the data is judged current to: the latest row
+ * (`rowDates`) dated on or before that day, so it names a real transaction and stays put when a
+ * scheduled date arrives (one nudge per export).
  */
-export function dataFreshness(latestDate: string, now: Date, uploadedAt?: string): { daysOld: number; stale: boolean; through: string } {
+export function dataFreshness(latestDate: string, now: Date, uploadedAt?: string, rowDates?: Iterable<string>): { daysOld: number; stale: boolean; through: string } {
   const uploaded = uploadedAt === undefined ? Number.NaN : Date.parse(uploadedAt);
   const uploadedOn = Number.isNaN(uploaded) ? undefined : new Date(uploaded + LATEST_OFFSET_MS).toISOString().slice(0, 10);
-  const through = uploadedOn !== undefined && uploadedOn < latestDate ? uploadedOn : latestDate;
+  let through = latestDate;
+  if (uploadedOn !== undefined && uploadedOn < latestDate) {
+    let latestBefore: string | undefined;
+    for (const d of rowDates ?? []) {
+      const day = d.slice(0, 10);
+      if (day <= uploadedOn && (latestBefore === undefined || day > latestBefore)) latestBefore = day;
+    }
+    through = latestBefore ?? uploadedOn;
+  }
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const daysOld = Math.max(0, Math.floor((today - Date.parse(`${through}T00:00:00Z`)) / DAY_MS));
   return { daysOld, stale: daysOld >= STALE_AFTER_DAYS, through };

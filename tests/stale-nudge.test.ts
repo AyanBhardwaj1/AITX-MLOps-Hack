@@ -40,6 +40,17 @@ describe("upload reminder in Slack", () => {
     expect((post.mock.calls[0] as unknown as [string, string])[1]).toContain("Your transactions end on Oct 1, 2026, 37 days ago");
   });
 
+  it("nudges once per export, even after a scheduled payment's date arrives", async () => {
+    const store = await connected();
+    const post = vi.fn(async () => undefined);
+    const withRows = (asOf: string, dates: string[]) => ({ asOf, txns: dates.map((postedAt) => ({ postedAt })) }) as unknown as Analysis;
+    const send = (now: string, asOf: string, dates: string[]) =>
+      sendStaleNudge({ store, load: async () => withRows(asOf, dates), rowsAddedAt: async () => "2026-10-03T15:00:00Z", company: "Acme", now: new Date(now), post });
+    expect(await send("2026-10-14T13:00:00Z", "2026-09-30", ["2026-09-30"])).toEqual({ status: "sent", daysOld: 14 });
+    expect(await send("2026-10-21T13:00:00Z", "2026-10-20", ["2026-09-30", "2026-10-20"])).toEqual({ status: "none" });
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
   it("reads no data without a channel, and tries again when Slack refuses", async () => {
     const load = vi.fn(async () => analysisTo("2026-10-01"));
     expect(await sendStaleNudge({ store: createMemoryStore(), load, company: "Acme", now: NOW })).toEqual({ status: "no_slack" });
