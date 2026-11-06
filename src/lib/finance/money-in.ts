@@ -1,4 +1,4 @@
-import type { Cents, EnrichedTxn } from "../types";
+import { isCatalogVendor, type Cents, type EnrichedTxn } from "../types";
 import { countsTowardBurn, inBurnPeriod, type Snapshot } from "./runway";
 
 /**
@@ -35,7 +35,7 @@ const NOT_A_CUSTOMER =
   /^(?:interest|dividends?)$|\b(?:interest (?:paid|payment|earned|credit|income)|dividends? (?:paid|payment|income)|transfer from|deposit (?:return|refund)|loan (?:proceeds|disbursement|advance)|irs|us treasury|treas 310|tax refund)\b/i;
 
 /** The catalog's revenue entries are payment processors' payouts. */
-const isProcessor = (t: EnrichedTxn) => t.vendor.category === "revenue" && t.vendor.source === "catalog";
+const isProcessor = (t: EnrichedTxn) => t.vendor.category === "revenue" && isCatalogVendor(t.vendor);
 
 export function moneyIn(txns: readonly EnrichedTxn[], snapshot: Snapshot): MoneyIn | null {
   const period = snapshot.burnPeriod;

@@ -1,4 +1,4 @@
-import type { Category, Cents, EnrichedTxn, IsoDate } from "../types";
+import { isCatalogVendor, type Category, type Cents, type EnrichedTxn, type IsoDate } from "../types";
 
 /**
  * 1099 prep: who the company paid by bank (ACH, wire, check) in a calendar year that may need a
@@ -74,7 +74,7 @@ export function form1099Year(asOf: IsoDate): number {
 function formFor(t: EnrichedTxn): Form1099 | null {
   const form = FORMS[t.vendor.category];
   if (!form) return null;
-  if (t.vendor.source === "catalog" && t.vendor.category !== "rent" && !CATALOG_REPORTABLE.has(t.vendor.key)) return null;
+  if (isCatalogVendor(t.vendor) && t.vendor.category !== "rent" && !CATALOG_REPORTABLE.has(t.vendor.key)) return null;
   return form;
 }
 
@@ -89,7 +89,7 @@ export function prep1099(txns: readonly EnrichedTxn[], year: number): Prep1099 |
     if (t.status !== "posted" || !t.postedAt.startsWith(prefix)) continue;
     if (!BANK_PAID.has(t.type)) continue;
     // Known spend Runway names itself (card payoffs standing in for card spend) isn't a payee.
-    if (t.vendor.category === "other" && t.vendor.source !== "catalog") {
+    if (t.vendor.category === "other" && !isCatalogVendor(t.vendor)) {
       const u = unplaced.get(t.vendor.key) ?? { key: t.vendor.key, name: t.vendor.name, paidCents: 0 };
       u.paidCents -= t.amountCents;
       unplaced.set(t.vendor.key, u);

@@ -128,6 +128,12 @@ demo, the free grader and the public site work exactly as before.
   link previews as the Runway Grader.
 - **Accessibility.** The browser tests run axe on the landing page, grader, privacy page and demo
   and fail on any serious issue; the site logo link's name now matches its text.
+- **Category fixes stay where they belong.** A demo visitor's fixes change only their own view:
+  exporting findings or loading the dashboard no longer writes their version into the shared demo
+  store, and Copilot answers with the same fixed numbers the dashboard shows. A fix changes a
+  vendor's category, not who it is: a known company stays off the 1099 list and Stripe's payouts
+  stay "many customers". The AI vendor labeller can't call anything a transfer or revenue, which
+  would take its spend out of burn.
 - **Bank files read as written.** A quote inside a field (DELL 27" MONITOR) no longer swallows
   every row after it; a quote that never closes is refused with its line. ".50", "12." and a
   Unicode minus read as amounts, rows over $100 billion are refused, and skipped rows are named by

@@ -114,8 +114,11 @@ export function CorrectionEditor({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    const nextJobOrNull = JOB_CATEGORIES.has(nextCategory) && nextJob ? nextJob : null;
+    // Nothing changed: no fix to save (an unchanged one would only pin the vendor's category).
+    if (nextCategory === category && nextJobOrNull === (job ?? null)) return close();
     setBusy(true);
-    const problem = await send({ mode, action: "set", vendorKey, category: nextCategory, job: JOB_CATEGORIES.has(nextCategory) && nextJob ? nextJob : null });
+    const problem = await send({ mode, action: "set", vendorKey, category: nextCategory, job: nextJobOrNull });
     setBusy(false);
     if (problem) return setError(problem);
     announce(`Saved: ${vendorName} is now ${categoryName(nextCategory)}. The numbers are updating.`);

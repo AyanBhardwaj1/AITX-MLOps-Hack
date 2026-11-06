@@ -53,7 +53,12 @@ export interface VendorInfo {
   job: string | null;
   /** "user": a person corrected it, which overrides every other source. */
   source: "catalog" | "llm" | "fallback" | "user";
+  /** A known (catalog) vendor a person has recategorised: still that company (for the 1099 and processor rules). */
+  catalog?: true;
 }
+
+/** Whether a vendor is a known company from the catalog, whatever category a person gave it. */
+export const isCatalogVendor = (v: Pick<VendorInfo, "source" | "catalog">) => v.source === "catalog" || v.catalog === true;
 
 export interface EnrichedTxn extends Txn {
   vendor: VendorInfo;

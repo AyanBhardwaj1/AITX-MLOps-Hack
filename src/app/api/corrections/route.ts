@@ -29,6 +29,7 @@ function demoSink(initial: VendorCorrection[]) {
   const fixes = new Map(initial.map((c) => [c.vendorKey, c]));
   let changed = false;
   const sink: CorrectionSink = {
+    maxCorrections: MAX_DEMO_CORRECTIONS,
     async setCorrection(c, max) {
       if (!fixes.has(c.vendorKey) && fixes.size >= Math.min(max, MAX_DEMO_CORRECTIONS)) return "limit";
       fixes.set(c.vendorKey, c);

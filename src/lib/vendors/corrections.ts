@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CATEGORIES, type Category, type EnrichedTxn } from "../types";
+import { CATEGORIES, isCatalogVendor, type Category, type EnrichedTxn } from "../types";
 import { KNOWN_JOBS } from "./catalog";
 
 /**
@@ -30,7 +30,10 @@ export const correctionInput = fields.refine(jobFitsCategory, { message: "Only s
 export function applyCorrections(txns: readonly EnrichedTxn[], corrections: ReadonlyMap<string, VendorCorrection>): EnrichedTxn[] {
   return txns.map((t) => {
     const fix = corrections.get(t.vendor.key);
-    return fix ? { ...t, vendor: { ...t.vendor, category: fix.category, job: fix.job, source: "user" as const } } : t;
+    if (!fix) return t;
+    // The fix changes the category, not who the vendor is: a known company stays one.
+    const catalog = isCatalogVendor(t.vendor) ? { catalog: true as const } : {};
+    return { ...t, vendor: { ...t.vendor, category: fix.category, job: fix.job, source: "user" as const, ...catalog } };
   });
 }
 

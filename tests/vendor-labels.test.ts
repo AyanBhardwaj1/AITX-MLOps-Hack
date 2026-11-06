@@ -90,3 +90,18 @@ describe("collectLabels", () => {
     expect(collectLabels([{ vendorKey: "a", descriptor: "a" }], "not json").size).toBe(0);
   });
 });
+
+describe("what the model may not decide", () => {
+  it("never labels a vendor a transfer or revenue, which would take its spend out of burn", async () => {
+    const { collectLabels } = await import("@/lib/enrich/vendor-labels");
+    const asked = [{ vendorKey: "northwind_payroll", descriptor: "NORTHWIND PAYROLL SVCS" }, { vendorKey: "acme_inc", descriptor: "ACME INC" }];
+    const labels = collectLabels(asked, {
+      labels: [
+        { vendorKey: "northwind_payroll", name: "Northwind Payroll", category: "transfer", job: null, confidence: 0.9 },
+        { vendorKey: "acme_inc", name: "Acme", category: "revenue", job: null, confidence: 0.9 },
+      ],
+    });
+    for (const v of labels.values()) expect(["transfer", "revenue"]).not.toContain(v.category);
+    expect(llmLabelSchema.safeParse({ vendorKey: "x", name: "X", category: "transfer", job: null, confidence: 0.9 }).success).toBe(false);
+  });
+});

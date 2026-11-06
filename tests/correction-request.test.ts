@@ -55,3 +55,14 @@ describe("handleCorrection", () => {
     expect(edit.status).toBe(200);
   });
 });
+
+describe("the limit a sink names", () => {
+  it("says the sink's own cap when it has a lower one (the demo's 30)", async () => {
+    const sink = { maxCorrections: 30, setCorrection: async () => "limit" as const, clearCorrection: async () => undefined };
+    const res = await handleCorrection(
+      { mode: "demo", action: "set", vendorKey: "loom", category: "software", job: null },
+      { sinkFor: () => sink, knownVendorKeys: async () => new Set(["loom"]), canWrite: () => true },
+    );
+    expect(res).toEqual({ status: 409, body: { error: "You can correct up to 30 vendors. Undo one to add another." } });
+  });
+});

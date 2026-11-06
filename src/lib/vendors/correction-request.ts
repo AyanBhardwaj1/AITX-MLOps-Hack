@@ -13,7 +13,8 @@ const request = z.discriminatedUnion("action", [
   z.object({ mode, action: z.literal("clear"), vendorKey: correctionFields.shape.vendorKey }),
 ]);
 
-export type CorrectionSink = Pick<Store, "setCorrection" | "clearCorrection">;
+/** Where fixes go; `maxCorrections` when it holds fewer than MAX_CORRECTIONS (the demo's cookie). */
+export type CorrectionSink = Pick<Store, "setCorrection" | "clearCorrection"> & { maxCorrections?: number };
 
 export interface CorrectionDeps {
   /** Where this data source's fixes are kept (the demo uses the visitor's own cookie). */
@@ -40,6 +41,7 @@ export async function handleCorrection(raw: unknown, deps: CorrectionDeps): Prom
   if (!fix.success) return { status: 400, body: { error: "Only software, cloud and AI tools can have a job." } };
   if (!(await deps.knownVendorKeys(req.mode)).has(req.vendorKey)) return { status: 400, body: { error: "That vendor isn't in this data." } };
   const outcome = await sink.setCorrection(fix.data, MAX_CORRECTIONS);
-  if (outcome === "limit") return { status: 409, body: { error: `You can correct up to ${MAX_CORRECTIONS} vendors. Undo one to add another.` } };
+  const cap = Math.min(MAX_CORRECTIONS, sink.maxCorrections ?? MAX_CORRECTIONS);
+  if (outcome === "limit") return { status: 409, body: { error: `You can correct up to ${cap} vendors. Undo one to add another.` } };
   return { status: 200, body: { ok: true } };
 }

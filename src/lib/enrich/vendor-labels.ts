@@ -15,12 +15,21 @@ export const MIN_LABEL_CONFIDENCE = 0.6;
 const MAX_DESCRIPTOR_CHARS = 60;
 
 
+/**
+ * The categories the model may choose. Not "transfer" or "revenue": those take a vendor's money out
+ * of burn, so only the rules or a person's own fix may say so (no AI touches the numbers).
+ */
+export const LLM_CATEGORIES = CATEGORIES.filter((c) => c !== "transfer" && c !== "revenue") as unknown as readonly [
+  Exclude<(typeof CATEGORIES)[number], "transfer" | "revenue">,
+  ...Exclude<(typeof CATEGORIES)[number], "transfer" | "revenue">[],
+];
+
 export const llmLabelSchema = z.object({
   vendorKey: z.string(),
   // Plain words only: no dots, slashes, brackets or markup, so a name can't turn into a link,
   // mention or formatting when it lands in Slack, a memo or a ticket.
   name: z.string().min(1).max(60).regex(/^[A-Za-z0-9][A-Za-z0-9 &'()-]*$/),
-  category: z.enum(CATEGORIES),
+  category: z.enum(LLM_CATEGORIES),
   job: z.enum(KNOWN_JOBS).nullable(),
   confidence: z.number().min(0).max(1),
 });
