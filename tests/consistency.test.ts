@@ -100,3 +100,17 @@ describe("the gain from acting on findings", () => {
     expect(plan.addedMonths).toBe(Number((Number(after.toFixed(1)) - Number(a.snapshot.runwayMonths.toFixed(1))).toFixed(1)));
   });
 });
+
+describe("one rounding for runway everywhere", () => {
+  it("rounds runway months the same way in Copilot, the memo and the dashboard, halfway cases included", async () => {
+    const { computeSnapshot } = await import("@/lib/finance/runway");
+    const { simulatePlan } = await import("@/lib/agent/tools");
+    // $115,000 over $100,000/mo is 1.15 months: toFixed gives 1.1 (the dashboard), Math.round gives 1.2.
+    const t = ["2026-07", "2026-08", "2026-09"].map((m, i) => ({ id: `p${i}`, accountId: "a", postedAt: `${m}-01`, amountCents: -100_000_00, description: "Gusto", type: "ach", status: "posted", vendor: { key: "gusto", name: "Gusto", category: "payroll", job: null, source: "catalog" } }) as never);
+    const snapshot = computeSnapshot({ cashCents: 115_000_00, txns: t, asOf: "2026-10-12" });
+    const a = { snapshot, findings: [] } as never;
+    const plan = simulatePlan(a, { findingIds: [], extraMonthlyCutsCents: 8_000_00 });
+    expect(plan.currentRunwayMonths).toBe(Number(snapshot.runwayMonths.toFixed(1)));
+    expect(plan.newRunwayMonths! - plan.currentRunwayMonths!).toBeCloseTo(plan.addedMonths!, 10);
+  });
+});

@@ -24,7 +24,8 @@ import { uncategorisedSpend } from "../finance/uncategorised";
  */
 
 const MAX_TXN_RESULTS = 50;
-const round1 = (n: number) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : null);
+/** One decimal, rounded as the dashboard shows it (toFixed), so Copilot's figures match the screen's. */
+const round1 = (n: number) => (Number.isFinite(n) ? Number(n.toFixed(1)) : null);
 
 /** Per-month averages rounded so they add up exactly to `total` (largest remainders get the leftover cents). */
 function averagesAddingUp(rows: [string, number][], months: number, total: number): [string, number][] {

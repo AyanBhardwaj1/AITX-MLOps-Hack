@@ -91,7 +91,8 @@ export interface AutopilotRun {
 }
 
 const NUMBER_RE = /\d[\d,]*(?:\.\d+)?/g;
-const oneDecimal = (n: number) => (Number.isFinite(n) ? (Math.round(n * 10) / 10).toFixed(1) : "unlimited");
+/** One decimal, rounded as the dashboard shows it (toFixed). */
+const oneDecimal = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "unlimited");
 const normalizeNumber = (token: string) => String(Number(token.replaceAll(",", "")));
 
 /**
