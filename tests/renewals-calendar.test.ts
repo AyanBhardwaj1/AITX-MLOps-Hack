@@ -116,3 +116,12 @@ describe("a year of renewals, not just the next one", () => {
     expect(new Set(uids).size).toBe(uids.length);
   });
 });
+
+describe("twice-a-month renewals", () => {
+  it("stay on their two days of the month all year", () => {
+    const ics = renewalsCalendar({ renewals: [renewal({ vendorKey: "pay", vendorName: "Payroll SaaS", cadence: "semimonthly", amountCents: 6_000_00, dueDate: "2026-11-15" })], company: "Acme", now: NOW });
+    const days = [...ics.matchAll(/DTSTART;VALUE=DATE:(\d{8})/g)].map((m) => m[1]!.slice(6));
+    expect(new Set(days)).toEqual(new Set(["15", "30", "28"]));
+    expect(days).toHaveLength(24);
+  });
+});

@@ -55,7 +55,7 @@ export function investorUpdateInput(a: Analysis, opts: { company: string; verifi
     burnMonths: a.snapshot.burnMonths,
     runwayMonths: a.snapshot.runwayMonths,
     zeroCashDate: a.snapshot.zeroCashDate,
-    scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history }),
+    scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history, burn: a.snapshot }),
     verifiedSavingsCents: opts.verifiedSavingsCents,
   };
 }

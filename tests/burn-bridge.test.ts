@@ -68,8 +68,39 @@ describe("the 'why burn moved' card", () => {
     expect(html).toContain("Why burn moved");
     expect(html).toContain("up $12,500 on Sep");
     expect(html).toContain('href="/app/transactions?mode=company&amp;vendor=aws&amp;month=2026-10"');
-    expect(html).toContain("More money in");
+    expect(html).toContain("More revenue in");
     expect(html).toContain("+$12,500</td>");
     expect(renderToStaticMarkup(createElement(BurnBridgeCard, { bridge: null, mode: "company" }))).toBe("");
+  });
+});
+
+describe("second review of the bridge", () => {
+  it("nets a refund against its own vendor; 'money in' is revenue only", () => {
+    const t2 = [
+      txn("x0", "2026-09-01", -1_00, "Start"),
+      txn("a9", "2026-09-05", -10_000_00, "AWS", "cloud"),
+      txn("a10", "2026-10-05", -10_000_00, "AWS", "cloud"),
+      txn("ref", "2026-10-20", 8_000_00, "AWS", "cloud"),
+      txn("r9", "2026-09-25", 5_000_00, "Stripe", "revenue"),
+      txn("r10", "2026-10-25", 5_000_00, "Stripe", "revenue"),
+    ];
+    const b = burnBridge(t2, "2026-11-12")!;
+    expect(b.drivers.map((d) => [d.name, d.changeCents])).toEqual([["AWS", -8_000_00], ["Start", -1_00]]);
+    expect(b.revenueChangeCents).toBe(0);
+    expect(b.drivers.reduce((s, d) => s + d.changeCents, 0) + b.otherCents - b.revenueChangeCents).toBe(b.changeCents);
+  });
+
+  it("says nothing when both months are empty", () => {
+    expect(burnBridge([txn("old", "2026-01-01", -1_00, "Zoom")], "2026-11-12")).toBeNull();
+  });
+
+  it("links a stopped vendor to the month it was last paid, and reads negative burn as cash-flow positive", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { BurnBridgeCard } = await import("@/components/burn-bridge-card");
+    const html = renderToStaticMarkup(createElement(BurnBridgeCard, { bridge: burnBridge(txns, "2026-11-12"), mode: "demo" }));
+    expect(html).toContain('href="/app/transactions?mode=demo&amp;vendor=zoom&amp;month=2026-09"');
+    const positive = { ...burnBridge(txns, "2026-11-12")!, netBurnCents: -8_000_00 };
+    expect(renderToStaticMarkup(createElement(BurnBridgeCard, { bridge: positive, mode: "demo" }))).toContain("cash-flow positive");
   });
 });

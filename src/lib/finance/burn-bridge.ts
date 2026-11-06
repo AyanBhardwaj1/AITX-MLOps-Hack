@@ -29,7 +29,7 @@ export interface BurnBridge {
   drivers: BurnDriver[];
   /** Every other vendor's change, together. */
   otherCents: Cents;
-  /** More money coming in (positive) lowers burn by as much. */
+  /** More revenue coming in (positive) lowers burn by as much; refunds count against their vendor. */
   revenueChangeCents: Cents;
 }
 
@@ -48,7 +48,8 @@ export function burnBridge(txns: readonly EnrichedTxn[], asOf: IsoDate, { top = 
   for (const t of txns) {
     const m = monthKey(t.postedAt);
     if ((m !== month && m !== previous) || !countsTowardBurn(t)) continue;
-    if (t.amountCents >= 0) {
+    // Money in is revenue; anything else coming back (a refund) lowers its own vendor's spend.
+    if (t.amountCents >= 0 && t.vendor.category === "revenue") {
       if (m === month) inNow += t.amountCents;
       else inBefore += t.amountCents;
       continue;
@@ -59,6 +60,8 @@ export function burnBridge(txns: readonly EnrichedTxn[], asOf: IsoDate, { top = 
     spend.set(t.vendor.key, v);
   }
 
+  // Two empty months say nothing, rather than "unchanged at $0".
+  if (spend.size === 0 && inNow === 0 && inBefore === 0) return null;
   const outNow = [...spend.values()].reduce((s, v) => s + v.now, 0);
   const outBefore = [...spend.values()].reduce((s, v) => s + v.before, 0);
   const changes: BurnDriver[] = [...spend]
@@ -67,7 +70,7 @@ export function burnBridge(txns: readonly EnrichedTxn[], asOf: IsoDate, { top = 
       name: v.name,
       category: v.category,
       changeCents: v.now - v.before,
-      kind: v.before === 0 ? ("new" as const) : v.now === 0 ? ("stopped" as const) : v.now > v.before ? ("up" as const) : ("down" as const),
+      kind: v.before <= 0 && v.now > 0 ? ("new" as const) : v.now <= 0 && v.before > 0 ? ("stopped" as const) : v.now > v.before ? ("up" as const) : ("down" as const),
     }))
     .filter((d) => d.changeCents !== 0)
     .sort((a, b) => Math.abs(b.changeCents) - Math.abs(a.changeCents) || a.name.localeCompare(b.name));

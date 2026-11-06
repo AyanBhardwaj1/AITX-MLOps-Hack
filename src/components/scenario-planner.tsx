@@ -22,12 +22,15 @@ export function ScenarioPlanner({
   cashCents,
   asOf,
   wasteSavingsCents,
+  burn,
   initial = DEFAULT_SCENARIO,
 }: {
   history: MonthHistory[];
   cashCents: number;
   asOf: string;
   wasteSavingsCents: number;
+  /** Today's burn: the base when there's no whole month of history yet. */
+  burn?: { grossBurnCents: number; netBurnCents: number };
   /** A plan from the address (a bookmarked or shared link). */
   initial?: ScenarioPlan;
 }) {
@@ -83,6 +86,7 @@ export function ScenarioPlanner({
     asOf,
     cashCents,
     history,
+    burn,
     revenueGrowth: n.growthPct === null ? estimate.rate : n.growthPct / 100,
     hires: [{ count: n.hires, monthlyCostCents: n.hireCostDollars * 100, startMonth: n.hireStart }],
     raise: { amountCents: n.raiseDollars * 100, month: n.raiseMonth },

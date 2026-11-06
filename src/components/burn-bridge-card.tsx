@@ -10,14 +10,24 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
   if (!bridge) return null;
   const { month, previous, changeCents } = bridge;
   const verb = changeCents > 0 ? `up ${formatDollars(changeCents)}` : changeCents < 0 ? `down ${formatDollars(-changeCents)}` : "unchanged";
-  const txHref = (key: string) => `/app/transactions?mode=${mode}&vendor=${encodeURIComponent(key)}&month=${month}`;
+  // A stopped vendor's transactions are in the month before.
+  const txHref = (key: string, stopped: boolean) => `/app/transactions?mode=${mode}&vendor=${encodeURIComponent(key)}&month=${stopped ? previous : month}`;
   return (
     <section aria-labelledby="burn-bridge-title" className="mb-6 rounded-xl border border-line bg-panel p-5">
       <h2 id="burn-bridge-title" className="font-semibold">
         Why burn moved
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Net burn in {formatMonth(month)}: <span className="tabular font-medium text-ink">{formatDollars(bridge.netBurnCents)}</span>, {verb} on {formatMonth(previous)}.
+        {bridge.netBurnCents <= 0 ? (
+          <>
+            In {formatMonth(month)} more came in than went out: <span className="font-medium text-ink">cash-flow positive</span> by{" "}
+            <span className="tabular font-medium text-ink">{formatDollars(-bridge.netBurnCents)}</span>; net burn {verb} on {formatMonth(previous)}.
+          </>
+        ) : (
+          <>
+            Net burn in {formatMonth(month)}: <span className="tabular font-medium text-ink">{formatDollars(bridge.netBurnCents)}</span>, {verb} on {formatMonth(previous)}.
+          </>
+        )}
       </p>
       {changeCents !== 0 || bridge.drivers.length > 0 ? (
         <table className="mt-3 w-full text-sm">
@@ -32,7 +42,7 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
             {bridge.drivers.map((d) => (
               <tr key={d.key}>
                 <th scope="row" className="py-1.5 text-left font-normal">
-                  <Link href={txHref(d.key)} className="hover:text-brand hover:underline">
+                  <Link href={txHref(d.key, d.kind === "stopped")} className="hover:text-brand hover:underline">
                     {d.name}
                   </Link>
                   {(d.kind === "new" || d.kind === "stopped") && (
@@ -53,7 +63,7 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
             {bridge.revenueChangeCents !== 0 && (
               <tr>
                 <th scope="row" className="py-1.5 text-left font-normal">
-                  {bridge.revenueChangeCents > 0 ? "More money in" : "Less money in"}
+                  {bridge.revenueChangeCents > 0 ? "More revenue in" : "Less revenue in"}
                 </th>
                 <td className={`tabular py-1.5 text-right ${bridge.revenueChangeCents > 0 ? "text-brand" : "text-warn"}`}>{signed(-bridge.revenueChangeCents)}</td>
               </tr>

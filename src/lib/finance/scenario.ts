@@ -39,6 +39,8 @@ export interface ScenarioInput extends ScenarioOptions {
   cashCents: Cents;
   /** Complete months, oldest first (from monthlyHistory). */
   history: readonly MonthHistory[];
+  /** Today's burn (the snapshot's): the base when the history has no whole month yet. */
+  burn?: { grossBurnCents: Cents; netBurnCents: Cents };
 }
 
 export interface ScenarioPoint {
@@ -92,7 +94,8 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  */
 function firstWholeMonth(history: readonly MonthHistory[]): number {
   const first = history.findIndex((m) => m.inflowCents !== 0 || m.outflowCents !== 0);
-  return first <= 0 ? 0 : first + 1;
+  // No data at all: there is no whole month.
+  return first === -1 ? history.length : first === 0 ? 0 : first + 1;
 }
 
 export function estimateRevenueGrowthDetail(history: readonly MonthHistory[]): GrowthEstimate {
@@ -173,15 +176,16 @@ function growthNeeded(r: Resolved): number | null {
 export function projectScenario(input: ScenarioInput): ScenarioResult {
   const options = scenarioOptions.parse(input);
   const whole = input.history.slice(Math.max(firstWholeMonth(input.history), input.history.length - BASE_MONTHS));
-  // No whole month yet: the partial ones are all there is, and better than assuming no spend.
-  const recent = whole.length ? whole : input.history.slice(-BASE_MONTHS);
+  // No whole month: today's burn when given (below), else the partial months, never "no spend".
+  const recent = whole.length || input.burn ? whole : input.history.slice(-BASE_MONTHS);
   const avg = (f: (m: MonthHistory) => number) => (recent.length ? Math.round(recent.reduce((s, m) => s + f(m), 0) / recent.length) : 0);
   const basis = options.revenueGrowth === undefined ? estimateRevenueGrowthDetail(input.history) : null;
   const resolved: Resolved = {
     asOf: input.asOf,
     cashCents: input.cashCents,
-    baseRevenueCents: avg((m) => m.inflowCents),
-    baseExpensesCents: avg((m) => m.outflowCents),
+    // No whole month yet: start from today's burn (as the dashboard shows it), never from zero.
+    baseRevenueCents: recent.length || !input.burn ? avg((m) => m.inflowCents) : Math.max(0, input.burn.grossBurnCents - input.burn.netBurnCents),
+    baseExpensesCents: recent.length || !input.burn ? avg((m) => m.outflowCents) : input.burn.grossBurnCents,
     revenueGrowth: options.revenueGrowth ?? basis!.rate,
     options,
   };

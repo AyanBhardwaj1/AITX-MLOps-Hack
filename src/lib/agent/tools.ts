@@ -20,6 +20,20 @@ import { burnBridge } from "../finance/burn-bridge";
 const MAX_TXN_RESULTS = 50;
 const round1 = (n: number) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : null);
 
+/** Per-month averages rounded so they add up exactly to `total` (largest remainders get the leftover cents). */
+function averagesAddingUp(rows: [string, number][], months: number, total: number): [string, number][] {
+  const exact = rows.map(([k, v]) => [k, v / months] as const);
+  const floored = exact.map(([k, v]) => [k, Math.floor(v)] as [string, number]);
+  let left = total - floored.reduce((s, [, v]) => s + v, 0);
+  const order = exact.map(([, v], i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0]);
+  for (const [, i] of order) {
+    if (left <= 0) break;
+    floored[i]![1] += 1;
+    left -= 1;
+  }
+  return floored;
+}
+
 export const snapshotInput = z.object({});
 export function getFinancialSnapshot(a: Analysis) {
   const s = a.snapshot;
@@ -38,9 +52,7 @@ export function getFinancialSnapshot(a: Analysis) {
     zeroCashDate: s.zeroCashDate,
     runwayMonthsIfRevenueFalls30Pct: round1(stressRunway(s, 0.3).runwayMonths),
     lookbackMonths: s.months.map((m) => m.month),
-    avgMonthlySpendByCategoryCents: Object.fromEntries(
-      [...byCategory].sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round(v / (s.burnPeriod?.months ?? 1))]),
-    ),
+    avgMonthlySpendByCategoryCents: Object.fromEntries(averagesAddingUp([...byCategory].sort((x, y) => y[1] - x[1]), s.burnPeriod?.months ?? 1, s.grossBurnCents)),
   };
 }
 
@@ -199,7 +211,7 @@ const SCENARIO_POINTS_SHOWN = 24;
 export const scenarioInput = scenarioOptions;
 /** Default-alive projection; month-by-month points are trimmed to keep the tool result small. */
 export function runScenario(a: Analysis, input: z.input<typeof scenarioOptions>) {
-  const s = projectScenario({ ...input, asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, FORECAST_HISTORY_MONTHS) });
+  const s = projectScenario({ ...input, asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, FORECAST_HISTORY_MONTHS), burn: a.snapshot });
   return {
     defaultAlive: s.defaultAlive,
     revenueGrowthPctPerMonth: Math.round(s.revenueGrowth * 1000) / 10,

@@ -141,3 +141,22 @@ describe("review of the burn fix", () => {
     expect(r.baseExpensesCents).toBeGreaterThan(0);
   });
 });
+
+describe("second review of the burn fix", () => {
+  it("with no whole month, the scenario starts from the snapshot's burn, not from zero", async () => {
+    const { projectScenario } = await import("@/lib/finance/scenario");
+    const history = Array.from({ length: 12 }, (_, i) => ({ month: `2025-${String(i + 1).padStart(2, "0")}`, inflowCents: 0, outflowCents: 0, softwareCents: 0 }));
+    const r = projectScenario({ asOf: "2026-11-06", cashCents: 300_000_00, history, burn: { grossBurnCents: 30_000_00, netBurnCents: 30_000_00 } });
+    expect(r.baseExpensesCents).toBe(30_000_00);
+    expect(r.baseRevenueCents).toBe(0);
+    expect(r.defaultAlive).toBe(false);
+  });
+
+  it("Copilot's category averages add up to gross burn to the cent", async () => {
+    const { getFinancialSnapshot } = await import("@/lib/agent/tools");
+    const txns = ["2026-08", "2026-09", "2026-10"].flatMap((m) => [txn(`a${m}`, `${m}-02`, -1_00, "rent"), txn(`b${m}`, `${m}-03`, -1_00, "cloud"), txn(`c${m}`, `${m}-04`, -1_00, "software")]).slice(0, 7);
+    const s = computeSnapshot({ cashCents: 1_000_00, txns: [txn("start", "2026-08-01", 0), ...txns], asOf: "2026-11-05" });
+    const cats = getFinancialSnapshot({ snapshot: s, txns, asOf: s.asOf } as never).avgMonthlySpendByCategoryCents;
+    expect(Object.values(cats).reduce((x, y) => x + y, 0)).toBe(s.grossBurnCents);
+  });
+});

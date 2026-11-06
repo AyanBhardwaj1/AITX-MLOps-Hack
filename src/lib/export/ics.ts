@@ -55,13 +55,19 @@ const STEP: Record<Renewal["cadence"], { months?: number; days?: number }> = {
   annual: { months: 12 },
   quarterly: { months: 3 },
   monthly: { months: 1 },
-  semimonthly: { days: 15 },
+  semimonthly: { months: 1 },
   biweekly: { days: 14 },
   weekly: { days: 7 },
 };
 
 /** Every expected date of a renewal from `from` to `until`, stepping on from its next expected date. */
 function datesWithin(r: Renewal, from: string, until: string): string[] {
+  // Twice a month: two monthly series, the expected date and the one half a month from it.
+  if (r.cadence === "semimonthly") {
+    const day = Number(r.dueDate.slice(8, 10));
+    const other = addDays(r.dueDate, day <= 15 ? 15 : -15);
+    return [...new Set([...datesWithin({ ...r, cadence: "monthly" }, from, until), ...datesWithin({ ...r, cadence: "monthly", dueDate: other }, from, until)])].sort();
+  }
   const step = STEP[r.cadence];
   const out: string[] = [];
   // Counted from the first date each time, so a 31st stays the 31st where the month has one.

@@ -56,7 +56,7 @@ export function digestInputFromAnalysis(
     cashCents: a.snapshot.cashCents,
     netBurnCents: a.snapshot.netBurnCents,
     runwayMonths: a.snapshot.runwayMonths,
-    scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS) }),
+    scenario: projectScenario({ asOf: a.asOf, cashCents: a.snapshot.cashCents, history: monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS), burn: a.snapshot }),
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
     findings: a.findings.filter((f) => !exclude.has(f.id)),
     bridge: burnBridge(a.txns, a.asOf),
@@ -116,7 +116,7 @@ function blocks(d: DigestInput): Block[] {
       { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: `${formatDollars(b.netBurnCents)}` }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
     );
     const items: Span[][] = b.drivers.slice(0, TOP_FINDINGS).map((x) => [`${x.name}${x.kind === "new" ? " (new)" : x.kind === "stopped" ? " (stopped)" : ""}: ${signed(x.changeCents)}`]);
-    if (b.revenueChangeCents) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
+    if (b.revenueChangeCents) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} revenue in: ${signed(-b.revenueChangeCents)}`]);
     if (items.length) out.push({ kind: "ul", items });
   }
   if (d.budgets?.length) {
