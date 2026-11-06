@@ -61,5 +61,6 @@ describe("the Runway over time sentence", () => {
     );
     expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: 12.24 }, { date: "2026-10-26", runwayMonths: 12.21 })).toBe("Runway has held at about 12.2 months since May 1, 2026.");
     expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: Infinity }, { date: "2026-10-26", runwayMonths: 12 })).toMatch(/no end date/);
+    expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: 9.96 }, { date: "2026-10-26", runwayMonths: 12.04 })).toBe("Runway grew by 2.0 months since May 1, 2026: 10.0 → 12.0.");
   });
 });
