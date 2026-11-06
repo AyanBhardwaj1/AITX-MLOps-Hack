@@ -36,6 +36,7 @@ const TOOL_LABEL: Record<string, string> = {
   get_money_in: "Checked who pays you",
   suggest_budgets: "Suggested budgets",
   get_uncategorised: "Checked uncategorised spend",
+  get_recurring_runway_cost: "Priced subscriptions in runway",
 };
 
 const INSTANT = Object.entries(INSTANT_QUESTIONS).map(([id, text]) => ({ id: id as InstantQuestion, text }));

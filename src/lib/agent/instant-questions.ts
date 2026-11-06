@@ -14,5 +14,6 @@ export const INSTANT_QUESTIONS = {
   money_in: "Who pays us the most?",
   suggest_budgets: "What should our budgets be?",
   uncategorised: "What can't Runway categorise?",
+  runway_cost: "Which subscriptions cost us the most runway?",
 } as const;
 export type InstantQuestion = keyof typeof INSTANT_QUESTIONS;

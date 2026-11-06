@@ -19,6 +19,8 @@ import {
   getSuggestedBudgets,
   uncategorisedInput,
   getUncategorised,
+  recurringRunwayCostInput,
+  getRecurringRunwayCost,
   changesInput,
   getChanges,
   runScenario,
@@ -60,6 +62,7 @@ const INSTRUCTIONS = `You are Runway Copilot, a CFO assistant for an early-stage
 - For "what changed" or "anything I should know" questions, call get_recent_changes.
 - For "what's going out soon" or "what's due this month" questions, call get_committed_spend.
 - For "who spends the most" or card-holder questions, call get_people_spend.
+- For "what does a subscription cost us in runway" questions, call get_recurring_runway_cost.
 - For "what should our budgets be" questions, call suggest_budgets; for "what can't Runway categorise" or "what's in Other", call get_uncategorised.
 - For "who pays us", customer or revenue-concentration questions, call get_money_in; a payment processor's payouts are many customers, never one.
 - For 1099 or contractor tax-form questions, call get_1099_prep, and say it's a list to check with their accountant (W-9s settle who needs one), not tax advice.
@@ -150,6 +153,12 @@ export function createCopilot(a: Analysis, saveDraft: SaveDraft, dismissed: Read
           "A starting monthly budget per spending category: its average over the last full months the data covers (up to 3; months), rounded up to the next $100 (byCategory, integer cents). null before a full month of data.",
         inputSchema: suggestBudgetsInput,
         execute: async () => getSuggestedBudgets(a),
+      }),
+      get_recurring_runway_cost: tool({
+        description:
+          "The biggest active recurring charges (monthlyCents, a monthly equivalent) and runwayDays: the days of runway each costs, i.e. gained if it stopped (null when runway has no end, or the charge alone exceeds net burn). Integer cents.",
+        inputSchema: recurringRunwayCostInput,
+        execute: async () => getRecurringRunwayCost(a),
       }),
       get_uncategorised: tool({
         description:

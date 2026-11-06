@@ -4,7 +4,7 @@ import type { Budget } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
-import { get1099Prep, getMoneyIn, getSuggestedBudgets, getUncategorised, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
+import { get1099Prep, getMoneyIn, getRecurringRunwayCost, getSuggestedBudgets, getUncategorised, getBudgets, getBurnBridge, getChanges, getCommitted, getPeopleSpend, getFinancialSnapshot, getForecast, getUpcomingRenewals, listFindings, planToTarget, runScenario } from "./tools";
 
 /**
  * "Instant answers": Copilot's suggested questions answered without a language model, by calling
@@ -223,6 +223,23 @@ function suggestBudgetsAnswer(a: Analysis): InstantAnswer {
   };
 }
 
+function runwayCostAnswer(a: Analysis): InstantAnswer {
+  const rows = getRecurringRunwayCost(a);
+  const tools = ["get_recurring_runway_cost"];
+  if (rows.length === 0) return { question: INSTANT_QUESTIONS.runway_cost, tools, text: "No recurring charges were found." };
+  if (rows.every((r) => r.runwayDays === null))
+    return { question: INSTANT_QUESTIONS.runway_cost, tools, text: "You're cash-flow positive, so no recurring charge shortens runway at today's rate." };
+  return {
+    question: INSTANT_QUESTIONS.runway_cost,
+    tools,
+    text: [
+      "The biggest recurring charges, and the days of runway each one costs (what you'd gain if it stopped):",
+      rows.map((r) => `- ${r.vendorName}: ${formatDollars(r.monthlyCents)}/month, ${r.runwayDays === null ? "more than all your burn" : `${r.runwayDays} ${r.runwayDays === 1 ? "day" : "days"}`}`).join("\n"),
+      "Payroll and rent are on the list because they're the biggest; tick the waste findings to see what's worth cutting.",
+    ].join("\n\n"),
+  };
+}
+
 function uncategorisedAnswer(a: Analysis): InstantAnswer {
   const u = getUncategorised(a);
   const tools = ["get_uncategorised"];
@@ -333,6 +350,7 @@ const ANSWERS: Record<InstantQuestion, (a: Analysis, dismissed: ReadonlySet<stri
   money_in: moneyInAnswer,
   suggest_budgets: suggestBudgetsAnswer,
   uncategorised: uncategorisedAnswer,
+  runway_cost: runwayCostAnswer,
 };
 
 /** `dismissed`: finding ids the person said no to, never recommended. `budgets`: this data source's own (null: it has none at all). */

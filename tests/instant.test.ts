@@ -199,3 +199,14 @@ describe("budgets to start from, and spend Runway can't place", () => {
     expect(text).toContain("Mystery LLC");
   });
 });
+
+describe("which subscriptions cost the most runway", () => {
+  it("lists the biggest recurring charges with the days of runway each costs, from the same function as the table", async () => {
+    const { runwayDaysFreedBy } = await import("@/lib/finance/runway");
+    const top = a.streams.filter((s) => s.active).sort((x, y) => y.monthlyCostCents - x.monthlyCostCents)[0]!;
+    const ans = instantAnswer(a, "runway_cost");
+    expect(ans.tools).toEqual(["get_recurring_runway_cost"]);
+    expect(ans.text).toContain(top.vendorName);
+    expect(ans.text).toContain(`${runwayDaysFreedBy(a.snapshot, top.monthlyCostCents)} days`);
+  });
+});

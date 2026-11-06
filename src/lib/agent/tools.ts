@@ -5,7 +5,7 @@ import { monthlyHistory } from "../finance/history";
 import { upcomingRenewals } from "../finance/renewals";
 import { describeGrowth, projectScenario, scenarioOptions } from "../finance/scenario";
 import { detectChanges } from "../insights/changes";
-import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod } from "../finance/runway";
+import { goalSeek, simulateSavings, stressRunway, countsTowardBurn, inBurnPeriod, runwayDaysFreedBy } from "../finance/runway";
 import type { Analysis } from "../pipeline";
 import { CATEGORIES, type Finding } from "../types";
 import { budgetStatus, runwayWithinBudgets, type Budget, suggestBudgets } from "../finance/budgets";
@@ -258,6 +258,17 @@ export const suggestBudgetsInput = z.object({});
 /** A starting monthly budget per category: the last full months' average (up to 3), rounded up to $100 (cents). */
 export function getSuggestedBudgets(a: Analysis) {
   return suggestBudgets(a.txns, a.asOf);
+}
+
+export const recurringRunwayCostInput = z.object({});
+const RUNWAY_COST_LISTED = 8;
+/** The biggest active recurring charges (monthly cents) and the days of runway each costs (gained if it stopped). */
+export function getRecurringRunwayCost(a: Analysis) {
+  return a.streams
+    .filter((s) => s.active)
+    .sort((x, y) => y.monthlyCostCents - x.monthlyCostCents)
+    .slice(0, RUNWAY_COST_LISTED)
+    .map((s) => ({ vendorName: s.vendorName, category: s.category, cadence: s.cadence, monthlyCents: s.monthlyCostCents, runwayDays: runwayDaysFreedBy(a.snapshot, s.monthlyCostCents) }));
 }
 
 export const uncategorisedInput = z.object({});
