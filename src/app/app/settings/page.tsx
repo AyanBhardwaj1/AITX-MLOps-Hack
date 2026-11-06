@@ -15,8 +15,12 @@ import { siteUrl } from "@/lib/site-url";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Company settings", robots: { index: false, follow: false } };
 
-export default async function SettingsPage() {
+const RECENT_ACTIVITY = 20;
+const MORE_ACTIVITY = 200;
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!accountsEnabled()) redirect("/app");
+  const more = (await searchParams).activity === "all";
   const { user, company } = await companyForPage("/app/settings");
   const invites = await pendingInvitesForMe();
   const operator = await isOperator();
@@ -49,7 +53,11 @@ export default async function SettingsPage() {
         <TeamPanel initial={await currentTeam()} owner={company.role === "owner"} selfId={user.id} signInUrl={`${process.env.VERCEL ? siteUrl().origin : ""}/login`} />
       </div>
       <div className="mt-6">
-        <ActivityList entries={await getStore(company.scope).listActivity(20).catch(() => [])} />
+        <ActivityList
+          entries={await getStore(company.scope).listActivity((more ? MORE_ACTIVITY : RECENT_ACTIVITY) + 1).catch(() => [])}
+          limit={more ? MORE_ACTIVITY : RECENT_ACTIVITY}
+          moreHref={more ? null : "/app/settings?activity=all#activity-title"}
+        />
       </div>
       <div className="mt-6">
         <SlackPanel owner={company.role === "owner"} initial={await companySlackStatus()} />
