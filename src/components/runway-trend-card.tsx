@@ -23,7 +23,7 @@ export function RunwayTrendCard({ points }: { points: RunwayPoint[] }) {
         ? `Runway has held at about ${last.runwayMonths.toFixed(1)} months since ${formatDate(first.date)}.`
         : `Runway ${delta > 0 ? "grew" : "shrank"} by ${Math.abs(delta).toFixed(1)} months since ${formatDate(first.date)}: ${first.runwayMonths.toFixed(1)} → ${last.runwayMonths.toFixed(1)}.`;
   // Cash-flow-positive points have no finite runway: leave a gap rather than drawing a fake value.
-  const rows = points.map((p) => ({ label: formatDay(p.date), runway: Number.isFinite(p.runwayMonths) ? Math.round(p.runwayMonths * 10) / 10 : null }));
+  const rows = points.map((p) => ({ label: formatDay(p.date), runway: Number.isFinite(p.runwayMonths) ? Number(p.runwayMonths.toFixed(1)) : null }));
   return (
     <section aria-labelledby="runway-trend-title" className="mb-6 rounded-xl border border-line bg-panel">
       <div className="border-b border-line px-5 py-3">
