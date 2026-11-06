@@ -38,7 +38,7 @@ await suite("accounts", async ({ browser, step }) => {
     await a.getByRole("button", { name: "Fix the category for Gusto Payroll" }).click();
     const fix = a.getByRole("form", { name: "Category for Gusto Payroll" });
     await fix.locator("select").first().selectOption("transfer");
-    await fix.getByText(/charges will leave burn and runway/).waitFor();
+    await fix.getByText(/will count toward burn or runway/).waitFor();
     await fix.getByRole("button", { name: "Cancel" }).click();
     // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.
     const nav = a.getByRole("navigation", { name: "Dashboard sections" });

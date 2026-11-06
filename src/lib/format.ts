@@ -45,4 +45,4 @@ export function describeRunwayCost(cost: RunwayCost | null): string {
 }
 
 /** Shown when someone picks Transfer for a vendor: it takes that vendor's spending out of burn. */
-export const TRANSFER_NOTE = "Transfers between your own accounts don't count as spending: this vendor's charges will leave burn and runway.";
+export const TRANSFER_NOTE = "Transfers between your own accounts don't count: neither this vendor's money out nor its money in will count toward burn or runway.";

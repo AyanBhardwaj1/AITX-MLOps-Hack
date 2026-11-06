@@ -149,7 +149,7 @@ export function CorrectionEditor({
           id={`${id}-cat`}
           value={nextCategory}
           onChange={(e) => setNextCategory(e.target.value)}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error ? `${id}-note ${errorId}` : `${id}-note`}
           className="rounded-md border border-line bg-panel px-2 py-1"
         >
           {CATEGORIES.map((c) => (
@@ -172,17 +172,16 @@ export function CorrectionEditor({
           </select>
         </label>
       )}
-      {nextCategory === "transfer" && category !== "transfer" && (
-        <p role="status" className="basis-full text-warn">
-          {TRANSFER_NOTE}
-        </p>
-      )}
       <button type="submit" disabled={busy} className="rounded-md bg-brand px-2.5 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-60">
         {busy ? "Saving…" : "Save"}
       </button>
       <button type="button" onClick={close} className="rounded-md px-2 py-1 text-muted hover:text-ink">
         Cancel
       </button>
+      {/* Always present, so screen readers announce the note when it appears; after the buttons, so they don't move. */}
+      <p id={`${id}-note`} role="status" className="max-w-xs basis-full text-warn empty:hidden">
+        {nextCategory === "transfer" && category !== "transfer" ? TRANSFER_NOTE : ""}
+      </p>
       {error && (
         <p id={errorId} role="alert" className="basis-full text-warn">
           {error}

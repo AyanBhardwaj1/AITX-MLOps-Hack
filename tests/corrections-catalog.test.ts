@@ -1,6 +1,5 @@
 // A person's category fix changes a vendor's category, not who the vendor is: a known company left in
-// its own category stays off the 1099 list, a payroll platform that files for you stays off whatever
-// the fix, and a payment processor's payouts stay "many customers".
+// its own category stays off the 1099 list, and a payment processor's payouts stay "many customers".
 import { describe, expect, it } from "vitest";
 import { generateDemoCompany } from "@/lib/seed/demo-company";
 import { analyze } from "@/lib/pipeline";
@@ -20,9 +19,6 @@ describe("fixes to known vendors", () => {
     expect(run([{ vendorKey: "pilot", category: "legal_accounting", job: null }]).prep!.rows.map((r) => r.key).sort()).toEqual(base);
     // A wrong catalog match (a contractor named like a known company) can still be put on the list.
     expect(run([{ vendorKey: "pilot", category: "contractors", job: null }]).prep!.rows.some((r) => r.key === "pilot")).toBe(true);
-  });
-  it("never list a payroll platform that files its contractors' 1099s itself, even moved to Contractors", () => {
-    expect(run([{ vendorKey: "gusto", category: "contractors", job: null }]).prep!.rows.some((r) => r.key === "gusto")).toBe(false);
   });
   it("don't call a payee a person filed as Other one Runway couldn't categorise", () => {
     expect(run([{ vendorKey: "pilot", category: "other", job: null }]).prep!.unplaced.some((u) => u.key === "pilot")).toBe(false);

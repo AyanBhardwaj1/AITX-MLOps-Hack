@@ -92,6 +92,7 @@ export function CategoryFix({
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value as Category)}
+            aria-describedby={`${id}-note`}
             className="rounded-lg border border-line bg-panel px-2 py-1 focus-visible:border-brand"
           >
             {CATEGORIES.map((c) => (
@@ -100,11 +101,6 @@ export function CategoryFix({
               </option>
             ))}
           </select>
-          {draft === "transfer" && category !== "transfer" && (
-            <span role="status" className="basis-full text-xs text-warn">
-              {TRANSFER_NOTE}
-            </span>
-          )}
           <button type="submit" disabled={busy || draft === category} className="rounded-lg bg-brand px-3 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-50">
             Save
           </button>
@@ -118,6 +114,10 @@ export function CategoryFix({
           >
             Cancel
           </button>
+          {/* Always present, so screen readers announce it; after the buttons, so they don't move. */}
+          <span id={`${id}-note`} role="status" className="max-w-xs basis-full text-xs text-warn empty:hidden">
+            {draft === "transfer" && category !== "transfer" ? TRANSFER_NOTE : ""}
+          </span>
         </form>
       )}
       {corrected && !editing && (
