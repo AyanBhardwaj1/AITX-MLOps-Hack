@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
+import { CategoryFix } from "@/components/category-fix";
 import { searchTransactions, parseTxnQuery, type TxnQuery } from "@/lib/finance/transaction-search";
 import { categoryName, formatDate, formatMoney, formatMonth } from "@/lib/format";
 import { companyName, sessionUser } from "@/lib/server/company";
@@ -52,6 +53,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   }
   const { dataset, txns } = loaded;
   const result = searchTransactions(txns, query);
+  // The filtered vendor as the numbers see it now (with any fix applied), for changing its category.
+  const vendor = query.vendor ? txns.find((t) => t.vendor.key === query.vendor)?.vendor : undefined;
   // A month from an old link that has no transactions still shows as chosen, not as "All".
   const months = query.month && !result.months.includes(query.month) ? [query.month, ...result.months] : result.months;
   const accountNames = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
@@ -121,6 +124,16 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       {query.vendor && (
         <p className="mt-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="rounded-full bg-brand-soft px-3 py-1 font-medium text-brand-strong">Vendor: {result.vendorName ?? query.vendor}</span>
+          {vendor && (
+            <CategoryFix
+              mode={mode}
+              vendorKey={vendor.key}
+              vendorName={vendor.name}
+              category={vendor.category}
+              job={vendor.job}
+              corrected={vendor.source === "user"}
+            />
+          )}
           <Link href={hrefFor(mode, { ...query, vendor: null }, 1)} className="text-muted underline hover:text-ink">
             Show every vendor
           </Link>
@@ -188,7 +201,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                       <time dateTime={t.postedAt}>{formatDate(t.postedAt)}</time>
                     </td>
                     <td className="min-w-0 px-2 py-2 align-top">
-                      <span className="font-medium">{t.vendor.name}</span>
+                      <Link href={hrefFor(mode, { ...query, vendor: t.vendor.key }, 1)} className="font-medium underline-offset-2 hover:text-brand hover:underline">
+                        {t.vendor.name}
+                      </Link>
                       <span className="block break-all text-xs text-muted">
                         {t.description}
                         {" · "}

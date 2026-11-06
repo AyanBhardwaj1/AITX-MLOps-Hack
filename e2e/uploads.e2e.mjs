@@ -67,6 +67,16 @@ await suite("uploads", async ({ browser, step }) => {
     const csv = readFileSync(await dl.path(), "utf8").trim().split("\r\n");
     assert.equal(csv.length - 1, await rows.count());
     for (const line of csv.slice(1)) assert.match(line, /slack/i);
+    // A vendor's own view: fix its category right there, then undo it.
+    await rows.first().getByRole("link").first().click();
+    await p.getByText(/^Vendor: /).waitFor();
+    await p.getByRole("button", { name: /Change .*'s category/ }).click();
+    await p.getByLabel(/^Category for /).selectOption("marketing");
+    await p.getByRole("button", { name: "Save" }).click();
+    await p.getByText("your fix", { exact: true }).waitFor();
+    await p.getByText(/Category: marketing/).waitFor();
+    await p.getByRole("button", { name: "Undo my fix" }).click();
+    await p.getByText("your fix", { exact: true }).waitFor({ state: "detached" });
     // Signed out, the same address asks for sign-in instead of showing anything.
     const stranger = await (await browser.newContext()).newPage();
     await stranger.goto(`${APP}/app/transactions?mode=company&q=slack`);

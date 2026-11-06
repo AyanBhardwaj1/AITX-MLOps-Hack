@@ -64,3 +64,12 @@ describe("vendor_corrections migration", () => {
     expect(list.sort()).toEqual([...CATEGORIES].sort());
   });
 });
+
+describe("changing just the category", () => {
+  it("keeps the tool's job while it stays a tool, and drops it otherwise", async () => {
+    const { recategorize } = await import("@/lib/vendors/corrections");
+    expect(recategorize({ vendorKey: "loom", category: "software", job: "async_video" }, "ai_api")).toEqual({ vendorKey: "loom", category: "ai_api", job: "async_video" });
+    expect(recategorize({ vendorKey: "loom", category: "software", job: "async_video" }, "marketing")).toEqual({ vendorKey: "loom", category: "marketing", job: null });
+    expect(recategorize({ vendorKey: "x", category: "other", job: null }, "software")).toEqual({ vendorKey: "x", category: "software", job: null });
+  });
+});

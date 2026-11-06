@@ -33,3 +33,8 @@ export function applyCorrections(txns: readonly EnrichedTxn[], corrections: Read
     return fix ? { ...t, vendor: { ...t.vendor, category: fix.category, job: fix.job, source: "user" as const } } : t;
   });
 }
+
+/** A fix that changes only the category: a tool keeps its job while it stays a tool. */
+export function recategorize(current: VendorCorrection, category: Category): VendorCorrection {
+  return { vendorKey: current.vendorKey, category, job: JOB_CATEGORIES.has(category) ? current.job : null };
+}
