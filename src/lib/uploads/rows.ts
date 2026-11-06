@@ -14,6 +14,19 @@ export const MAX_CHUNK_ROWS = 5_000;
 export const MAX_ROWS_PER_COMPANY = 100_000;
 export const CASH_ACCOUNT_ID = "cash_entered";
 const MAX_ABS_CENTS = 1e12;
+/** Under the upload route's 4,000,000-byte body cap, with room for the envelope. */
+export const MAX_CHUNK_BYTES = 3_500_000;
+
+/**
+ * Text Postgres will store: control characters (a NUL in a bank export) dropped, and half an emoji
+ * (a lone surrogate) replaced, or the whole chunk is refused and every retry fails the same way.
+ */
+export function storableText(s: string): string {
+  return s
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
+}
+const text = (max: number) => z.string().transform(storableText).pipe(z.string().trim().min(1).max(max));
 
 const isoDate = z
   .string()
@@ -22,12 +35,13 @@ const isoDate = z
 
 export const uploadRow = z.object({
   date: isoDate,
-  description: z.string().trim().min(1).max(200),
+  description: text(200),
   amountCents: z.number().int().refine((n) => Math.abs(n) <= MAX_ABS_CENTS, "amount out of range"),
   type: z.string().regex(/^[a-z_]{1,40}$/),
-  account: z.string().trim().min(1).max(80),
+  // The entered-cash account is Runway's own: rows can't land in it (or never be deleted).
+  account: text(80).refine((a) => a !== CASH_ACCOUNT_ID, "reserved account name"),
   accountType: z.enum(["checking", "credit"]),
-  cardholder: z.string().trim().min(1).max(80).nullable(),
+  cardholder: text(80).nullable(),
   /** Which copy of an identical row (same day, description, amount, account) this is within its file. */
   n: z.number().int().min(0).max(10_000),
 });
@@ -68,7 +82,7 @@ export function fileAccountLabel(fileName: string): string {
  * halves of an emoji: half a character is invalid text, and Postgres refuses the whole row.
  */
 function clean(s: string, max: number): string {
-  let cut = s.trim().slice(0, max);
+  let cut = storableText(s).trim().slice(0, max);
   if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1);
   return cut.trim();
 }
@@ -80,7 +94,8 @@ export function toUploadRows(txns: readonly RhoTransaction[]): UploadRow[] {
     const date = (t.posted_at ?? t.initiated_at).slice(0, 10);
     // Number copies on exactly what's stored (and hashed), so formatting differences don't change identity.
     const description = clean(t.counterparty_name, 200);
-    const account = clean(t.account_id, 80) || DEFAULT_ACCOUNT;
+    const named = clean(t.account_id, 80) || DEFAULT_ACCOUNT;
+    const account = named === CASH_ACCOUNT_ID ? `${CASH_ACCOUNT_ID} (file)` : named;
     const key = `${date}|${description}|${t.amount.amount}|${account}`;
     const n = seen.get(key) ?? 0;
     seen.set(key, n + 1);
@@ -123,4 +138,27 @@ export function uploadedDataset({ cashCents, rows: all, today }: { cashCents: Ce
     ...[...accountTypes].filter(([id]) => id !== CASH_ACCOUNT_ID).map(([id, type]) => ({ id, account_type: type, account_name: id, balance: { amount: 0, currency: "USD" } })),
   ];
   return { accounts, transactions: resolveCardPayoffs(rows).transactions, futureRows: all.length - rows.length };
+}
+
+/**
+ * Upload rows in chunks the server takes: at most MAX_CHUNK_ROWS rows and MAX_CHUNK_BYTES of JSON
+ * each (non-Latin descriptions take three or four bytes a character).
+ */
+export function chunkUploadRows(rows: readonly UploadRow[]): UploadRow[][] {
+  const chunks: UploadRow[][] = [];
+  let current: UploadRow[] = [];
+  let bytes = 0;
+  const encoder = new TextEncoder();
+  for (const r of rows) {
+    const size = encoder.encode(JSON.stringify(r)).length + 1;
+    if (current.length > 0 && (current.length >= MAX_CHUNK_ROWS || bytes + size > MAX_CHUNK_BYTES)) {
+      chunks.push(current);
+      current = [];
+      bytes = 0;
+    }
+    current.push(r);
+    bytes += size;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
 }

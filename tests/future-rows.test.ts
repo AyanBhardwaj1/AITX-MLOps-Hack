@@ -55,3 +55,38 @@ describe("the grader's lagging-export note ignores rows left out", () => {
     expect(g.notes.join(" ")).not.toMatch(/days before the newest one/);
   });
 });
+
+describe("upload rows that Postgres would refuse", () => {
+  it("strips NUL and other control characters and mends lone surrogates; the server schema does too", async () => {
+    const { toUploadRows, uploadRow } = await import("@/lib/uploads/rows");
+    const [r] = toUploadRows([{ ...row("x", "2026-11-01", -100), counterparty_name: "ZO\u0000OM\uD800 PRO", account_id: "chk\u0001" }]);
+    expect(r!.description).toBe("ZOOM� PRO");
+    expect(r!.account).toBe("chk");
+    const parsed = uploadRow.parse({ ...r!, description: "A\u0000B\uDC00" });
+    expect(parsed.description).toBe("AB�");
+  });
+
+  it("an account can't be named like the entered-cash account", async () => {
+    const { toUploadRows, uploadRow, CASH_ACCOUNT_ID } = await import("@/lib/uploads/rows");
+    const [r] = toUploadRows([{ ...row("x", "2026-11-01", -100), account_id: CASH_ACCOUNT_ID }]);
+    expect(r!.account).not.toBe(CASH_ACCOUNT_ID);
+    expect(uploadRow.safeParse({ ...r!, account: CASH_ACCOUNT_ID }).success).toBe(false);
+  });
+
+  it("chunks stay under the request size even with long non-Latin text", async () => {
+    const { chunkUploadRows, toUploadRows, MAX_CHUNK_BYTES } = await import("@/lib/uploads/rows");
+    const rows = toUploadRows(Array.from({ length: 6_000 }, (_, i) => ({ ...row(`t${i}`, "2026-11-01", -100 - i), counterparty_name: "支".repeat(196), account_id: "账户".repeat(20) })));
+    const chunks = chunkUploadRows(rows);
+    expect(chunks.flat()).toHaveLength(6_000);
+    for (const c of chunks) expect(new TextEncoder().encode(JSON.stringify({ cashCents: 0, rows: c })).length).toBeLessThan(MAX_CHUNK_BYTES);
+  });
+});
+
+describe("the matches export reads repeated parameters as the page does", () => {
+  it("takes the first value, like parseTxnQuery on the page", async () => {
+    const { parseTxnQuery } = await import("@/lib/finance/transaction-search");
+    const params = new URLSearchParams("category=software&category=payroll&month=2026-08&month=2026-09");
+    const all = Object.fromEntries([...new Set(params.keys())].map((k) => [k, params.getAll(k)]));
+    expect(parseTxnQuery(all)).toMatchObject({ category: "software", month: "2026-08" });
+  });
+});

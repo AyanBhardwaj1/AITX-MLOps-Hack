@@ -26,7 +26,10 @@ const query = z.object({ mode: dataModeSchema, kind: z.enum(["recurring", "findi
 /** The transactions a search on /app/transactions matched, with the same filters from the address. */
 async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<NextResponse> {
   const { dataset, txns } = await loadTransactions(mode, { visitorFixes: true });
-  const rows = matchingTransactions(txns, parseTxnQuery(Object.fromEntries(params)));
+  // Every value of a repeated parameter, as the page reads them (it takes the first), so the file
+  // matches the page even for a hand-edited address.
+  const all = Object.fromEntries([...new Set(params.keys())].map((k) => [k, params.getAll(k)]));
+  const rows = matchingTransactions(txns, parseTxnQuery(all));
   const names = new Map(dataset.accounts.map((a) => [a.id, a.account_name || a.id]));
   return new NextResponse(streamChunks(matchesCsvLines(rows, names)), {
     headers: {

@@ -10,7 +10,7 @@ import { CashFromFiles } from "./cash-from-files";
 import { CashUpdate } from "./cash-update";
 import {
   fileAccountLabel,
-  MAX_CHUNK_ROWS,
+  chunkUploadRows,
   toUploadRows,
   type UploadRow,
 } from "@/lib/uploads/rows";
@@ -182,9 +182,12 @@ export function UploadForm({
       });
     let inserted = 0;
     let duplicates = 0;
-    for (let i = 0; i < rows.length; i += MAX_CHUNK_ROWS) {
-      setState({ kind: "working", sent: i, total: rows.length });
-      const r = await send(cashCents, rows.slice(i, i + MAX_CHUNK_ROWS));
+    let sent = 0;
+    for (const chunk of chunkUploadRows(rows)) {
+      // "sent" counts the rows saved once this chunk lands (what the progress line shows).
+      sent += chunk.length;
+      setState({ kind: "working", sent, total: rows.length });
+      const r = await send(cashCents, chunk);
       if ("error" in r)
         return setState({
           kind: "error",
@@ -574,9 +577,7 @@ export function UploadForm({
         {state.kind === "working" && (
           <p className="text-sm text-muted">
             Saving{" "}
-            {Math.min(state.sent + MAX_CHUNK_ROWS, state.total).toLocaleString(
-              "en-US",
-            )}{" "}
+            {state.sent.toLocaleString("en-US")}{" "}
             of {state.total.toLocaleString("en-US")} rows…
           </p>
         )}
