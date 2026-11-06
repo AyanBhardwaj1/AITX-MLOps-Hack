@@ -53,8 +53,9 @@ const FORMS: Partial<Record<Category, Form1099>> = {
 /**
  * Known companies (the vendor catalog) are corporations or platforms that report for you (Deel,
  * ad networks, Pilot, Carta), so they're left out while they keep their catalog category, except
- * law firms, which get one even when incorporated, and landlords. A person who moves one to a 1099
- * category (Contractors, Legal & accounting, Marketing) is saying the match was wrong, and it's listed.
+ * law firms, which get one even when incorporated, and landlords. One a person moves to a 1099
+ * category (Contractors, Legal & accounting, Marketing) is listed: that's the person's call (a wrong
+ * match, or contractors paid through a platform like Gusto, which files their forms itself).
  */
 const CATALOG_REPORTABLE = new Set(["wilson_sonsini"]);
 
