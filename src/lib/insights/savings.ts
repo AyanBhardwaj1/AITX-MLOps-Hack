@@ -145,7 +145,17 @@ function checkRefund(txns: readonly EnrichedTxn[], f: AcceptedFinding, acceptedO
   // The first leg: the same amount from the vendor a few days before (the detector's own rule).
   const firstLeg = charge
     ? txns
-        .filter((t) => t.id !== charge.id && t.vendor.key === vendorKey && t.amountCents === charge.amountCents && t.postedAt <= charge.postedAt && daysBetween(t.postedAt, charge.postedAt) <= SAME_EVENT_DAYS)
+        .filter(
+          (t) =>
+            t.id !== charge.id &&
+            t.vendor.key === vendorKey &&
+            // The same card or account, as the detector pairs them.
+            t.accountId === charge.accountId &&
+            (t.cardholder ?? "") === (charge.cardholder ?? "") &&
+            t.amountCents === charge.amountCents &&
+            t.postedAt <= charge.postedAt &&
+            daysBetween(t.postedAt, charge.postedAt) <= SAME_EVENT_DAYS,
+        )
         .sort((a, b) => b.postedAt.localeCompare(a.postedAt))[0]
     : undefined;
   const since = charge ? (firstLeg?.postedAt ?? charge.postedAt) : acceptedOn;

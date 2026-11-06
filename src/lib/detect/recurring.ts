@@ -110,8 +110,11 @@ function nextCharge(events: readonly EnrichedTxn[], rule: CadenceRule): IsoDate 
     const [y, m] = month.split("-").map(Number) as [number, number];
     return `${month}-${String(Math.min(billingDay, new Date(Date.UTC(y, m, 0)).getUTCDate())).padStart(2, "0")}`;
   };
-  const next = on(shiftMonth(last.slice(0, 7), months));
-  return daysBetween(last, next) < rule.nominalDays / 2 ? on(shiftMonth(last.slice(0, 7), 2 * months)) : next;
+  // Which billing date the last charge was for: the nearest one around it (a 30th bill posted on
+  // Oct 1 was September's; a 1st bill charged on Sep 30 was October's). The next is a cycle on.
+  const lastMonth = last.slice(0, 7);
+  const forDate = [-1, 0, 1].map((k) => on(shiftMonth(lastMonth, k))).sort((a, b) => Math.abs(daysBetween(last, a)) - Math.abs(daysBetween(last, b)))[0]!;
+  return on(shiftMonth(forDate.slice(0, 7), months));
 }
 
 function buildStream(events: EnrichedTxn[], rule: CadenceRule, asOf: IsoDate, workspace?: "#2"): RecurringStream {

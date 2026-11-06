@@ -5,9 +5,13 @@ import { VENDOR_CATALOG, type CatalogEntry } from "./catalog";
 const BANK_BOILERPLATE = /^(?:(?:purchase|recurring payment|recurring purchase) authorized on \d{1,2}\/\d{1,2}(?:\/\d{2,4})?|checkcard \d{4}|pos (?:debit|purchase)|debit card purchase|card purchase)\s+/;
 const PROCESSOR_PREFIX = /^(sq|tst|paypal|pp|sp|py|pos|checkcard)\s*\*\s*/;
 /** Amazon order descriptors carry an order reference (and more), which must not become the vendor. */
-const AMAZON_MARKETPLACE = /^(?:amzn mktp(?: us)?|amazon\.com|amzn\.com)\s*\*(?!.*\b(?:prime|music|kindle)\b).*$/;
-/** A descriptor that is just the brand (and maybe a state): "APPLE", "APPLE.COM … CA", "AMAZON". */
-const BARE_BRAND = /^(apple|amazon)(?: [a-z]{2})?$/;
+const AMAZON_ORDER = /^(?:amzn mktp(?: us)?|amazon\.com|amzn\.com)\s*\*(.*)$/;
+/** Amazon's subscriptions, which also bill through "AMAZON.COM*…" descriptors. */
+const AMAZON_SUBSCRIPTION = /\b(?:prime|music|kindle|video|audible)\b/;
+const US_STATES =
+  "al|ak|az|ar|ca|co|ct|de|dc|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy";
+/** A descriptor that is just the brand, maybe with "US" and a state: "APPLE", "APPLE.COM/US … CA". */
+const BARE_BRAND = new RegExp(`^(apple|amazon)(?: us)?(?: (?:${US_STATES}))?$`);
 const DOMAIN_SUFFIX = /\.(com|net|io|us|co|ai|app)\b/g;
 const PHONE = /\d{3}[-. ]\d{3}[-. ]\d{4}/g;
 const STORE_NUMBER = /#\s*\d+/g;
@@ -21,7 +25,7 @@ export function cleanDescriptor(raw: string): string {
     .toLowerCase()
     .trim()
     .replace(BANK_BOILERPLATE, "")
-    .replace(AMAZON_MARKETPLACE, "amazon")
+    .replace(AMAZON_ORDER, (_, rest: string) => (AMAZON_SUBSCRIPTION.test(rest) ? "amazon prime" : "amazon"))
     .replace(PROCESSOR_PREFIX, "")
     .replace(PHONE, " ")
     .replace(STORE_NUMBER, " ")

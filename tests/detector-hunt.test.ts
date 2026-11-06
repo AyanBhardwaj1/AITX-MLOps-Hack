@@ -173,3 +173,21 @@ describe("second review of the detector fixes", () => {
     expect(detectStreams(early, "2026-10-02")[0]!.nextExpected).toBe("2026-11-01");
   });
 });
+
+describe("third review of the detector fixes", () => {
+  it("a late posting across a month end doesn't skip a cycle", () => {
+    const m = ["2026-06-30", "2026-07-30", "2026-08-30", "2026-10-01"].map((d) => txn("NOTION", d, -100_00));
+    expect(detectStreams(m, "2026-10-02")[0]!.nextExpected).toBe("2026-10-30");
+    const q = ["2026-03-30", "2026-06-30", "2026-10-01"].map((d) => txn("GUSTO", d, -900_00));
+    expect(detectStreams(q, "2026-10-02")[0]!.nextExpected).toBe("2026-12-30");
+  });
+
+  it("files Prime Video under Amazon Prime and keeps bare brands to state codes", () => {
+    expect(resolveVendor("AMAZON.COM*AB12 PRIME VIDEO").key).toBe("amazon_prime");
+    expect(resolveVendor("AMZN Mktp US*PRIME VIDEO").key).toBe("amazon_prime");
+    expect(resolveVendor("APPLE.COM/US 800-676-2775 CA").key).toBe("apple");
+    expect(resolveVendor("APPLE.COM/US").key).toBe("apple");
+    expect(resolveVendor("APPLE TV").key).not.toBe("apple");
+    expect(resolveVendor("AMAZON GO").key).not.toBe("amazon");
+  });
+});
