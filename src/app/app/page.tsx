@@ -6,8 +6,10 @@ import { monthlyHistory } from "@/lib/finance/history";
 import { upcomingRenewals } from "@/lib/finance/renewals";
 import { detectChanges } from "@/lib/insights/changes";
 import { analyze } from "@/lib/pipeline";
+import { redirect } from "next/navigation";
+import { companyName, sessionUser } from "@/lib/server/company";
 import { loadAnalysis, parseMode, type DataMode } from "@/lib/server/data";
-import { canSendSlackFromApp, hasJira, hasOpenAI } from "@/lib/server/env";
+import { canSendSlackFromApp, hasJira, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
 import { KNOWN_JOBS } from "@/lib/vendors/catalog";
 import { categorySpend } from "@/lib/finance/category-spend";
@@ -63,6 +65,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
   return {
     mode,
     label: dataset.label,
+    companyName: await companyName(mode),
     asOf: a.asOf,
     asOfFromData: a.asOfFromData,
     transactionCount: a.txns.length,
@@ -112,17 +115,29 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     aiSpend: aiSpendTrend(a.txns, a.asOf, AI_TREND_MONTHS),
     savings,
     changes: detectChanges({ txns: a.txns, streams: a.streams, asOf: a.asOf, runwayMonths: a.snapshot.runwayMonths }),
-    capabilities: { copilot: hasOpenAI(), jira: hasJira(), slack: canSendSlackFromApp(), persistence: hasDatabase() ? "postgres" : "memory", storeOk },
+    capabilities: {
+      copilot: hasOpenAI(),
+      jira: hasJira(),
+      slack: canSendSlackFromApp(),
+      persistence: hasDatabase() ? "postgres" : "memory",
+      storeOk,
+      accounts: accountsEnabled(),
+      signedIn: (await sessionUser()) !== null,
+    },
   };
 }
 
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const mode = parseMode((await searchParams).mode);
+  const user = await sessionUser();
+  if (mode === "company" && !user) redirect(`/login?next=${encodeURIComponent("/app?mode=company")}`);
   let data: DashboardData;
   let notice: string | undefined;
   try {
     data = await buildData(mode);
   } catch (err) {
+    // A signed-in company with nothing uploaded yet starts at onboarding.
+    if (err instanceof Error && err.name === "NoCompanyData") redirect("/app/upload");
     console.error("[page] failed to load data", { mode, err });
     data = await buildData("demo");
     notice =

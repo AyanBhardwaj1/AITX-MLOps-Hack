@@ -48,6 +48,8 @@ export interface EvidenceRow {
 export interface DashboardData {
   mode: DataMode;
   label: string;
+  /** The company this dashboard is about (the demo company, or the signed-in founder's own). */
+  companyName: string;
   asOf: string;
   asOfFromData: boolean;
   transactionCount: number;
@@ -80,7 +82,7 @@ export interface DashboardData {
   aiSpend: AiSpendTrend | null;
   changes: Change[];
   savings: SavingsSummary;
-  capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean };
+  capabilities: { copilot: boolean; jira: boolean; slack: boolean; persistence: "postgres" | "memory"; storeOk: boolean; accounts: boolean; signedIn: boolean };
 }
 
 const KIND_LABEL: Record<Finding["kind"], string> = {
@@ -167,7 +169,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           <div className="min-w-0">
             <h1 className="text-lg font-semibold leading-tight tracking-tight">Runway</h1>
             <p className="text-xs text-muted">
-              {data.label === "demo" ? "Taco Robotics, Inc. · synthetic demo data" : "Live Rho sandbox feed"} · as of{" "}
+              {data.mode === "demo" ? `${data.companyName} · synthetic demo data` : data.mode === "company" ? `${data.companyName} · your uploaded exports` : "Live Rho sandbox feed"} · as of{" "}
               <time dateTime={data.asOf}>{formatDate(data.asOf)}</time>
               {data.asOfFromData ? " (latest transaction)" : ""}
             </p>
@@ -187,17 +189,29 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             </Link>
           )}
           <nav aria-label="Data source" className="flex overflow-hidden rounded-lg border border-line bg-panel">
-            {(["demo", "sandbox"] as const).map((m) => (
+            {(data.capabilities.accounts ? (["demo", "company"] as const) : (["demo", "sandbox"] as const)).map((m) => (
               <a
                 key={m}
                 href={`?mode=${m}`}
                 aria-current={data.mode === m ? "page" : undefined}
                 className={`px-3 py-1.5 transition-colors ${data.mode === m ? "bg-ink text-white" : "text-muted hover:bg-canvas hover:text-ink"}`}
               >
-                {m === "demo" ? "Demo company" : "Rho sandbox"}
+                {m === "demo" ? "Demo company" : m === "company" ? (data.capabilities.signedIn ? "Your company" : "Sign in") : "Rho sandbox"}
               </a>
             ))}
           </nav>
+          {data.mode === "company" && (
+            <Link href="/app/upload" className="rounded-full border border-line bg-panel px-2.5 py-1 text-muted transition-colors hover:border-brand hover:text-brand">
+              Upload exports
+            </Link>
+          )}
+          {data.capabilities.signedIn && (
+            <form action="/api/auth/logout" method="post">
+              <button type="submit" className="rounded-full px-2.5 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
+                Sign out
+              </button>
+            </form>
+          )}
         </div>
       </header>
 

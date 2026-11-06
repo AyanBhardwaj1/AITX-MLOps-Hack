@@ -2,6 +2,10 @@ import type { Pool, PoolClient } from "pg";
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { ShareSnapshot } from "../share/snapshot";
+import type { RhoTransaction } from "../rho/schema";
+import { txnType } from "../rho/map";
+import { CASH_ACCOUNT_ID } from "../uploads/rows";
+import { resolveVendor } from "../vendors/normalize";
 import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
@@ -62,6 +66,14 @@ const toShareLink = (r: ShareRow): StoredShareLink => ({
 export async function findShareLinkByTokenHash(pool: Pool, tokenHash: string): Promise<StoredShareLink | null> {
   const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where token_hash = $1`, [tokenHash]);
   return rows[0] ? toShareLink(rows[0]) : null;
+}
+
+/** The company's uploaded-exports connection (created on first upload when `create`). */
+async function csvConnection(db: Pool | PoolClient, org: string, create: boolean): Promise<string | null> {
+  const found = await db.query<{ id: string }>(`select id from public.connections where org_id = $1 and provider = 'csv' order by created_at limit 1`, [org]);
+  if (found.rows[0] || !create) return found.rows[0]?.id ?? null;
+  const made = await db.query<{ id: string }>(`insert into public.connections (org_id, provider) values ($1, 'csv') returning id`, [org]);
+  return made.rows[0]!.id;
 }
 
 async function inTransaction<T>(pool: Pool, fn: (c: PoolClient) => Promise<T>): Promise<T> {
@@ -364,6 +376,71 @@ export function createPostgresStore(pool: Pool, scope: string): Store {
       const org = await orgId();
       const { rows } = await pool.query<ShareRow>(`select ${SHARE_COLUMNS} from public.share_links where org_id = $1 order by created_at desc limit ${MAX_LISTED_LINKS}`, [org]);
       return rows.map(toShareLink);
+    },
+
+    async saveUploads(cashCents, rows, maxTotal) {
+      const org = await orgId();
+      return inTransaction(pool, async (c) => {
+        // One upload at a time per company, so the row cap can't be raced past.
+        await c.query(`select pg_advisory_xact_lock(hashtextextended('uploads:' || $1::text, 0))`, [org]);
+        const connectionId = await csvConnection(c, org, true);
+        const unique = [...new Map(rows.map((r) => [`${r.account_id}|${r.id}`, r])).values()];
+        const { rows: counts } = await c.query<{ stored: string; fresh: string }>(
+          `select (select count(*) from public.transactions where connection_id = $1) as stored,
+                  (select count(*) from unnest($2::text[], $3::text[]) as u(acct, txn)
+                    where not exists (select 1 from public.transactions t where t.connection_id = $1 and t.provider_account_id = u.acct and t.provider_txn_id = u.txn)) as fresh`,
+          [connectionId, unique.map((r) => r.account_id), unique.map((r) => r.id)],
+        );
+        if (Number(counts[0]!.stored) + Number(counts[0]!.fresh) > maxTotal) return "limit" as const;
+        const inserted = await c.query(
+          `insert into public.transactions
+             (org_id, connection_id, provider_account_id, provider_txn_id, posted_on, amount_minor, description, txn_type, status, cardholder, vendor_key, raw, raw_hash)
+           select $1, $2, u.acct, u.txn, u.posted::date, u.amount, u.descr, u.ttype, 'posted', u.holder, u.vkey, u.raw::jsonb, u.txn
+             from unnest($3::text[], $4::text[], $5::text[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::text[], $11::text[])
+               as u(acct, txn, posted, amount, descr, ttype, holder, vkey, raw)
+           on conflict (connection_id, provider_account_id, provider_txn_id) do nothing`,
+          [
+            org,
+            connectionId,
+            unique.map((r) => r.account_id),
+            unique.map((r) => r.id),
+            unique.map((r) => (r.posted_at ?? r.initiated_at).slice(0, 10)),
+            unique.map((r) => r.amount.amount),
+            unique.map((r) => r.counterparty_name),
+            unique.map((r) => txnType(r.transaction_type)),
+            unique.map((r) => r.user_full_name ?? null),
+            unique.map((r) => resolveVendor(r.counterparty_name).key),
+            unique.map((r) => JSON.stringify(r)),
+          ],
+        );
+        await c.query(
+          `insert into public.accounts (org_id, connection_id, provider_account_id, name, account_type, balance_minor)
+           values ($1, $2, $3, 'Cash (entered at upload)', 'checking', $4)
+           on conflict (connection_id, provider_account_id) do update set balance_minor = excluded.balance_minor, synced_at = now()`,
+          [org, connectionId, CASH_ACCOUNT_ID, cashCents],
+        );
+        const added = inserted.rowCount ?? 0;
+        return { inserted: added, duplicates: rows.length - added };
+      });
+    },
+
+    async loadUploads() {
+      const org = await orgId();
+      const connectionId = await csvConnection(pool, org, false);
+      if (!connectionId) return null;
+      const cash = await pool.query<{ balance_minor: string }>(`select balance_minor from public.accounts where connection_id = $1 and provider_account_id = $2`, [connectionId, CASH_ACCOUNT_ID]);
+      const { rows } = await pool.query<{ raw: RhoTransaction }>(
+        `select raw from public.transactions where connection_id = $1 and removed_at is null order by posted_on, id`,
+        [connectionId],
+      );
+      if (!cash.rows[0] || rows.length === 0) return null;
+      return { cashCents: Number(cash.rows[0].balance_minor), rows: rows.map((r) => r.raw) };
+    },
+
+    async clearUploads() {
+      const org = await orgId();
+      // Accounts and transactions go with the connection (on delete cascade).
+      await pool.query(`delete from public.connections where org_id = $1 and provider = 'csv'`, [org]);
     },
 
     async revokeShareLink(id) {

@@ -1,6 +1,7 @@
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
 import type { ShareSnapshot } from "../share/snapshot";
+import type { RhoTransaction } from "../rho/schema";
 
 export type FindingStatus = "open" | "accepted" | "dismissed" | "resolved";
 export type ActionKind = "cancel_email" | "downgrade_request" | "card_limit_checklist" | "jira_ticket";
@@ -109,6 +110,15 @@ export interface Store {
   listShareLinks(): Promise<StoredShareLink[]>;
   /** Revokes one of this scope's links; StoreError("not_found") otherwise. */
   revokeShareLink(id: string): Promise<void>;
+  /**
+   * Adds uploaded bank transactions (ids are content-derived, so repeats are skipped) and sets
+   * today's cash. Refused whole ("limit") if the stored total would pass `maxTotal`; atomic.
+   */
+  saveUploads(cashCents: number, rows: readonly RhoTransaction[], maxTotal: number): Promise<{ inserted: number; duplicates: number } | "limit">;
+  /** Everything uploaded for this scope, or null when nothing has been. */
+  loadUploads(): Promise<{ cashCents: number; rows: RhoTransaction[] } | null>;
+  /** Deletes every uploaded transaction and the entered cash. */
+  clearUploads(): Promise<void>;
 }
 
 export interface ShareLinkInput {

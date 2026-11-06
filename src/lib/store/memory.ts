@@ -1,5 +1,6 @@
 import type { Finding } from "../types";
 import type { VendorCorrection } from "../vendors/corrections";
+import type { RhoTransaction } from "../rho/schema";
 import { StoreError, type AcceptedFinding, type DraftInput, type FindingStatus, type RunInput, type Store, type StoredAction, type StoredRun, type StoredShareLink } from "./types";
 
 /**
@@ -14,6 +15,8 @@ export function createMemoryStore(): Store {
   const runs: StoredRun[] = [];
   const corrections = new Map<string, VendorCorrection>();
   const shareLinks: (StoredShareLink & { tokenHash: string })[] = [];
+  const uploads = new Map<string, RhoTransaction>();
+  let uploadCash: number | null = null;
   const withoutHash = ({ tokenHash: _hash, ...rest }: StoredShareLink & { tokenHash: string }): StoredShareLink => ({ ...rest });
 
   const findAction = (id: string) => {
@@ -112,6 +115,21 @@ export function createMemoryStore(): Store {
     },
     async listShareLinks() {
       return [...shareLinks].reverse().slice(0, 50).map(withoutHash);
+    },
+    async saveUploads(cashCents, rows, maxTotal) {
+      const fresh = [...new Map(rows.filter((r) => !uploads.has(r.id)).map((r) => [r.id, r])).values()];
+      if (uploads.size + fresh.length > maxTotal) return "limit";
+      for (const r of fresh) uploads.set(r.id, structuredClone(r));
+      uploadCash = cashCents;
+      return { inserted: fresh.length, duplicates: rows.length - fresh.length };
+    },
+    async loadUploads() {
+      if (uploads.size === 0 || uploadCash === null) return null;
+      return { cashCents: uploadCash, rows: [...uploads.values()].map((r) => structuredClone(r)) };
+    },
+    async clearUploads() {
+      uploads.clear();
+      uploadCash = null;
     },
     async revokeShareLink(id) {
       const l = shareLinks.find((x) => x.id === id);

@@ -11,6 +11,8 @@ import { env, hasOpenAI } from "./env";
 import { labelUnknownVendors } from "./vendor-llm";
 import { scopeFor } from "./scope";
 import { getStore } from "./store";
+import { NoCompanyData } from "./errors";
+import { uploadedDataset } from "../uploads/rows";
 import type { DataMode } from "../modes";
 import type { VendorCorrection } from "../vendors/corrections";
 import { DEMO_CORRECTIONS_COOKIE, decodeDemoCorrections } from "../vendors/demo-cookie";
@@ -36,6 +38,13 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
     const demo = generateDemoCompany();
     return { accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, label: "demo", actedOn: demo.actedOn };
   }
+  if (mode === "company") {
+    // The signed-in user's own uploads; scopeFor() throws SignInRequired when nobody is.
+    const uploads = await getStore(await scopeFor("company")).loadUploads();
+    if (!uploads) throw new NoCompanyData();
+    return { ...uploadedDataset(uploads), label: "company" };
+  }
+  await scopeFor("sandbox"); // refuses the env Rho feed once accounts are on
   const e = env();
   assertSafeToServe({ rhoBaseUrl: e.RHO_BASE_URL, appPassword: e.APP_PASSWORD });
   if (sandboxCache && Date.now() - sandboxCache.at < SANDBOX_CACHE_MS) return sandboxCache.data;

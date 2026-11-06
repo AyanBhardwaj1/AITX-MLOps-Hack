@@ -1,0 +1,216 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
+import { importCsv } from "@/lib/csv/import";
+import { formatDate } from "@/lib/format";
+import { formatDollars } from "@/lib/money";
+import { MAX_CHUNK_ROWS, toUploadRows, type UploadRow } from "@/lib/uploads/rows";
+
+export interface UploadSummary {
+  transactions: number;
+  from: string | null;
+  to: string | null;
+  cashCents: number;
+}
+
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+/** Every file's rows share one account id, so the same row in an overlapping export is the same row. */
+const ACCOUNT_ID = "uploaded";
+
+type State =
+  | { kind: "idle" }
+  | { kind: "working"; sent: number; total: number }
+  | { kind: "done"; inserted: number; duplicates: number; notes: string[] }
+  | { kind: "error"; message: string; notes: string[] };
+
+interface Parsed {
+  rows: UploadRow[];
+  notes: string[];
+}
+
+async function parseFiles(files: readonly File[]): Promise<Parsed> {
+  const rows: UploadRow[] = [];
+  const notes: string[] = [];
+  for (const f of files) {
+    if (f.size > MAX_FILE_BYTES) {
+      notes.push(`${f.name} is over 20 MB, so it was skipped. Export a shorter date range.`);
+      continue;
+    }
+    try {
+      const r = importCsv(await f.text(), { accountId: ACCOUNT_ID, resolvePayoffs: false });
+      rows.push(...toUploadRows(r.transactions));
+      if (r.skipped.length > 0) notes.push(`${f.name}: ${r.skipped.length} row${r.skipped.length === 1 ? "" : "s"} couldn't be read and were left out.`);
+      if (r.mostlyPositive) notes.push(`${f.name}: most amounts are positive. If spending shows as money in, flip the sign column before uploading.`);
+    } catch (err) {
+      notes.push(`${f.name}: ${err instanceof Error ? err.message : "couldn't read this file"}`);
+    }
+  }
+  return { rows, notes };
+}
+
+async function send(cashCents: number, rows: readonly UploadRow[]): Promise<{ inserted: number; duplicates: number } | { error: string }> {
+  const res = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cashCents, rows }) }).catch(() => null);
+  const body = (await res?.json().catch(() => null)) as { inserted?: number; duplicates?: number; error?: string } | null;
+  if (!res?.ok || typeof body?.inserted !== "number") return { error: body?.error ?? "That upload didn’t go through. Try again." };
+  return { inserted: body.inserted, duplicates: body.duplicates ?? 0 };
+}
+
+function dollarsToCents(text: string): number | null {
+  const cleaned = text.replace(/[$,\s]/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  return Math.round(Number(cleaned) * 100);
+}
+
+export function UploadForm({ summary, storageReady }: { summary: UploadSummary | null; storageReady: boolean }) {
+  const id = useId();
+  const router = useRouter();
+  const [files, setFiles] = useState<File[]>([]);
+  const [cash, setCash] = useState(summary ? String(summary.cashCents / 100) : "");
+  const [state, setState] = useState<State>({ kind: "idle" });
+  const [deleting, setDeleting] = useState(false);
+
+  async function upload(e: React.FormEvent) {
+    e.preventDefault();
+    const cashCents = dollarsToCents(cash);
+    if (cashCents === null) return setState({ kind: "error", message: "Enter today's total cash across your bank accounts, in dollars.", notes: [] });
+    if (files.length === 0) return setState({ kind: "error", message: "Choose at least one CSV export.", notes: [] });
+    const { rows, notes } = await parseFiles(files);
+    if (rows.length === 0) return setState({ kind: "error", message: "No transactions could be read from these files.", notes });
+    let inserted = 0;
+    let duplicates = 0;
+    for (let i = 0; i < rows.length; i += MAX_CHUNK_ROWS) {
+      setState({ kind: "working", sent: i, total: rows.length });
+      const r = await send(cashCents, rows.slice(i, i + MAX_CHUNK_ROWS));
+      if ("error" in r) return setState({ kind: "error", message: inserted > 0 ? `${r.error} (${inserted.toLocaleString("en-US")} rows were saved before this.)` : r.error, notes });
+      inserted += r.inserted;
+      duplicates += r.duplicates;
+    }
+    setFiles([]);
+    setState({ kind: "done", inserted, duplicates, notes });
+    router.refresh();
+  }
+
+  async function deleteAll() {
+    if (!window.confirm("Delete every transaction you've uploaded and the cash you entered? This can't be undone.")) return;
+    setDeleting(true);
+    const res = await fetch("/api/uploads/clear", { method: "POST" }).catch(() => null);
+    setDeleting(false);
+    if (!res?.ok) return setState({ kind: "error", message: "Couldn’t delete that just now. Try again.", notes: [] });
+    setState({ kind: "idle" });
+    router.refresh();
+  }
+
+  const field = "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm transition-colors focus-visible:border-brand";
+  const working = state.kind === "working";
+  return (
+    <div className="mt-6 space-y-6">
+      {summary && (
+        <section aria-labelledby={`${id}-stored`} className="rounded-xl border border-line bg-panel p-5">
+          <h2 id={`${id}-stored`} className="font-semibold">
+            Stored for your company
+          </h2>
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-xs text-muted">Transactions</dt>
+              <dd className="tabular font-medium">{summary.transactions.toLocaleString("en-US")}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted">Dates</dt>
+              <dd className="tabular font-medium">{summary.from && summary.to ? `${formatDate(summary.from)} – ${formatDate(summary.to)}` : "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted">Cash entered</dt>
+              <dd className="tabular font-medium">{formatDollars(summary.cashCents)}</dd>
+            </div>
+          </dl>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/app?mode=company" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong">
+              Open your dashboard
+            </Link>
+            <button type="button" onClick={() => void deleteAll()} disabled={deleting} className="rounded-lg border border-line px-4 py-2 text-sm text-warn transition-colors hover:bg-warn-soft disabled:opacity-60">
+              {deleting ? "Deleting…" : "Delete my uploaded data"}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {!storageReady && (
+        <p role="alert" className="rounded-lg bg-warn-soft px-4 py-3 text-sm text-warn">
+          This deployment has no database configured, so uploads can&apos;t be saved yet.
+        </p>
+      )}
+
+      <form onSubmit={(e) => void upload(e)} className="space-y-4 rounded-xl border border-line bg-panel p-5" autoComplete="off">
+        <div>
+          <label htmlFor={`${id}-files`} className="block text-sm font-medium">
+            1. Bank and card exports (CSV)
+          </label>
+          <p className="text-xs text-muted">Date, Description and Amount columns at least (Rho- and Mercury-style layouts are recognised). Up to 20 MB each.</p>
+          <input
+            id={`${id}-files`}
+            name="files"
+            type="file"
+            accept=".csv,text/csv"
+            multiple
+            onChange={(e) => {
+              setFiles([...(e.target.files ?? [])]);
+              setState({ kind: "idle" });
+            }}
+            className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand"
+          />
+        </div>
+        <div>
+          <label htmlFor={`${id}-cash`} className="block text-sm font-medium">
+            2. Today&apos;s total cash ($)
+          </label>
+          <p className="text-xs text-muted">A CSV has no balance, so add up your bank accounts. Each upload updates it.</p>
+          <input id={`${id}-cash`} name="cash" inputMode="decimal" placeholder="e.g. 950,000…" value={cash} onChange={(e) => setCash(e.target.value)} className={field} />
+        </div>
+        <button
+          type="submit"
+          disabled={working || !storageReady}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50"
+        >
+          {working ? "Uploading…" : "Upload and analyse"}
+        </button>
+        <p className="text-xs text-muted">
+          Files are read in this browser tab. Only the transaction rows (date, description, amount, account, cardholder) are sent, and they&apos;re
+          stored for your company alone. Delete them here any time.
+        </p>
+      </form>
+
+      <div role="status" aria-live="polite">
+        {state.kind === "working" && (
+          <p className="text-sm text-muted">
+            Saving {Math.min(state.sent + MAX_CHUNK_ROWS, state.total).toLocaleString("en-US")} of {state.total.toLocaleString("en-US")} rows…
+          </p>
+        )}
+        {state.kind === "done" && (
+          <div className="rounded-xl bg-brand-soft p-4 text-sm">
+            <p className="font-medium">
+              Saved {state.inserted.toLocaleString("en-US")} new transaction{state.inserted === 1 ? "" : "s"}
+              {state.duplicates > 0 ? `; ${state.duplicates.toLocaleString("en-US")} were already stored` : ""}.
+            </p>
+            <Link href="/app?mode=company" className="mt-2 inline-block font-medium text-brand hover:underline">
+              See your dashboard →
+            </Link>
+          </div>
+        )}
+      </div>
+      {state.kind === "error" && (
+        <p role="alert" className="rounded-lg bg-warn-soft px-4 py-3 text-sm text-warn">
+          {state.message}
+        </p>
+      )}
+      {(state.kind === "done" || state.kind === "error") && state.notes.length > 0 && (
+        <ul className="list-disc space-y-1 rounded-xl border border-line bg-canvas p-4 pl-8 text-sm text-muted">
+          {state.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

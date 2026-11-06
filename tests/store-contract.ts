@@ -167,6 +167,27 @@ export function runStoreContract(name: string, makeStore: () => Promise<Store>) 
       expect(await store.createShareLink({ tokenHash: hash(5), label: null, payload, expiresAt: later }, 2, now)).not.toBe("limit");
     });
 
+    it("stores uploaded transactions once, however often an overlapping export is uploaded", async () => {
+      const store = await makeStore();
+      expect(await store.loadUploads()).toBeNull();
+      const row = (id: string, amount: number) => ({
+        id, money_movement_id: null, account_id: "uploaded", account_name: "uploaded", account_type: "checking" as const,
+        amount: { amount, currency: "USD" }, status: "settled" as const, transaction_type: "ach_debit", counterparty_name: `VENDOR ${id}`,
+        initiated_at: "2026-08-01T12:00:00Z", posted_at: "2026-08-01T12:00:00Z", card_id: null, card_name: null, user_full_name: null,
+      });
+      expect(await store.saveUploads(100_000_00, [row("u_a", -100), row("u_b", -200)], 10)).toEqual({ inserted: 2, duplicates: 0 });
+      expect(await store.saveUploads(90_000_00, [row("u_b", -200), row("u_c", -300)], 10)).toEqual({ inserted: 1, duplicates: 1 });
+      const loaded = await store.loadUploads();
+      expect(loaded!.cashCents).toBe(90_000_00);
+      expect(loaded!.rows.map((r) => r.id).sort()).toEqual(["u_a", "u_b", "u_c"]);
+      expect(loaded!.rows.find((r) => r.id === "u_c")).toEqual(row("u_c", -300));
+      // The cap counts what is stored; a save that would pass it is refused whole.
+      expect(await store.saveUploads(1, [row("u_d", -1), row("u_e", -1)], 4)).toBe("limit");
+      expect((await store.loadUploads())!.rows).toHaveLength(3);
+      await store.clearUploads();
+      expect(await store.loadUploads()).toBeNull();
+    });
+
     it("never stores more corrections than the limit, even when requests race", async () => {
       const store = await makeStore();
       const limit = 5;

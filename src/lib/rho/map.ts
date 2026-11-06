@@ -17,7 +17,7 @@ const TRANSFER_TYPES = new Set([
   "savings_withdrawal",
 ]);
 
-function txnType(rhoType: string): TxnType {
+export function txnType(rhoType: string): TxnType {
   if (TRANSFER_TYPES.has(rhoType)) return "transfer";
   if (rhoType.endsWith("_fee")) return "fee";
   if (rhoType.startsWith("card_")) return "card";
