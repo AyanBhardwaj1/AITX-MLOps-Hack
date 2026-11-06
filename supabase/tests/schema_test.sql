@@ -220,6 +220,7 @@ reset role;
 -- The server records cash and budget changes; it can't record kinds it doesn't know.
 insert into public.company_activity (org_id, actor_email, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'a@acme.example', 'cash', 'Set today''s cash to $1');
 insert into public.company_activity (org_id, actor_email, kind, detail) values ('00000000-0000-0000-0000-00000000000a', 'a@acme.example', 'budget', 'Set the software budget to $1/mo');
+insert into public.company_activity (org_id, actor_email, kind, detail) values ('00000000-0000-0000-0000-00000000000a', null, 'alert', 'Told Slack: runway dropped under 6 months (5.6)');
 
 -- Budgets: server only, spending categories only, positive amounts.
 insert into public.company_budgets (org_id, category, monthly_minor) values ('00000000-0000-0000-0000-00000000000a', 'software', 500000);

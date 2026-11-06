@@ -6,7 +6,9 @@ import { postToSlack, SlackError } from "../slack";
 import type { Store } from "../store/types";
 
 const slackEscape = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-const label = (category: string) => slackEscape(categoryName(category)[0]!.toUpperCase() + categoryName(category).slice(1));
+const plainLabel = (category: string) => categoryName(category)[0]!.toUpperCase() + categoryName(category).slice(1);
+const label = (category: string) => slackEscape(plainLabel(category));
+const listed = (items: string[]) => (items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
 const monthName = (month: string) => new Date(`${month}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
 
 /** The Slack message for budgets that just went over (server-written text; the company name escaped). */
@@ -63,5 +65,9 @@ export async function sendBudgetAlerts({
     }
     throw err;
   }
+  // The team sees what Slack was told, credited to Runway; a hiccup here never undoes the post.
+  await store
+    .recordActivity({ actorEmail: null, kind: "alert", detail: `Told Slack: ${listed(claimed.map((r) => plainLabel(r.category)))} went over budget in ${monthName(month)}` })
+    .catch((err) => console.error("[budget-alerts] couldn't log the alert", err instanceof Error ? err.message : "unknown error"));
   return { status: "sent", categories: claimed.map((r) => r.category) };
 }

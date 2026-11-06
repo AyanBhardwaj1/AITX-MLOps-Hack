@@ -42,6 +42,8 @@ describe("budget alerts in Slack", () => {
     expect(text).toContain("*Software* is over budget: $9,000 so far of $8,500 in November.");
     expect(text).toContain("*Meals* is over budget: $300 so far of $200 in November.");
     expect(text).not.toContain("Travel");
+    // The team sees what Slack was told, from Runway itself.
+    expect(await store.listActivity(5)).toEqual([expect.objectContaining({ actorEmail: null, kind: "alert", detail: "Told Slack: Meals and Software went over budget in November" })]);
     // The next run (or an overlapping one) has nothing new to say.
     expect(await sendBudgetAlerts({ store, load, company: "Acme", now: NOW, post })).toEqual({ status: "none" });
     expect(post).toHaveBeenCalledTimes(1);

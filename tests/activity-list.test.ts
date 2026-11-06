@@ -19,6 +19,12 @@ describe("activity list", () => {
     expect(full).toContain("Showing the latest 200.");
   });
 
+  it("credits Runway with what it posted itself", () => {
+    const html = renderToStaticMarkup(createElement(ActivityList, { entries: [{ ...entry(1), actorEmail: null, kind: "alert", detail: "Told Slack: runway dropped under 6 months (5.6)" }, { ...entry(2), actorEmail: null }] }));
+    expect(html).toContain("<bdi>Runway</bdi>");
+    expect(html).toContain("<bdi>unknown</bdi>");
+  });
+
   it("keeps a right-to-left name from reordering the line", () => {
     const html = renderToStaticMarkup(createElement(ActivityList, { entries: [{ ...entry(1), detail: "Deleted 3 transactions from \u202Eevil" }] }));
     expect(html).toContain("<bdi>Deleted 3 transactions from \u202Eevil</bdi>");

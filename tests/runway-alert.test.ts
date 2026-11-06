@@ -49,6 +49,7 @@ describe("runway alerts in Slack", () => {
     const [url, text] = post.mock.calls[0] as unknown as [string, string];
     expect(url).toBe(WEBHOOK);
     expect(text).toBe("*Runway alert for Acme &lt;Robotics&gt;*\nRunway is down to *5.6 months*, under 6. At $80,000/month net burn, cash runs out around Apr 20, 2027.");
+    expect(await store.listActivity(5)).toEqual([expect.objectContaining({ actorEmail: null, kind: "alert", detail: "Told Slack: runway dropped under 6 months (5.6)" })]);
     expect(await send(5.4)).toEqual({ status: "none" });
     expect(await send(7.5)).toEqual({ status: "none" });
     expect(await send(5.9)).toEqual({ status: "sent", below: 6 });

@@ -180,7 +180,7 @@ export interface FindingDecision {
   at: string;
 }
 
-export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link" | "cash" | "budget";
+export type ActivityKind = "upload" | "delete_account" | "clear" | "invite" | "revoke_invite" | "remove_member" | "leave" | "transfer" | "join" | "rename" | "slack" | "share_link" | "cash" | "budget" | "alert";
 
 export interface ActivityEntry {
   at: string;

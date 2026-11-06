@@ -23,7 +23,7 @@ export function ActivityList({ entries, limit = entries.length, moreHref = null 
                 <bdi>{e.detail}</bdi>
                 <span className="text-muted">
                   {" · "}
-                  <bdi>{e.actorEmail ?? "unknown"}</bdi>
+                  <bdi>{e.actorEmail ?? (e.kind === "alert" ? "Runway" : "unknown")}</bdi>
                 </span>
               </span>
               <time dateTime={e.at} className="tabular shrink-0 text-xs text-muted">
