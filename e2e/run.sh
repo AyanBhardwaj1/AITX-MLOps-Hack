@@ -52,7 +52,7 @@ for spec in e2e/*.e2e.mjs; do
   node "$spec" || status=1
 done
 leaked=0
-if grep -iE "gusto|payroll|slack technologies" "$LOG_DIR/app.log" >/dev/null; then
+if grep -iE "gusto|payroll|slack technologies|figma|notion|linear|stripe|maya patel" "$LOG_DIR/app.log" >/dev/null; then
   echo "FAIL  uploaded file contents appeared in the server log"
   status=1
   leaked=1
