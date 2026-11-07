@@ -6,6 +6,8 @@ import { UploadForm, type UploadSummary } from "@/components/upload-form";
 import { companyForPage, pendingInvitesForMe } from "@/lib/server/company";
 import { accountsEnabled } from "@/lib/server/env";
 import { laggingAccounts } from "@/lib/freshness";
+import { isoDateInZone } from "@/lib/dates";
+import { visitorTimeZone } from "@/lib/server/data";
 import { getStore, persistentStorageReady } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +37,8 @@ async function summaryFor(scope: string): Promise<UploadSummary | null> {
     from: dates[0] ?? null,
     to: dates.at(-1) ?? null,
     cashCents: stored.cashCents,
-    cashEnteredOn: stored.cashEnteredAt.slice(0, 10),
+    // The founder's calendar day, as the dashboard's cash notice shows it.
+    cashEnteredOn: isoDateInZone(await visitorTimeZone(), new Date(stored.cashEnteredAt)),
     accounts: [...byAccount].map(([account, a]) => ({ account, ...a, daysBehind: behind.get(account) })).sort((x, y) => y.rows - x.rows),
   };
 }
