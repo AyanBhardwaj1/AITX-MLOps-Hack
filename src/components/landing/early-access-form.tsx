@@ -82,6 +82,8 @@ export function EarlyAccessForm() {
         spellCheck={false}
         placeholder="maya@yourstartup.com"
         maxLength={254}
+        aria-invalid={state.kind === "error" || undefined}
+        aria-describedby={state.kind === "error" ? `${id}-error` : undefined}
         className="mt-1.5 block w-full border border-[#7b8597] bg-white px-3 py-3 text-[18px] focus-visible:border-brand"
       />
       <fieldset className="mt-5">
@@ -124,7 +126,7 @@ export function EarlyAccessForm() {
       </button>
       <p className="mt-3 min-h-[1.5em] text-[15px]">
         {state.kind === "error" ? (
-          <span role="alert" className="font-medium text-[#b91c1c]">
+          <span id={`${id}-error`} role="alert" className="font-medium text-[#b91c1c]">
             {state.message}
           </span>
         ) : (
