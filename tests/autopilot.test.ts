@@ -149,6 +149,12 @@ describe("checkMemoNumbers: amounts and months must be amounts and months from t
     const day = dayOf(run.memoFacts.asOfText);
     expect(checkMemoNumbers("As of " + run.memoFacts.asOfText + ", runway is " + day + " months.", run.memoFacts).ok).toBe(false);
   });
+  it("catches the same figures written as \"a 26-month cushion\", \"26 extra months\" or \"$ 26\"", async () => {
+    const run = await runAutopilot({ loadData });
+    const day = dayOf(run.memoFacts.asOfText);
+    for (const phrase of [day + "-month cushion", day + " extra months", day + " mos", "$ " + day])
+      expect(checkMemoNumbers("As of " + run.memoFacts.asOfText + ": a " + phrase + ".", run.memoFacts).ok, phrase).toBe(false);
+  });
   it("accepts the facts' own amounts and months, however the memo phrases them", async () => {
     const f = (await runAutopilot({ loadData })).memoFacts;
     const text = "Cash is " + f.cashText + "; runway " + f.runwayMonthsText + ", or " + f.newRunwayText + " after the fixes (saving " + f.monthlySavingsText + " a month).";

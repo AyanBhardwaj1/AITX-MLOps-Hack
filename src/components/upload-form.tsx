@@ -72,7 +72,7 @@ async function send(
   rows: readonly UploadRow[],
   /** From the second part on: the company the first part went to. */
   company: string | undefined,
-): Promise<{ inserted: number; duplicates: number; company?: string } | { error: string }> {
+): Promise<{ inserted: number; duplicates: number; company?: string } | { error: string; companyChanged?: boolean }> {
   const res = await fetch("/api/uploads", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -83,10 +83,12 @@ async function send(
     duplicates?: number;
     company?: string;
     error?: string;
+    code?: string;
   } | null;
   if (!res?.ok || typeof body?.inserted !== "number")
     return {
       error: body?.error ?? "That upload didn’t go through. Try again.",
+      companyChanged: body?.code === "company_changed",
     };
   return { inserted: body.inserted, duplicates: body.duplicates ?? 0, company: body.company };
 }
@@ -169,7 +171,8 @@ export function UploadForm({
         return setState({
           kind: "error",
           message:
-            inserted > 0
+            // Rows saved to a company that's since gone can't be seen: don't count them as saved.
+            inserted > 0 && !r.companyChanged
               ? `${r.error} (${inserted.toLocaleString("en-US")} rows were saved before this.)`
               : r.error,
           notes,

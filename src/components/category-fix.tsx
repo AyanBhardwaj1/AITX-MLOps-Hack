@@ -128,7 +128,7 @@ export function CategoryFix({
             type="button"
             onClick={close}
             disabled={busy}
-            className="px-1 text-muted hover:text-ink"
+            className="px-1 text-muted hover:text-ink disabled:opacity-50"
           >
             Cancel
           </button>

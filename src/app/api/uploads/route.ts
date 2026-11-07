@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const parsed = uploadChunk.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Some rows couldn’t be read. Check the file and try again." }, { status: 400 });
   if (parsed.data.company !== undefined && parsed.data.company !== scope)
-    return NextResponse.json({ error: "Your company changed during this upload (was it deleted?), so the rest wasn't saved. Upload again." }, { status: 409 });
+    return NextResponse.json({ error: "Your company changed during this upload (was it deleted?), so the rest wasn't saved. Upload again.", code: "company_changed" }, { status: 409 });
   try {
     const store = getStore(scope);
     const result = await store.saveUploads(parsed.data.cashCents ?? null, storedRowsFrom(parsed.data.rows), MAX_ROWS_PER_COMPANY);

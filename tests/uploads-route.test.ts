@@ -67,7 +67,9 @@ describe("POST /api/uploads", () => {
     // The company was deleted (and a fresh, empty one made) between parts: refused, nothing saved.
     const late = await POST(post({ company: "org_00000000-0000-0000-0000-000000000000", rows: [row({ n: 2 })] }, "203.0.113.20"));
     expect(late.status).toBe(409);
-    expect(((await late.json()) as { error: string }).error).toMatch(/company changed/i);
+    const refused = (await late.json()) as { error: string; code: string };
+    expect(refused.error).toMatch(/company changed/i);
+    expect(refused.code).toBe("company_changed");
     expect((await getStore(await scopeFor("company")).loadUploads())?.rows).toHaveLength(2);
   });
 
