@@ -123,3 +123,15 @@ describe("respecting people's decisions", () => {
     expect(run.tickets.length).toBe(run.findingsCount);
   });
 });
+
+describe("memo facts when acting would end the burn", () => {
+  it("doesn't tell the memo writer the plan adds 0.0 months when it makes runway unlimited", async () => {
+    const { buildMemoFacts } = await import("@/lib/agent/autopilot");
+    const { analyze } = await import("@/lib/pipeline");
+    const a = analyze({ accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf });
+    const big = { ...a.findings[0]!, id: "big", monthlySavingsCents: a.snapshot.netBurnCents + 1 };
+    const facts = buildMemoFacts({ ...a, findings: [big] }, "Taco");
+    expect(facts.newRunwayText).toBe("unlimited months");
+    expect(facts.addedMonthsText).toBe("unlimited months");
+  });
+});

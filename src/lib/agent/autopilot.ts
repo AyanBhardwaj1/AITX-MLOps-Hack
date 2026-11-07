@@ -124,7 +124,8 @@ export function buildMemoFacts(a: Analysis, company: string): MemoFacts {
     monthlySavingsText: formatDollars(plan.monthlySavingsCents),
     oneTimeText: formatCents(plan.oneTimeRecoveryCents),
     newRunwayText: `${oneDecimal(plan.newRunwayMonths ?? Number.POSITIVE_INFINITY)} months`,
-    addedMonthsText: `${oneDecimal(plan.addedMonths ?? 0)} months`,
+    // Null when acting would end the burn: runway gains no end rather than "0.0 months".
+    addedMonthsText: `${oneDecimal(plan.addedMonths ?? Number.POSITIVE_INFINITY)} months`,
     findings: a.findings.map((f) => ({
       title: f.title,
       savingsText: f.monthlySavingsCents > 0 ? `${formatCents(f.monthlySavingsCents)}/month` : `${formatCents(f.oneTimeCents)} one-time`,
