@@ -15,6 +15,8 @@ await suite("teams", async ({ browser, step }) => {
     await owner.getByLabel("Invite by email").fill("teammate@elsewhere.example");
     await owner.getByRole("button", { name: "Invite", exact: true }).click();
     await owner.getByText("Invited teammate@elsewhere.example.").waitFor();
+    // The message gives the full sign-in address to pass on, not a bare "/login".
+    await owner.getByText(/sign in at http:\/\/localhost:\d+\/login with that email/).waitFor();
     // Inviting them again: the refusal is tied to the email field.
     await owner.getByLabel("Invite by email").fill("teammate@elsewhere.example");
     await owner.getByRole("button", { name: "Invite", exact: true }).click();
