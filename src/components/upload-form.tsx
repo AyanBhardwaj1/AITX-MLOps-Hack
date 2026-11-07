@@ -70,22 +70,25 @@ async function send(
   /** Null keeps the stored figure (the founder didn't change it). */
   cashCents: number | null,
   rows: readonly UploadRow[],
-): Promise<{ inserted: number; duplicates: number } | { error: string }> {
+  /** From the second part on: the company the first part went to. */
+  company: string | undefined,
+): Promise<{ inserted: number; duplicates: number; company?: string } | { error: string }> {
   const res = await fetch("/api/uploads", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cashCents === null ? { rows } : { cashCents, rows }),
+    body: JSON.stringify({ ...(cashCents === null ? {} : { cashCents }), rows, ...(company ? { company } : {}) }),
   }).catch(() => null);
   const body = (await res?.json().catch(() => null)) as {
     inserted?: number;
     duplicates?: number;
+    company?: string;
     error?: string;
   } | null;
   if (!res?.ok || typeof body?.inserted !== "number")
     return {
       error: body?.error ?? "That upload didn’t go through. Try again.",
     };
-  return { inserted: body.inserted, duplicates: body.duplicates ?? 0 };
+  return { inserted: body.inserted, duplicates: body.duplicates ?? 0, company: body.company };
 }
 
 /** `owner`: only the owner may delete everything (it also removes the team's findings and share links). */
@@ -156,11 +159,12 @@ export function UploadForm({
     let inserted = 0;
     let duplicates = 0;
     let sent = 0;
+    let company: string | undefined;
     for (const chunk of chunkUploadRows(rows)) {
       // "sent" counts the rows saved once this chunk lands (what the progress line shows).
       sent += chunk.length;
       setState({ kind: "working", sent, total: rows.length });
-      const r = await send(cashCents, chunk);
+      const r = await send(cashCents, chunk, company);
       if ("error" in r)
         return setState({
           kind: "error",
@@ -170,6 +174,7 @@ export function UploadForm({
               : r.error,
           notes,
         });
+      company = r.company ?? company;
       inserted += r.inserted;
       duplicates += r.duplicates;
     }

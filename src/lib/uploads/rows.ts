@@ -55,6 +55,12 @@ export const uploadChunk = z.object({
    */
   cashCents: z.number().int().min(0).max(MAX_CASH_CENTS).optional(),
   rows: z.array(uploadRow).min(1).max(MAX_CHUNK_ROWS),
+  /**
+   * On the second and later parts of one upload: the company the first part was saved to (the
+   * server returns it). If the company was deleted in between, the rest is refused rather than
+   * starting a new, partial company.
+   */
+  company: z.string().max(100).optional(),
 });
 export type UploadChunk = z.infer<typeof uploadChunk>;
 

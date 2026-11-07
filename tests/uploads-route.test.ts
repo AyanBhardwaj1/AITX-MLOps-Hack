@@ -39,19 +39,36 @@ describe("POST /api/uploads", () => {
     as("user-a");
     const first = await POST(post({ cashCents: 500_000_00, rows: [row(), row({ n: 1 }), row({ date: "2026-09-01" })] }, "203.0.113.2"));
     expect(first.status).toBe(200);
-    expect(await first.json()).toEqual({ inserted: 3, duplicates: 0 });
+    expect(await first.json()).toMatchObject({ inserted: 3, duplicates: 0 });
     const again = await POST(post({ cashCents: 400_000_00, rows: [row(), row({ date: "2026-10-01" })] }, "203.0.113.2"));
-    expect(await again.json()).toEqual({ inserted: 1, duplicates: 1 });
+    expect(await again.json()).toMatchObject({ inserted: 1, duplicates: 1 });
     const stored = await getStore(await scopeFor("company")).loadUploads();
     expect(stored?.rows).toHaveLength(4);
     expect(stored?.cashCents).toBe(400_000_00);
     // Rows without a cash figure keep the stored one.
-    expect(await (await POST(post({ rows: [row({ date: "2026-10-02" })] }, "203.0.113.2"))).json()).toEqual({ inserted: 1, duplicates: 0 });
+    expect(await (await POST(post({ rows: [row({ date: "2026-10-02" })] }, "203.0.113.2"))).json()).toMatchObject({ inserted: 1, duplicates: 0 });
     expect((await getStore(await scopeFor("company")).loadUploads())?.cashCents).toBe(400_000_00);
 
     // Another user's company sees none of it.
     as("user-b");
     expect(await getStore(await scopeFor("company")).loadUploads()).toBeNull();
+  });
+
+  it("refuses the rest of a multi-part upload once the company it started in is gone", async () => {
+    const { POST } = await import("@/app/api/uploads/route");
+    const { scopeFor } = await import("@/lib/server/scope");
+    const { getStore } = await import("@/lib/server/store");
+    as("user-chunks");
+    const first = await POST(post({ cashCents: 1_000_00, rows: [row()] }, "203.0.113.20"));
+    const { company } = (await first.json()) as { company: string };
+    expect(company).toBe(await scopeFor("company"));
+    // The same company: the next part lands.
+    expect((await POST(post({ company, rows: [row({ n: 1 })] }, "203.0.113.20"))).status).toBe(200);
+    // The company was deleted (and a fresh, empty one made) between parts: refused, nothing saved.
+    const late = await POST(post({ company: "org_00000000-0000-0000-0000-000000000000", rows: [row({ n: 2 })] }, "203.0.113.20"));
+    expect(late.status).toBe(409);
+    expect(((await late.json()) as { error: string }).error).toMatch(/company changed/i);
+    expect((await getStore(await scopeFor("company")).loadUploads())?.rows).toHaveLength(2);
   });
 
   it("rejects malformed bodies and rows without saving anything", async () => {
