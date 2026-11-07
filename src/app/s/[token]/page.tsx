@@ -89,7 +89,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       </header>
       <Snapshot s={s} />
       <footer className="mt-10 border-t border-line pt-4 text-xs text-muted">
-        Numbers computed from the company&apos;s bank feed by{" "}
+        Numbers worked out from the company&apos;s own bank records by{" "}
         <Link href="/" className="font-medium text-brand hover:underline">
           Runway
         </Link>

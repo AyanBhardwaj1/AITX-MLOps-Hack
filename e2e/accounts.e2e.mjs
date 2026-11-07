@@ -165,6 +165,14 @@ await suite("accounts", async ({ browser, step }) => {
     assert.match(again.url(), /\/login\?error=link/);
   });
   await step("they upload exports and see their own dashboard", async () => {
+    // Trying the sample, then picking a real file: the sample's made-up cash figure doesn't stay.
+    await a.goto(`${APP}/app/upload`);
+    await a.getByRole("button", { name: "Fill in a sample export" }).click();
+    await a.getByText(/The sample is a fictional company/).waitFor();
+    assert.notEqual(await a.getByLabel(/Today.s total cash/).inputValue(), "");
+    await a.setInputFiles('input[type="file"]', { name: "mine.csv", mimeType: "text/csv", buffer: Buffer.from("Date,Description,Amount\n2026-10-01,ACME,-5.00") });
+    assert.equal(await a.getByLabel(/Today.s total cash/).inputValue(), "");
+    assert.equal(await a.getByText(/The sample is a fictional company/).count(), 0);
     await uploadSample(a);
     await a.goto(`${APP}/app?mode=company`);
     await a.getByText(/· your uploaded exports/).waitFor();

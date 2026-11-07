@@ -61,6 +61,28 @@ await suite("settings", async ({ browser, step }) => {
     await activity.getByText(/Uploaded [\d,]+ transactions · founder-a@acme\.example/).waitFor();
     await activity.getByText("Renamed the company to Acme Robotics · founder-a@acme.example").waitFor();
   });
+  await step("an investor link: made, kept on Cancel, revoked on OK, then gone for the investor", async () => {
+    await p.goto(`${APP}/app?mode=company`);
+    assert.equal(await p.title(), "Dashboard · Runway", "tab title");
+    const share = p.getByRole("region", { name: "Share with investors" });
+    await share.getByRole("button", { name: "Create link" }).click();
+    const url = await share.getByLabel("New share link").inputValue();
+    assert.equal((await p.request.get(url)).status(), 200, "new link opens");
+    const revoke = share.getByRole("button", { name: /^Revoke / });
+    p.once("dialog", (d) => d.dismiss());
+    await revoke.click();
+    assert.equal((await p.request.get(url)).status(), 200, "kept on cancel");
+    p.once("dialog", (d) => d.accept());
+    await revoke.click();
+    await share.getByText("Link revoked. It no longer opens.").waitFor();
+    // The dead link isn't left on screen to copy.
+    assert.equal(await share.getByLabel("New share link").count(), 0, "copy box gone");
+    const investor = await (await browser.newContext()).newPage();
+    assert.equal((await investor.goto(url)).status(), 404, "revoked link status");
+    await investor.getByText("This link has expired or been turned off").waitFor();
+    await investor.context().close();
+    await p.goto(`${APP}/app/settings`);
+  });
   await step("the team downloads a copy of everything the company holds", async () => {
     const [dl] = await Promise.all([p.waitForEvent("download"), p.getByRole("link", { name: "Download everything (JSON)" }).click()]);
     const data = JSON.parse(readFileSync(await dl.path(), "utf8"));

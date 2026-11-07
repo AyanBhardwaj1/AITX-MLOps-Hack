@@ -32,6 +32,8 @@ export function ShareLinksPanel({
   const listHeading = useRef<HTMLParagraphElement>(null);
   const [days, setDays] = useState("30");
   const [created, setCreated] = useState<string | null>(null);
+  // Which link the "Copy it now" box shows, so revoking that link takes the box away too.
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,7 @@ export function ShareLinksPanel({
     }).catch(() => null);
     const body = (await res?.json().catch(() => null)) as {
       url?: string;
+      id?: string;
       error?: string;
     } | null;
     setBusy(false);
@@ -92,15 +95,21 @@ export function ShareLinksPanel({
     });
     if (body?.url) {
       setCreated(new URL(body.url, window.location.origin).toString());
+      setCreatedId(body.id ?? null);
       setCopied(false);
       setLabel("");
       reload();
     }
   }
 
-  async function revoke(linkId: string) {
+  async function revoke(linkId: string, name: string) {
+    if (!window.confirm(`Revoke ${name}? Anyone who has it can no longer open it, and it can't be turned back on.`)) return;
     if (await post({ action: "revoke", id: linkId })) {
       setStatus("Link revoked. It no longer opens.");
+      if (linkId === createdId) {
+        setCreated(null);
+        setCreatedId(null);
+      }
       // The Revoke button disappears with the change: keep keyboard focus on the list.
       listHeading.current?.focus();
       reload();
@@ -269,7 +278,7 @@ export function ShareLinksPanel({
                     {l.state === "active" && canManage && (
                       <button
                         type="button"
-                        onClick={() => void revoke(l.id)}
+                        onClick={() => void revoke(l.id, l.label ? `“${l.label}”` : "this link")}
                         disabled={busy}
                         className="font-medium text-warn hover:underline disabled:opacity-60"
                         aria-label={`Revoke ${l.label ?? "untitled link"}`}

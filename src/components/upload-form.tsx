@@ -413,6 +413,11 @@ export function UploadForm({
             multiple
             onChange={(e) => {
               const picked = [...(e.target.files ?? [])];
+              // Their own files replace the sample: its made-up cash figure and note go with it.
+              if (sampleChosen) {
+                setSampleChosen(false);
+                setCashDraft(null);
+              }
               setFiles(
                 picked.map((file) => ({
                   file,

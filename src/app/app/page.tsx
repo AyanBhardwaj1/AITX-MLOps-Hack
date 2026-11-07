@@ -34,12 +34,18 @@ import { uncategorisedSpend } from "@/lib/finance/uncategorised";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+const DEMO_METADATA: Metadata = {
   title: "Live demo",
   description: "Runway on a fictional startup's bank feed: runway, waste found, the Monday digest and the agents.",
   // Demo data is public, but a connected account must never be indexed.
   robots: { index: false, follow: true },
 };
+
+/** The demo is "Live demo"; a company's own dashboard is just "Dashboard" in the tab. */
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
+  const { mode } = await searchParams;
+  return parseMode(mode) === "demo" ? DEMO_METADATA : { title: "Dashboard", robots: { index: false, follow: false } };
+}
 
 const HISTORY_MONTHS = 12;
 const AI_TREND_MONTHS = 6;
