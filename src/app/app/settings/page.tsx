@@ -25,7 +25,8 @@ async function siteOrigin(): Promise<string> {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   if (!host || !/^[a-z0-9.-]+(:\d+)?$/i.test(host)) return "";
-  // next start always sets x-forwarded-proto (first value, if a proxy chain added more); guess only without it.
+  // The request's own scheme (first value if a proxy chain added more). next start fills this in
+  // itself ("http" unless the socket is TLS), so a TLS-terminating proxy must pass it on.
   const forwarded = h.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const proto = forwarded === "http" || forwarded === "https" ? forwarded : host.startsWith("localhost") ? "http" : "https";
   return `${proto}://${host}`;

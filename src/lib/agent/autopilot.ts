@@ -91,7 +91,8 @@ export interface AutopilotRun {
 }
 
 const NUMBER_RE = /\d[\d,]*(?:\.\d+)?/g;
-const MONEY_RE = /\$\s*\d[\d,]*(?:\.\d+)?/g;
+// "$26" or "$ 26" (one space at most, never a line break: "Savings ($\n\n1. Cancel" isn't an amount).
+const MONEY_RE = /\$ ?\d[\d,]*(?:\.\d+)?/g;
 // "12 months", "12-month", "3 more/additional/extra months", "12 mos".
 const MONTHS_RE = /(\d[\d,]*(?:\.\d+)?)(?:\s+|-)(?:(?:more|additional|extra)\s+)?(?:months?|mos?)\b/gi;
 /** One decimal, rounded as the dashboard shows it (toFixed). */
