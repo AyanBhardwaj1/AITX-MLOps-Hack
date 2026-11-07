@@ -12,12 +12,32 @@ await suite("uploads", async ({ browser, step }) => {
     await p.waitForURL(/\/app/);
     await p.goto(`${APP}/app/upload`);
   });
-  await step("four bank layouts read with the right signs, previewed before upload", async () => {
+  await step("a missing field's error is tied to that field, which takes focus", async () => {
+    const cash = p.getByLabel(/Today.s total cash/);
+    await p.getByRole("button", { name: "Upload and analyse" }).click();
+    await p.getByText("Enter today's total cash across your bank accounts, in dollars.").waitFor();
+    assert.equal(await cash.getAttribute("aria-invalid"), "true");
+    assert.match(await p.locator(`#${await cash.getAttribute("aria-describedby")}`).innerText(), /Enter today's total cash/);
+    assert.equal(await cash.evaluate((el) => el === document.activeElement), true);
+    await cash.fill("500000");
+    await p.getByRole("button", { name: "Upload and analyse" }).click();
+    const files = p.locator('input[type="file"]');
+    await p.getByText("Choose at least one export file.").waitFor();
+    assert.equal(await files.getAttribute("aria-invalid"), "true");
+    assert.equal(await cash.getAttribute("aria-invalid"), null);
+    assert.match(await p.locator(`#${await files.getAttribute("aria-describedby")}`).innerText(), /Choose at least one/);
+  });
+  await step("four bank layouts read with the right signs, previewed before upload; a double click sends once", async () => {
     await p.setInputFiles('input[type="file"]', ["amex-gold-oct.csv", "capital-one-spark.csv", "wells-checking.csv"].map((f) => FIXTURES + f));
     await p.getByText("3 transactions found.").first().waitFor();
     await p.getByLabel(/Today.s total cash/).fill("500000");
-    await p.getByRole("button", { name: "Upload and analyse" }).click();
+    const posts = [];
+    const count = (r) => r.method() === "POST" && new URL(r.url()).pathname === "/api/uploads" && posts.push(r.url());
+    p.on("request", count);
+    await p.getByRole("button", { name: "Upload and analyse" }).dblclick();
     await p.getByText(/Saved 7 new transactions/).waitFor({ timeout: 20_000 });
+    p.off("request", count);
+    assert.equal(posts.length, 1);
     const rows = await p.getByRole("table", { name: "Uploaded accounts" }).locator("tbody tr").count();
     assert.equal(rows, 3);
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { combineBalances, looksLikeOfx, readOfxBalances } from "@/lib/csv/ofx";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gradeCsvFiles, type GraderFile, type GraderResult } from "@/lib/grader";
@@ -38,24 +38,28 @@ export function GraderPanel() {
   const [result, setResult] = useState<GraderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Counts file picks, so a slow read that finishes after a newer pick (or the sample) is dropped
+  // rather than putting the older files back.
+  const pick = useRef(0);
+
   async function onFiles(list: FileList | null) {
     if (!list) return;
+    const mine = ++pick.current;
     const picked = [...list];
+    // Clear what was picked before, so its result can't pass for these files' (and Grade waits
+    // until they're read).
+    setFiles([]);
+    setFileCash(null);
+    setResult(null);
+    setError(null);
     const tooBig = picked.find((f) => f.size > MAX_FILE_BYTES);
-    if (tooBig) {
-      // Clear what was picked before, so its result can't pass for this file's.
-      setFiles([]);
-      setFileCash(null);
-      setResult(null);
-      return setError(`${tooBig.name} is over 20 MB. Export a shorter date range.`);
-    }
+    if (tooBig) return setError(`${tooBig.name} is over 20 MB. Export a shorter date range.`);
     const read = await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));
+    if (mine !== pick.current) return;
     setFiles(read);
     // Bank downloads carry their balances; a file that can't be read says so when grading.
     const balances = read.filter((f) => looksLikeOfx(f.text)).map((f, i) => readOfxBalances(f.text, `${i}:${f.name}`));
     setFileCash(combineBalances(balances));
-    setResult(null);
-    setError(null);
   }
 
   function run(input = files, cashDollars = cash) {
@@ -71,7 +75,9 @@ export function GraderPanel() {
   }
 
   async function trySample() {
+    const mine = ++pick.current;
     const sample = await sampleFiles();
+    if (mine !== pick.current) return;
     setFiles(sample.files);
     setFileCash(null);
     setCash(sample.cashDollars);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { combineBalances, importStatement, type OfxBalance } from "@/lib/csv/ofx";
 import { formatDate } from "@/lib/format";
 import { formatDollars, parseDollarsToCents } from "@/lib/money";
@@ -67,7 +67,7 @@ type State =
   | { kind: "idle" }
   | { kind: "working"; sent: number; total: number }
   | { kind: "done"; inserted: number; duplicates: number; notes: string[] }
-  | { kind: "error"; message: string; notes: string[] };
+  | { kind: "error"; message: string; notes: string[]; field?: "files" | "cash" };
 
 interface Parsed {
   rows: UploadRow[];
@@ -156,23 +156,36 @@ export function UploadForm({
   const [inputKey, setInputKey] = useState(0);
   const [sampleChosen, setSampleChosen] = useState(false);
 
+  // Set the moment an upload starts, before any await: a second click while big files are still
+  // being read would otherwise start a second upload of the same rows.
+  const busy = useRef(false);
+  const filesRef = useRef<HTMLInputElement>(null);
+  const cashRef = useRef<HTMLInputElement>(null);
+
+  /** Shows a problem with one field, tied to it for screen readers, and puts the cursor there. */
+  function fieldError(field: "files" | "cash", message: string) {
+    setState({ kind: "error", message, notes: [], field });
+    (field === "cash" ? cashRef : filesRef).current?.focus();
+  }
+
   async function upload(e: React.FormEvent) {
     e.preventDefault();
+    if (busy.current) return;
     const sendCash = !summary || cashDraft !== null;
     const cashCents = sendCash ? parseDollarsToCents(cash) : null;
     if (sendCash && cashCents === null)
-      return setState({
-        kind: "error",
-        message:
-          "Enter today's total cash across your bank accounts, in dollars.",
-        notes: [],
-      });
-    if (files.length === 0)
-      return setState({
-        kind: "error",
-        message: "Choose at least one export file.",
-        notes: [],
-      });
+      return fieldError("cash", "Enter today's total cash across your bank accounts, in dollars.");
+    if (files.length === 0) return fieldError("files", "Choose at least one export file.");
+    busy.current = true;
+    try {
+      await save(cashCents);
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  async function save(cashCents: number | null) {
+    setState({ kind: "working", sent: 0, total: 0 });
     const { rows, notes } = await parseFiles(files);
     if (rows.length === 0)
       return setState({
@@ -274,6 +287,11 @@ export function UploadForm({
   const field =
     "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm transition-colors focus-visible:border-brand";
   const working = state.kind === "working";
+  const errorId = `${id}-error`;
+  const invalid = (field: "files" | "cash") =>
+    state.kind === "error" && state.field === field
+      ? { "aria-invalid": true as const, "aria-describedby": errorId }
+      : {};
   return (
     <div className="mt-6 space-y-6">
       {summary && (
@@ -428,7 +446,9 @@ export function UploadForm({
           </p>
           <input
             key={inputKey}
+            ref={filesRef}
             id={`${id}-files`}
+            {...invalid("files")}
             name="files"
             type="file"
             accept=".csv,.ofx,.qfx,.qbo,text/csv,application/x-ofx"
@@ -530,8 +550,10 @@ export function UploadForm({
               : "A CSV has no balance, so add up your bank accounts."}
           </p>
           <input
+            ref={cashRef}
             id={`${id}-cash`}
             name="cash"
+            {...invalid("cash")}
             inputMode="decimal"
             placeholder="e.g. 950,000…"
             value={cash}
@@ -576,9 +598,9 @@ export function UploadForm({
       <div role="status" aria-live="polite">
         {state.kind === "working" && (
           <p className="text-sm text-muted">
-            Saving{" "}
-            {state.sent.toLocaleString("en-US")}{" "}
-            of {state.total.toLocaleString("en-US")} rows…
+            {state.total === 0
+              ? "Reading your files…"
+              : `Saving ${state.sent.toLocaleString("en-US")} of ${state.total.toLocaleString("en-US")} rows…`}
           </p>
         )}
         {state.kind === "done" && (
@@ -602,6 +624,7 @@ export function UploadForm({
       </div>
       {state.kind === "error" && (
         <p
+          id={errorId}
           role="alert"
           className="rounded-lg bg-warn-soft px-4 py-3 text-sm text-warn"
         >

@@ -3,6 +3,7 @@
 # Supabase Auth), companies, teams and uploads, on a production build and a throwaway Postgres.
 # Needs: a local Postgres reachable with the PG* env vars (as for npm run test:integration) and
 # Chromium for Playwright (npx playwright install chromium). Rebuilds .next with test settings.
+# E2E_ONLY=accounts runs one suite.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -46,7 +47,7 @@ for _ in $(seq 1 60); do curl -sf "http://localhost:$APP_PORT/api/health" >/dev/
 
 export E2E_APP="http://localhost:$APP_PORT" E2E_AUTH="http://localhost:$AUTH_PORT"
 status=0
-for spec in e2e/*.e2e.mjs; do
+for spec in e2e/${E2E_ONLY:-*}.e2e.mjs; do
   # Each suite starts with no companies and fresh rate limits.
   psql -q -X -d "$DB" -c "delete from public.organizations where slug like 'org\_%'; delete from public.company_invites; delete from public.rate_limits;"
   node "$spec" || status=1

@@ -123,6 +123,27 @@ await suite("accounts", async ({ browser, step }) => {
     assert.equal(await a.getByRole("button", { name: "Download monthly P&L (CSV)" }).count(), 0);
     assert.equal(await a.getByRole("button", { name: "Grade my runway" }).isDisabled(), true);
   });
+  await step("in the grader, a slow file read that finishes after a newer pick doesn't bring the old file back", async () => {
+    const g = await (await browser.newContext({ acceptDownloads: true })).newPage();
+    // Reading "slow.csv" takes 2 seconds, as a big export can.
+    await g.addInitScript(() => {
+      const text = File.prototype.text;
+      File.prototype.text = function () {
+        return this.name === "slow.csv" ? new Promise((r) => setTimeout(r, 2000)).then(() => text.call(this)) : text.call(this);
+      };
+    });
+    await g.goto(`${APP}/grader`);
+    const csv = (months) => Buffer.from(["Date,Description,Amount", ...months.flatMap((m) => [`${m}-01,GUSTO PAYROLL,-5000.00`, `${m}-05,STRIPE TRANSFER,3000.00`])].join("\n"));
+    await g.setInputFiles('input[type="file"]', { name: "slow.csv", mimeType: "text/csv", buffer: csv(["2025-01", "2025-02", "2025-03"]) });
+    await g.setInputFiles('input[type="file"]', { name: "fast.csv", mimeType: "text/csv", buffer: Buffer.concat([csv(["2026-08", "2026-09", "2026-10"]), Buffer.from("\n2026-10-31,FIGMA,-1.00")]) });
+    await g.waitForTimeout(2500);
+    await g.getByLabel(/Today's total cash/).fill("100000");
+    await g.getByRole("button", { name: "Grade my runway" }).click();
+    const [dl] = await Promise.all([g.waitForEvent("download"), g.getByRole("button", { name: "Download monthly P&L (CSV)" }).click()]);
+    const header = readFileSync(await dl.path(), "utf8").replace(/^\uFEFF/, "").split("\r\n")[0];
+    assert.equal(header, "Category,Aug 2026,Sep 2026,Oct 2026,Total", header);
+    await g.context().close();
+  });
   await step("company pages send a signed-out visitor to sign in; the APIs answer 401", async () => {
     await a.goto(`${APP}/app?mode=company`);
     assert.match(a.url(), /\/login\?next=/);
