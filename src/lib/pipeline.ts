@@ -35,7 +35,6 @@ function timed<T>(fn: () => T): [T, number] {
   return [out, Math.round((performance.now() - start) * 100) / 100];
 }
 
-/** Rho data in, runway and findings out. Deterministic given an as-of date (only an empty feed with none reads the clock): no network, no LLM. */
 /**
  * The transactions with their vendors, LLM labels and people's fixes applied: the first step of the
  * analysis, on its own for pages that only list transactions (it skips the costly detection).
@@ -46,6 +45,7 @@ export function enrichTransactions({ transactions, vendorLabels, corrections }: 
   return corrections?.size ? applyCorrections(labelled, corrections) : labelled;
 }
 
+/** Rho data in, runway and findings out. Deterministic given an as-of date (only an empty feed with none reads the clock): no network, no LLM. */
 export function analyze({ accounts, transactions, asOf, vendorLabels, corrections }: AnalyzeInput): Analysis {
   const [txns, mapMs] = timed(() => enrichTransactions({ transactions, vendorLabels, corrections }));
   const latest = txns.reduce<IsoDate | null>((max, t) => (max === null || t.postedAt > max ? t.postedAt : max), null);

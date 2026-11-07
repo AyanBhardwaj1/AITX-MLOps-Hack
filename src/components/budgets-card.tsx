@@ -128,7 +128,7 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
             void submit(cents);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") {
+            if (e.key === "Escape" && !busy) {
               e.preventDefault();
               close();
             }

@@ -63,7 +63,10 @@ export function CategoryFix({
     setBusy(false);
     setMessage(problem ?? done);
     if (problem) return;
-    close();
+    // From the editor: close it, and focus returns to Change once it's back. From "Undo my fix"
+    // (no editor open): that button goes away, so focus moves to Change now.
+    if (editing) close();
+    else changeButton.current?.focus();
     router.refresh();
   }
 
@@ -93,7 +96,7 @@ export function CategoryFix({
             void submit({ mode, ...categoryChange({ vendorKey, category, job }, original, draft) }, `${vendorName} is now ${categoryName(draft)}.`);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") {
+            if (e.key === "Escape" && !busy) {
               e.preventDefault();
               close();
             }

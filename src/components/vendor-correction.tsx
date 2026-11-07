@@ -144,7 +144,7 @@ export function CorrectionEditor({
     <form
       onSubmit={save}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        if (e.key === "Escape" && !busy) {
           e.preventDefault();
           close();
         }

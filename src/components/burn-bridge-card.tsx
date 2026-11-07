@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { BurnBridge } from "@/lib/finance/burn-bridge";
 import { formatMonth } from "@/lib/format";
-import { formatDollars } from "@/lib/money";
+import { formatDollars, formatSignedDollars } from "@/lib/money";
 
-const signed = (cents: number) => `${cents > 0 ? "+" : cents < 0 ? "−" : ""}${formatDollars(Math.abs(cents))}`;
+const signed = formatSignedDollars;
 
 /** Last complete month's net burn against the month before, vendor by vendor (it adds up exactly). */
 /** `mode` null (the grader: files stay in the browser) shows the vendors without links. */

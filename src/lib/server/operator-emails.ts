@@ -4,7 +4,8 @@ import { env } from "./env";
 
 /** Plenty for a team; a pasted essay can't make every request parse megabytes. */
 const MAX_OPERATORS = 100;
-const email = z.email();
+// The same rule as sign-in, so an operator who can sign in is recognised as one.
+const email = z.email({ pattern: z.regexes.html5Email });
 let warned = false;
 
 /**

@@ -75,3 +75,14 @@ describe("percentText", () => {
     expect(percentText(0.05)).toBe("5.0%");
   });
 });
+
+describe("formatSignedDollars", () => {
+  it("signs a change, and shows one that rounds to nothing as plain $0", async () => {
+    const { formatSignedDollars } = await import("@/lib/money");
+    expect(formatSignedDollars(120_000)).toBe("+$1,200");
+    expect(formatSignedDollars(-8_000)).toBe("−$80");
+    expect(formatSignedDollars(24)).toBe("$0");
+    expect(formatSignedDollars(-49)).toBe("$0");
+    expect(formatSignedDollars(0)).toBe("$0");
+  });
+});

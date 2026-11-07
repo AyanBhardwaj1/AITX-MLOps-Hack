@@ -36,3 +36,9 @@ export function parseCashInput(text: string): Cents | null {
   const cents = parseDollarsToCents(negative ? t.slice(1) : t);
   return cents === null ? null : negative ? -cents || 0 : cents;
 }
+
+/** A change in whole dollars with its sign ("+$1,200", "−$80"); a change that rounds to nothing is "$0", unsigned. */
+export function formatSignedDollars(cents: Cents): string {
+  const text = formatDollars(Math.abs(cents));
+  return text === "$0" ? text : `${cents > 0 ? "+" : "−"}${text}`;
+}

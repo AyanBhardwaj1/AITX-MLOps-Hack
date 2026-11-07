@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { burnBasis, categoryName, describeRunwayCost, formatDate, formatMoney } from "../format";
 import type { Budget } from "../finance/budgets";
-import { formatCents, formatDollars } from "../money";
+import { formatCents, formatDollars, formatSignedDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import type { RunwayCost } from "../finance/runway";
 import { INSTANT_QUESTIONS, type InstantQuestion } from "./instant-questions";
@@ -190,7 +190,7 @@ function burnMoved(a: Analysis): InstantAnswer {
   const b = getBurnBridge(a);
   if ("note" in b) return { question: INSTANT_QUESTIONS.burn_moved, tools, text: b.note };
   const month = (m: string) => formatDate(`${m}-01`).replace(/ 1, /, " ");
-  const signed = (c: number) => `${c > 0 ? "+" : "−"}${formatDollars(Math.abs(c))}`;
+  const signed = formatSignedDollars;
   const head =
     b.changeCents === 0
       ? `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, the same as ${month(b.previous)}.`

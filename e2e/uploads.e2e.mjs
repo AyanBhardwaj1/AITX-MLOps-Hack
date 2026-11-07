@@ -140,6 +140,8 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByText("your fix", { exact: true }).waitFor();
     await p.getByRole("button", { name: "Undo my fix" }).click();
     await p.getByText("your fix", { exact: true }).waitFor({ state: "detached" });
+    // That button is gone: focus is on "Change", not lost to the page.
+    await p.waitForFunction(() => /^Change .*'s category$/.test(document.activeElement?.textContent ?? ""));
     // Signed out, the same address asks for sign-in instead of showing anything.
     const stranger = await (await browser.newContext()).newPage();
     await stranger.goto(`${APP}/app/transactions?mode=company&q=slack`);

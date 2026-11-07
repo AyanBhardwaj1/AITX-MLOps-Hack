@@ -3,7 +3,7 @@ import { monthlyHistory } from "../finance/history";
 import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
 import { categoryName, formatDate, formatMoney, percentText } from "../format";
 import type { BudgetRow } from "../finance/budgets";
-import { formatCents, formatDollars } from "../money";
+import { formatCents, formatDollars, formatSignedDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import type { Cents, Finding, IsoDate } from "../types";
 import { detectChanges, type Change } from "./changes";
@@ -112,7 +112,7 @@ function blocks(d: DigestInput): Block[] {
   if (d.bridge && d.bridge.changeCents !== 0) {
     const b = d.bridge;
     const name = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
-    const signed = (c: number) => `${c > 0 ? "+" : "−"}${formatDollars(Math.abs(c))}`;
+    const signed = formatSignedDollars;
     out.push(
       { kind: "h", text: "Why burn moved" },
       b.netBurnCents < 0
