@@ -40,6 +40,14 @@ await suite("accounts", async ({ browser, step }) => {
     await fix.locator("select").first().selectOption("transfer");
     await fix.getByText(/will count toward burn or runway/).waitFor();
     await fix.getByRole("button", { name: "Cancel" }).click();
+    // The transactions page's editor says the same before anything is saved.
+    await a.goto(`${APP}/app/transactions?mode=demo&vendor=gusto`);
+    await a.getByRole("button", { name: "Change Gusto Payroll's category" }).click();
+    await a.getByLabel("Category for Gusto Payroll").selectOption("transfer");
+    await a.getByText(/will count toward burn or runway/).waitFor();
+    await a.getByRole("button", { name: "Cancel" }).click();
+    await a.goto(`${APP}/app?mode=demo`);
+    await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
     // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.
     const nav = a.getByRole("navigation", { name: "Dashboard sections" });
     for (const href of await nav.getByRole("link").evaluateAll((ls) => ls.map((l) => l.getAttribute("href")))) assert.equal(await a.locator(href).count(), 1, `${href} found`);
