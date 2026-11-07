@@ -128,6 +128,10 @@ demo, the free grader and the public site work exactly as before.
   link previews as the Runway Grader.
 - **Accessibility.** The browser tests run axe on the landing page, grader, privacy page and demo
   and fail on any serious issue; the site logo link's name now matches its text.
+- **One figure everywhere.** The gain from fixing waste is the difference of the two runways shown
+  (12.2 → 12.7 is +0.5) on the dashboard, in Copilot and in the Autopilot memo; runway rounds the
+  same way in all of them and in the Runway-over-time chart and sentence; and when acting would end
+  the burn, the memo says runway becomes unlimited rather than "+0.0 months".
 - **Category fixes stay where they belong.** A demo visitor's fixes change only their own view:
   exporting findings or loading the dashboard no longer writes their version into the shared demo
   store, and Copilot answers with the same fixed numbers the dashboard shows. A fix changes a
