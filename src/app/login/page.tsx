@@ -15,8 +15,9 @@ const ERRORS: Record<string, string> = {
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string | string[] }> }) {
   const { error, next } = await searchParams;
+  const user = await sessionUser();
   // Already signed in: straight on to where they were going (an error notice still shows).
-  if (!error && (await sessionUser())) redirect(safeNextPath(typeof next === "string" ? next : null));
+  if (!error && user) redirect(safeNextPath(typeof next === "string" ? next : null));
   return (
     <main id="main" className="mx-auto flex min-h-[80vh] max-w-sm flex-col justify-center px-6">
       <Link href="/" className="text-sm text-muted hover:text-ink">
@@ -28,6 +29,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <p role="alert" className="mt-4 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
           {ERRORS[error]}
         </p>
+      )}
+      {error && user && (
+        // Signed in as an address that can't get in (say, removed from a team): without this, every
+        // company page sends them straight back here.
+        <form action="/api/auth/logout" method="post" className="mt-3 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+          <span>{user.email ? `You're signed in as ${user.email}.` : "You're signed in."}</span>
+          <button type="submit" className="font-medium text-brand hover:underline">
+            Sign out
+          </button>
+        </form>
       )}
       <LoginForm next={typeof next === "string" ? next.slice(0, 512) : undefined} />
       <p className="mt-6 text-xs text-muted">

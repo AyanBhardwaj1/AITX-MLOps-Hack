@@ -151,6 +151,10 @@ await suite("accounts", async ({ browser, step }) => {
   });
   await step("someone who isn't invited gets no link", async () => {
     assert.equal(await signIn(a, "waiting@initech.example"), false);
+    // A typo is one click from fixed: back to the form, with the address they typed.
+    await a.getByRole("button", { name: "Use a different email" }).click();
+    assert.equal(await a.getByLabel("Work email").inputValue(), "waiting@initech.example");
+    assert.equal(await a.getByLabel("Work email").evaluate((el) => el === document.activeElement), true);
   });
   await step("an invited founder signs in by magic link and lands on onboarding; the link works once", async () => {
     await signIn(a, "founder-a@acme.example");

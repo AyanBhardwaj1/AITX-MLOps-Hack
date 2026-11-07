@@ -8,14 +8,23 @@ type State = { kind: "idle" } | { kind: "sending" } | { kind: "sent"; email: str
 export function LoginForm({ next }: { next?: string }) {
   const id = useId();
   const [state, setState] = useState<State>({ kind: "idle" });
+  // The address typed last, so "Use a different email" brings it back to fix a typo.
+  const [typed, setTyped] = useState("");
   const sent = useRef<HTMLParagraphElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const retyping = useRef(false);
   useEffect(() => {
     if (state.kind === "sent") sent.current?.focus();
+    else if (state.kind === "idle" && retyping.current) {
+      retyping.current = false;
+      input.current?.focus();
+    }
   }, [state.kind]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const email = String(new FormData(e.currentTarget).get("email") ?? "");
+    const email = String(new FormData(e.currentTarget).get("email") ?? "").trim();
+    setTyped(email);
     setState({ kind: "sending" });
     const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, next }) }).catch(() => null);
     const body = (await res?.json().catch(() => null)) as { error?: string } | null;
@@ -24,9 +33,21 @@ export function LoginForm({ next }: { next?: string }) {
 
   if (state.kind === "sent") {
     return (
-      <p ref={sent} tabIndex={-1} className="mt-6 rounded-lg bg-brand-soft px-3 py-3 text-sm outline-none">
-        If {state.email} can sign in, a link is on its way. Open it in this browser: it works once and expires soon.
-      </p>
+      <div className="mt-6 space-y-2">
+        <p ref={sent} tabIndex={-1} className="rounded-lg bg-brand-soft px-3 py-3 text-sm outline-none">
+          If {state.email} can sign in, a link is on its way. Open it in this browser: it works once and expires soon.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            retyping.current = true;
+            setState({ kind: "idle" });
+          }}
+          className="text-sm font-medium text-brand hover:underline"
+        >
+          Use a different email
+        </button>
+      </div>
     );
   }
   return (
@@ -36,8 +57,10 @@ export function LoginForm({ next }: { next?: string }) {
       </label>
       <input
         id={`${id}-email`}
+        ref={input}
         name="email"
         type="email"
+        defaultValue={typed}
         required
         autoComplete="email"
         spellCheck={false}

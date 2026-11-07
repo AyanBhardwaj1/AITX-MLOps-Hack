@@ -39,6 +39,11 @@ await suite("teams", async ({ browser, step }) => {
     await mate.goto(`${APP}/app?mode=company`);
     await mate.waitForURL(/\/login\?error=invite/, { timeout: 10_000 });
     assert.equal((await mate.request.get(`${APP}/api/export?mode=company&kind=recurring`)).status(), 403);
+    // The notice says who they're signed in as, and lets them sign out rather than loop back here.
+    await mate.getByText("You're signed in as teammate@elsewhere.example.").waitFor();
+    await mate.getByRole("button", { name: "Sign out" }).click();
+    await mate.waitForURL(`${APP}/`);
+    assert.equal((await mate.request.get(`${APP}/api/export?mode=company&kind=recurring`)).status(), 401);
   });
   await step("someone with an empty company of their own accepts an invite instead", async () => {
     await signIn(cof, "founder-b@globex.example");
