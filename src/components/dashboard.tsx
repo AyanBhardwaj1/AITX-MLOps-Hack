@@ -165,9 +165,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   const [tab, setTab] = useState<Tab>("copilot");
   /** Arrow keys move between agent tabs, as screen-reader users expect from a tablist. */
   const onTabKey = (e: React.KeyboardEvent) => {
-    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (!step) return;
-    const next = TABS[(TABS.indexOf(tab) + step + TABS.length) % TABS.length]!;
+    const i = TABS.indexOf(tab);
+    const to = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : null;
+    if (to === null) return;
+    e.preventDefault();
+    const next = TABS[(to + TABS.length) % TABS.length]!;
     setTab(next);
     document.getElementById(`tab-${next}`)?.focus();
   };
@@ -193,7 +195,11 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   async function setStatus(id: string, status: FindingStatus) {
     const previous = statuses[id] ?? "open";
     setStatuses((s) => ({ ...s, [id]: status }));
-    if (status === "dismissed") setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
+    if (status === "dismissed") {
+      setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
+      // The row (and the button just pressed) leaves the list: keep focus in the section.
+      document.getElementById("waste-found-title")?.focus();
+    }
     try {
       const res = await fetch("/api/findings", {
         method: "POST",
@@ -227,7 +233,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
           </Link>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold leading-tight tracking-tight">Runway</h1>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted [overflow-wrap:anywhere]">
               {data.mode === "demo" ? `${data.companyName} · synthetic demo data` : data.mode === "company" ? `${data.companyName} · your uploaded exports` : "Live Rho sandbox feed"} · as of{" "}
               <time dateTime={data.asOf}>{formatDate(data.asOf)}</time>
               {data.asOfFromData ? " (latest transaction)" : ""}
@@ -401,7 +407,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             </div>
             <span className="text-xs text-muted">
               {chartView === "forecast"
-                ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString("en-US")} simulations of the last ${Math.min(6, data.forecast.sampledMonths)} months' burn trend and its noise. In tests it held the real outcome about 7–8 times in 10; it can't foresee one-off shocks.`
+                ? `Shaded: P10–P90 of ${data.forecast.simulations.toLocaleString("en-US")} simulations of ${Math.min(6, data.forecast.sampledMonths) === 1 ? "the last month's" : `the last ${Math.min(6, data.forecast.sampledMonths)} months'`} burn trend and its noise. In tests it held the real outcome about 7–8 times in 10; it can't foresee one-off shocks.`
                 : "Internal transfers and card repayments excluded"}
             </span>
           </div>
@@ -454,7 +460,9 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
             <section id="waste-found" className="scroll-mt-4 rounded-xl border border-line bg-panel">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
                 <div className="min-w-0">
-                  <h2 className="font-semibold">Waste found</h2>
+                  <h2 id="waste-found-title" tabIndex={-1} className="font-semibold outline-none">
+                    Waste found
+                  </h2>
                   <p className="text-xs text-muted">Tick a finding to see its effect on runway. Every number links to the transactions behind it.</p>
                 </div>
                 <div className="ml-auto text-right">
@@ -495,7 +503,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                             {f.title}
                             {f.status === "dismissed" && <DecidedBy by={f.decidedBy} at={f.decidedAt} />}
                           </span>
-                          <button type="button" onClick={() => void setStatus(f.id, "open")} className="shrink-0 text-brand hover:underline">
+                          <button type="button" onClick={() => void setStatus(f.id, "open")} aria-label={`Restore: ${f.title}`} className="shrink-0 text-brand hover:underline">
                             Restore
                           </button>
                         </li>
@@ -726,17 +734,18 @@ function FindingRow({
               <button
                 type="button"
                 onClick={() => onStatus("accepted")}
+                aria-label={`Act on this: ${f.title}`}
                 className="rounded-md border border-line px-2 py-1 text-ink transition-colors hover:border-brand hover:text-brand active:translate-y-px"
               >
                 Act on this
               </button>
             ) : (
-              <button type="button" onClick={() => onStatus("open")} className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
+              <button type="button" onClick={() => onStatus("open")} aria-label={`Undo: ${f.title}`} className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
                 Undo
               </button>
             )}
             {!f.preview && (
-              <button type="button" onClick={() => onStatus("dismissed")} className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
+              <button type="button" onClick={() => onStatus("dismissed")} aria-label={`Dismiss: ${f.title}`} className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-canvas hover:text-ink">
                 Dismiss
               </button>
             )}

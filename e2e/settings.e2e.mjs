@@ -78,6 +78,24 @@ await suite("settings", async ({ browser, step }) => {
   await step("an investor link: made, kept on Cancel, revoked on OK, then gone for the investor", async () => {
     await p.goto(`${APP}/app?mode=company`);
     assert.equal(await p.title(), "Dashboard · Runway", "tab title");
+    // Each finding's buttons say which finding; dismissing one keeps focus in the section, and Home/End
+    // move between the agent tabs.
+    const waste = p.locator("#waste-found");
+    // The last finding: the first one's draft was approved in the Inbox above.
+    const dismiss = waste.getByRole("button", { name: /^Dismiss: / }).last();
+    await dismiss.waitFor();
+    await dismiss.click();
+    assert.equal(await p.evaluate(() => document.activeElement?.textContent), "Waste found");
+    await waste.getByRole("button", { name: /^Show 1 dismissed$/ }).click();
+    await waste.getByRole("button", { name: /^Restore: / }).click();
+    await waste.getByRole("button", { name: /dismissed$/ }).waitFor({ state: "detached" });
+    await p.getByRole("tab", { name: "Copilot" }).focus();
+    await p.keyboard.press("End");
+    assert.equal(await p.evaluate(() => document.activeElement?.getAttribute("role")), "tab");
+    assert.equal(await p.evaluate(() => document.activeElement?.getAttribute("aria-selected")), "true");
+    assert.notEqual(await p.evaluate(() => document.activeElement?.textContent), "Copilot");
+    await p.keyboard.press("Home");
+    assert.equal(await p.evaluate(() => document.activeElement?.textContent), "Copilot");
     const share = p.getByRole("region", { name: "Share with investors" });
     await share.getByRole("button", { name: "Create link" }).click();
     const url = await share.getByLabel("New share link").inputValue();

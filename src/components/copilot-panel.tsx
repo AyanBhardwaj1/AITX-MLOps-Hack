@@ -93,7 +93,7 @@ function InstantCopilot({ mode, dismissed }: { mode: DataMode; dismissed: readon
       {/* The conversation keeps room to read, however many questions are left to ask. */}
       <div ref={scroller} className="relative min-h-48 flex-1 space-y-4 overflow-y-auto p-4" role="log" aria-label="Copilot conversation" tabIndex={0} aria-live="polite">
         <p className="rounded-lg bg-canvas px-3 py-2 text-xs text-muted">
-          AI chat is off on this server (no <code>OPENAI_API_KEY</code>). Pick a question: Copilot&apos;s own tools answer it, written up from a
+          Free-form AI chat isn&apos;t switched on here. Pick a question: Copilot&apos;s own tools answer it, written up from a
           template instead of by AI. Every number is the same as the dashboard&apos;s.
         </p>
         {entries.map((e, i) => (

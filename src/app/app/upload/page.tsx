@@ -58,7 +58,7 @@ export default async function UploadPage() {
       </div>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">{summary ? "Add bank exports" : `Set up ${company.name}`}</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        Upload CSV exports from your bank and card accounts, and today&apos;s total cash. Runway works out your runway and the waste worth
+        Upload exports (CSV, OFX, QFX or QBO) from your bank and card accounts, and today&apos;s total cash. Runway works out your runway and the waste worth
         cutting, and keeps it in your company&apos;s private workspace. Re-uploading an overlapping export won&apos;t duplicate anything.
       </p>
       {invites.length > 0 && (

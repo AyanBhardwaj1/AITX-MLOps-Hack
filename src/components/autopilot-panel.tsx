@@ -10,7 +10,7 @@ import { Markdown } from "./markdown";
 const RUN_TIME = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
 
 const STEP_LABEL: Record<string, string> = {
-  sync: "Pull transactions from Rho",
+  sync: "Load the latest transactions",
   analyze: "Find recurring charges and waste",
   plan: "Price each fix in runway",
   memo: "Write the Runway Review",
@@ -86,7 +86,7 @@ export function AutopilotPanel({ mode, llm, onOpenInbox }: { mode: DataMode; llm
           {running ? "Running…" : "Run now"}
         </button>
       </div>
-      <p className="text-xs text-muted">Memo: {llm ? "written by GPT-6, checked against the numbers" : "template (no OPENAI_API_KEY)"}</p>
+      <p className="text-xs text-muted">Memo: {llm ? "written by GPT-6, checked against the numbers" : "template (AI writing isn't switched on here)"}</p>
 
       {failed && <p className="rounded-md bg-warn-soft px-3 py-2 text-warn">{failed}</p>}
 
