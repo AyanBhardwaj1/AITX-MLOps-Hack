@@ -16,9 +16,23 @@ await suite("settings", async ({ browser, step }) => {
     await p.waitForURL(`${APP}/app/settings`);
   });
   await step("renaming the company shows on the dashboard", async () => {
-    await p.getByLabel("Company name").fill("Acme Robotics");
+    // A blank name: the error is tied to the field, which takes focus.
+    const nameField = p.getByLabel("Company name");
+    await nameField.fill("   ");
+    await p.getByRole("button", { name: "Save name" }).click();
+    await p.getByText("Enter a name of 1 to 80 characters.").waitFor();
+    assert.equal(await nameField.getAttribute("aria-invalid"), "true");
+    assert.equal(await nameField.evaluate((el) => el === document.activeElement), true);
+    await nameField.fill("Acme Robotics");
+    assert.equal(await nameField.getAttribute("aria-invalid"), null);
     await p.getByRole("button", { name: "Save name" }).click();
     await p.getByText("Saved.").waitFor();
+    // Focus stays on the button (it isn't disabled out from under the keyboard).
+    assert.equal(await p.evaluate(() => document.activeElement?.textContent), "Save name");
+    // Editing again clears the old "Saved."
+    await nameField.fill("Acme Robotics Inc");
+    assert.equal(await p.getByText("Saved.").count(), 0);
+    await nameField.fill("Acme Robotics");
     await uploadSample(p);
     await p.goto(`${APP}/app?mode=company`);
     await p.getByText("Acme Robotics · your uploaded exports").waitFor();

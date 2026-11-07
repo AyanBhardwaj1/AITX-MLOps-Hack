@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 /** The company's own Slack for its Monday digest and budget alerts: the owner connects or removes it; others see the state. */
 export function SlackPanel({ owner, initial }: { owner: boolean; initial: { connected: boolean; hint: string | null } }) {
@@ -10,16 +10,26 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
+  const input = useRef<HTMLInputElement>(null);
+
   async function save(next: string | null) {
+    if (busy) return;
+    if (next === null && !window.confirm("Disconnect Slack? The Monday digest and alerts stop until you connect a channel again.")) return;
     setBusy(true);
     setMessage(null);
     const res = await fetch("/api/company/slack", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: next }) }).catch(() => null);
     const body = (await res?.json().catch(() => null)) as { error?: string } | null;
     setBusy(false);
-    if (!res?.ok) return setMessage({ tone: "error", text: body?.error ?? "That didn’t go through. Try again." });
+    if (!res?.ok) {
+      setMessage({ tone: "error", text: body?.error ?? "That didn’t go through. Try again." });
+      if (next !== null) input.current?.focus();
+      return;
+    }
     setState({ connected: next !== null, hint: next ? `…${next.slice(-4)}` : null });
     setUrl("");
     setMessage({ tone: "ok", text: next ? "Connected. A test message is in your channel." : "Disconnected." });
+    // Disconnect's button goes away with the connection: keep the keyboard in the form.
+    if (next === null) input.current?.focus();
   }
 
   return (
@@ -53,22 +63,28 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
               {state.connected ? "Replace the webhook" : "Slack incoming webhook URL"}
             </label>
             <input
+              ref={input}
               id={`${id}-url`}
               type="url"
               required
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                if (message?.tone === "error") setMessage(null);
+              }}
+              aria-invalid={message?.tone === "error" || undefined}
+              aria-describedby={message?.tone === "error" ? `${id}-message` : undefined}
               placeholder="https://hooks.slack.com/services/…"
               autoComplete="off"
               spellCheck={false}
               className="mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:border-brand"
             />
           </div>
-          <button type="submit" disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong disabled:opacity-50">
-            {busy ? "Checking…" : "Connect"}
+          <button type="submit" aria-disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong aria-disabled:opacity-50">
+            {busy ? "Checking…" : state.connected ? "Replace" : "Connect"}
           </button>
           {state.connected && (
-            <button type="button" disabled={busy} onClick={() => void save(null)} className="rounded-lg border border-line px-4 py-2 text-sm text-warn hover:bg-warn-soft disabled:opacity-50">
+            <button type="button" aria-disabled={busy} onClick={() => void save(null)} className="rounded-lg border border-line px-4 py-2 text-sm text-warn hover:bg-warn-soft aria-disabled:opacity-50">
               Disconnect
             </button>
           )}
@@ -79,7 +95,7 @@ export function SlackPanel({ owner, initial }: { owner: boolean; initial: { conn
           In Slack: Apps → Incoming Webhooks → Add to a channel, then paste the URL here. We send a test message before saving it.
         </p>
       )}
-      <p role="status" aria-live="polite" className={`mt-2 text-sm ${message?.tone === "error" ? "text-warn" : "text-muted"}`}>
+      <p id={`${id}-message`} role="status" aria-live="polite" className={`mt-2 text-sm ${message?.tone === "error" ? "text-warn" : "text-muted"}`}>
         {message?.text ?? ""}
       </p>
     </section>

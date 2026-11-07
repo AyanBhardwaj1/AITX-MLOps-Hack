@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { Team } from "@/lib/accounts/types";
 
 async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: string }> {
@@ -18,6 +18,10 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // The invite's refusal ("already invited") belongs to the email field.
+  const [inviteError, setInviteError] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
 
   async function load() {
     const res = await fetch("/api/company/team", { cache: "no-store" }).catch(() => null);
@@ -25,7 +29,9 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
   }
 
   async function act(url: string, body: unknown, done: string) {
+    if (busy) return null;
     setBusy(true);
+    setInviteError(false);
     const r = await post(url, body);
     setBusy(false);
     setMessage(r.ok ? { tone: "ok", text: done } : { tone: "error", text: r.error ?? "That didn’t go through. Try again." });
@@ -41,12 +47,27 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
   async function invite(e: React.FormEvent) {
     e.preventDefault();
     const sent = email.trim();
-    if (await act("/api/company/team", { email: sent }, `Invited ${sent}. Ask them to sign in at ${signInUrl} with that email.`)) setEmail("");
+    const ok = await act("/api/company/team", { email: sent }, `Invited ${sent}. Ask them to sign in at ${signInUrl} with that email.`);
+    if (ok) setEmail("");
+    else if (ok === false) {
+      setInviteError(true);
+      emailInput.current?.focus();
+    }
+  }
+
+  /** Removing a person or an invite takes its row (and the button) away: focus goes to the heading. */
+  async function removeRow(url: string, body: unknown, done: string) {
+    if (await act(url, body, done)) heading.current?.focus();
+  }
+
+  async function removeMember(userId: string, who: string | null) {
+    if (!window.confirm(`Remove ${who ?? "them"} from the team? They lose access to the company's data straight away.`)) return;
+    await removeRow("/api/company/team/remove", { userId }, `Removed ${who ?? "them"}.`);
   }
 
   return (
     <section aria-labelledby={`${id}-team`} className="rounded-xl border border-line bg-panel p-5">
-      <h2 id={`${id}-team`} className="font-semibold">
+      <h2 id={`${id}-team`} ref={heading} tabIndex={-1} className="font-semibold outline-none">
         Team
       </h2>
       <p className="mt-1 text-sm text-muted">Teammates see and work on the same data. Only the owner can rename or delete the company and manage the team.</p>
@@ -63,16 +84,22 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
                 {owner && m.role !== "owner" && (
                   <button
                     type="button"
-                    disabled={busy}
+                    aria-disabled={busy}
                     onClick={() => void makeOwner(m.userId, m.email)}
-                    className="text-brand hover:underline disabled:opacity-50"
+                    className="text-brand hover:underline aria-disabled:opacity-50"
                     aria-label={`Make ${m.email ?? "them"} the owner`}
                   >
                     Make owner
                   </button>
                 )}
                 {owner && m.role !== "owner" && (
-                  <button type="button" disabled={busy} onClick={() => void act("/api/company/team/remove", { userId: m.userId }, `Removed ${m.email ?? "them"}.`)} className="text-warn hover:underline disabled:opacity-50">
+                  <button
+                    type="button"
+                    aria-disabled={busy}
+                    onClick={() => void removeMember(m.userId, m.email)}
+                    className="text-warn hover:underline aria-disabled:opacity-50"
+                    aria-label={`Remove ${m.email ?? "this teammate"}`}
+                  >
                     Remove
                   </button>
                 )}
@@ -85,7 +112,13 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
               <span className="flex shrink-0 items-center gap-3 text-muted">
                 Invited
                 {owner && (
-                  <button type="button" disabled={busy} onClick={() => void act("/api/company/team/revoke", { email: i.email }, `Withdrew the invite for ${i.email}.`)} className="text-warn hover:underline disabled:opacity-50">
+                  <button
+                    type="button"
+                    aria-disabled={busy}
+                    onClick={() => void removeRow("/api/company/team/revoke", { email: i.email }, `Withdrew the invite for ${i.email}.`)}
+                    className="text-warn hover:underline aria-disabled:opacity-50"
+                    aria-label={`Withdraw the invite for ${i.email}`}
+                  >
                     Withdraw
                   </button>
                 )}
@@ -101,24 +134,30 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
               Invite by email
             </label>
             <input
+              ref={emailInput}
               id={`${id}-email`}
               type="email"
               required
               maxLength={254}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setInviteError(false);
+              }}
+              aria-invalid={inviteError || undefined}
+              aria-describedby={inviteError ? `${id}-message` : undefined}
               placeholder="teammate@company.com"
               autoComplete="off"
               spellCheck={false}
               className="mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:border-brand"
             />
           </div>
-          <button type="submit" disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong disabled:opacity-50">
+          <button type="submit" aria-disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong aria-disabled:opacity-50">
             Invite
           </button>
         </form>
       )}
-      <p role="status" aria-live="polite" className={`mt-2 text-sm ${message?.tone === "error" ? "text-warn" : "text-muted"}`}>
+      <p id={`${id}-message`} role="status" aria-live="polite" className={`mt-2 text-sm ${message?.tone === "error" ? "text-warn" : "text-muted"}`}>
         {message?.text ?? ""}
       </p>
     </section>

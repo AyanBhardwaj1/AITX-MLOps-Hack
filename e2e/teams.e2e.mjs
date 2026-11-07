@@ -15,6 +15,14 @@ await suite("teams", async ({ browser, step }) => {
     await owner.getByLabel("Invite by email").fill("teammate@elsewhere.example");
     await owner.getByRole("button", { name: "Invite", exact: true }).click();
     await owner.getByText("Invited teammate@elsewhere.example.").waitFor();
+    // Inviting them again: the refusal is tied to the email field.
+    await owner.getByLabel("Invite by email").fill("teammate@elsewhere.example");
+    await owner.getByRole("button", { name: "Invite", exact: true }).click();
+    await owner.getByText(/They.re already invited\./).waitFor();
+    const field = owner.getByLabel("Invite by email");
+    assert.equal(await field.getAttribute("aria-invalid"), "true");
+    assert.match(await owner.locator(`#${await field.getAttribute("aria-describedby")}`).innerText(), /already invited/);
+    await field.fill("");
   });
   await step("the teammate signs in and sees the owner's company", async () => {
     assert.equal(await signIn(mate, "teammate@elsewhere.example"), true);
@@ -34,8 +42,14 @@ await suite("teams", async ({ browser, step }) => {
   });
   await step("a removed teammate loses access", async () => {
     await owner.goto(`${APP}/app/settings`);
-    await owner.getByRole("button", { name: "Remove" }).click();
+    // Removing asks first; afterwards focus is on the Team heading, not lost with the row.
+    owner.once("dialog", (d) => d.dismiss());
+    await owner.getByRole("button", { name: "Remove teammate@elsewhere.example" }).click();
+    assert.equal(await owner.getByRole("button", { name: "Remove teammate@elsewhere.example" }).count(), 1);
+    owner.once("dialog", (d) => d.accept());
+    await owner.getByRole("button", { name: "Remove teammate@elsewhere.example" }).click();
     await owner.getByText("Removed teammate@elsewhere.example.").waitFor();
+    assert.equal(await owner.evaluate(() => document.activeElement?.textContent), "Team");
     await mate.goto(`${APP}/app?mode=company`);
     await mate.waitForURL(/\/login\?error=invite/, { timeout: 10_000 });
     assert.equal((await mate.request.get(`${APP}/api/export?mode=company&kind=recurring`)).status(), 403);

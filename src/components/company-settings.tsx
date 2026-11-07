@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 type Status = { kind: "idle" } | { kind: "busy" } | { kind: "saved" } | { kind: "error"; message: string };
 
@@ -20,12 +20,18 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
   const [confirm, setConfirm] = useState("");
   const [remove, setRemove] = useState<Status>({ kind: "idle" });
 
+  const nameInput = useRef<HTMLInputElement>(null);
+  // Not `disabled`: a button disabled under the keyboard drops focus to the page.
+  const unchanged = rename.kind === "busy" || draft.trim() === name;
+
   async function saveName(e: React.FormEvent) {
     e.preventDefault();
+    if (unchanged) return;
     setRename({ kind: "busy" });
     const r = await post("/api/company", { name: draft });
     setRename(r.ok ? { kind: "saved" } : { kind: "error", message: r.error ?? "That didn’t save. Try again." });
     if (r.ok) router.refresh();
+    else nameInput.current?.focus();
   }
 
   async function deleteCompany(e: React.FormEvent) {
@@ -46,9 +52,23 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
           Company name
         </label>
         <p className="text-sm text-muted">Shown on your dashboard, drafts, investor updates and share links.</p>
-        <input id={`${id}-name`} value={draft} maxLength={80} required onChange={(e) => setDraft(e.target.value)} className={field} autoComplete="organization" />
+        <input
+          ref={nameInput}
+          id={`${id}-name`}
+          value={draft}
+          maxLength={80}
+          required
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (rename.kind !== "busy") setRename({ kind: "idle" });
+          }}
+          aria-invalid={rename.kind === "error" || undefined}
+          aria-describedby={rename.kind === "error" ? `${id}-name-error` : undefined}
+          className={field}
+          autoComplete="organization"
+        />
         <div className="flex items-center gap-3">
-          <button type="submit" disabled={rename.kind === "busy" || draft.trim() === name} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong disabled:opacity-50">
+          <button type="submit" aria-disabled={unchanged} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-brand">
             {rename.kind === "busy" ? "Saving…" : "Save name"}
           </button>
           <p role="status" className="text-sm text-muted">
@@ -56,7 +76,7 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
           </p>
         </div>
         {rename.kind === "error" && (
-          <p role="alert" className="text-sm text-warn">
+          <p id={`${id}-name-error`} role="alert" className="text-sm text-warn">
             {rename.message}
           </p>
         )}
