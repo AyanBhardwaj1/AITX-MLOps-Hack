@@ -88,6 +88,7 @@ await suite("settings", async ({ browser, step }) => {
     assert.equal(await p.evaluate(() => document.activeElement?.textContent), "Waste found");
     await waste.getByRole("button", { name: /^Show 1 dismissed$/ }).click();
     await waste.getByRole("button", { name: /^Restore: / }).click();
+    assert.equal(await p.evaluate(() => document.activeElement?.textContent), "Waste found");
     await waste.getByRole("button", { name: /dismissed$/ }).waitFor({ state: "detached" });
     await p.getByRole("tab", { name: "Copilot" }).focus();
     await p.keyboard.press("End");

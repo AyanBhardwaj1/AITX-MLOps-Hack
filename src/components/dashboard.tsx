@@ -196,11 +196,10 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
   async function setStatus(id: string, status: FindingStatus) {
     const previous = statuses[id] ?? "open";
     setStatuses((s) => ({ ...s, [id]: status }));
-    if (status === "dismissed") {
-      setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
-      // The row (and the button just pressed) leaves the list: keep focus in the section.
-      document.getElementById("waste-found-title")?.focus({ preventScroll: true });
-    }
+    if (status === "dismissed") setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
+    // Dismissing (or restoring from the dismissed list) takes the pressed button's row away: keep
+    // focus in the section.
+    if (status === "dismissed" || previous === "dismissed") document.getElementById("waste-found-title")?.focus({ preventScroll: true });
     try {
       const res = await fetch("/api/findings", {
         method: "POST",
