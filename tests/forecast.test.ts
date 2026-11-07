@@ -148,3 +148,19 @@ describe("forecastCash", () => {
   });
 });
 
+
+describe("forecastCash with cash already below zero", () => {
+  it("runs out today while the company loses money, matching the headline runway", () => {
+    const f = forecastCash({ cashCents: -1_000_000, history: bumpy, netBurnCents: 8_000_000, asOf: "2026-10-15" });
+    expect(f.runwayMonths).toEqual({ p10: 0, p50: 0, p90: 0 });
+    expect(f.zeroCashDates.p50).toBe("2026-10-15");
+  });
+  it("never runs out while the company makes money, as the headline says", () => {
+    const f = forecastCash({ cashCents: -203_000_000, history: steady.map((m) => ({ ...m, inflowCents: 10_000_000 })), netBurnCents: 0, asOf: "2026-10-15" });
+    expect(f.runwayMonths).toEqual({ p10: Infinity, p50: Infinity, p90: Infinity });
+  });
+  it("never gives a negative runway", () => {
+    for (const cash of [-50_000_000, -1, 0, 1])
+      for (const v of Object.values(forecastCash({ cashCents: cash, history: bumpy, netBurnCents: 8_000_000, asOf: "2026-10-15" }).runwayMonths)) expect(v).toBeGreaterThanOrEqual(0);
+  });
+});

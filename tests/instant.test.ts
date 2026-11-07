@@ -232,3 +232,17 @@ describe("wording follows the data", () => {
     expect(instantAnswer(a, "how_long").text).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
   });
 });
+
+describe("the runway-target answer when nothing burns", () => {
+  const accounts = (cents: number) => [{ id: "chk", account_type: "checking", balance: { amount: cents, currency: "USD" } }] as Parameters<typeof analyze>[0]["accounts"];
+  it("says money in matches money out, not \"-$0/month more comes in\"", () => {
+    const text = instantAnswer(analyze({ accounts: accounts(100_000_00), transactions: [], asOf: "2026-10-15" }), "target_14").text;
+    expect(text).not.toMatch(/-\$0|cash-flow positive/);
+    expect(text).toMatch(/money in matches money out/i);
+  });
+  it("doesn't call cash below zero something that doesn't run out", () => {
+    const text = instantAnswer(analyze({ accounts: accounts(-2_000_000_00), transactions: [], asOf: "2026-10-15" }), "target_14").text;
+    expect(text).not.toMatch(/doesn't run out/);
+    expect(text).toMatch(/below zero/);
+  });
+});

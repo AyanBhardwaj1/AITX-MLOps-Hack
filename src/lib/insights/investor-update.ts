@@ -1,7 +1,7 @@
 import type { MonthHistory } from "../finance/history";
 import { monthlyHistory } from "../finance/history";
 import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
-import { formatDate } from "../format";
+import { formatDate, percentText } from "../format";
 import { formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
 import type { Cents, IsoDate } from "../types";
@@ -41,7 +41,7 @@ const MONTH_NAME = new Intl.DateTimeFormat("en-US", { month: "long", year: "nume
 const SHORT_MONTH = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" });
 const monthName = (m: string) => MONTH_NAME.format(new Date(`${m}-01T00:00:00Z`));
 const shortMonth = (m: string) => SHORT_MONTH.format(new Date(`${m}-01T00:00:00Z`));
-const signedPct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}%`;
+const signedPct = (x: number) => percentText(x, true);
 
 export function investorUpdateInput(a: Analysis, opts: { company: string; verifiedSavingsCents?: Cents }): InvestorUpdateInput {
   const history = monthlyHistory(a.txns, a.asOf, HISTORY_MONTHS);

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { openMonth, shiftMonth } from "../dates";
+import { percentText } from "../format";
 import type { Cents, IsoDate } from "../types";
 import type { MonthHistory } from "./history";
 import { zeroCashDate } from "./runway";
@@ -228,5 +229,5 @@ export function projectScenario(input: ScenarioInput): ScenarioResult {
 export function describeGrowth(rate: number, basis: GrowthEstimate | null): string | null {
   if (basis && basis.months === 0) return null;
   if (basis?.clamped) return rate >= MAX_GROWTH ? `over ${(MAX_GROWTH * 100).toFixed(0)}%/month` : `under ${(MIN_GROWTH * 100).toFixed(0)}%/month`;
-  return `${(rate * 100).toFixed(1)}%/month`;
+  return `${percentText(rate)}/month`;
 }

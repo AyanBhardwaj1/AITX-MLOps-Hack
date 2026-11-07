@@ -65,3 +65,10 @@ export function runwayTrendVerdict(first: { date: string; runwayMonths: number }
   if (delta === 0) return `Runway has held at about ${last.runwayMonths.toFixed(1)} months since ${formatDate(first.date)}.`;
   return `Runway ${delta > 0 ? "grew" : "shrank"} by ${Math.abs(delta).toFixed(1)} months since ${formatDate(first.date)}: ${first.runwayMonths.toFixed(1)} → ${last.runwayMonths.toFixed(1)}.`;
 }
+
+/** A rate as a percentage to one decimal ("1.2%"), never "-0.0%"; `signed` adds "+" when above zero. */
+export function percentText(rate: number, signed = false): string {
+  const fixed = (rate * 100).toFixed(1);
+  const shown = /^-0\.0$/.test(fixed) ? "0.0" : fixed;
+  return `${signed && Number(shown) > 0 ? "+" : ""}${shown}%`;
+}

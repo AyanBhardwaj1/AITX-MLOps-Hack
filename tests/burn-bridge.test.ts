@@ -120,3 +120,21 @@ describe("third review of the bridge", () => {
     expect(b.drivers.reduce((s, d) => s + d.changeCents, 0) + b.otherCents - b.revenueChangeCents).toBe(b.changeCents);
   });
 });
+
+describe("why burn moved: drivers too small to show", () => {
+  it("folds a change that would read $0 into the rest, and still adds up", () => {
+    const b = burnBridge(
+      [
+        txn("x0", "2026-07-15", -1_00, "Seed"),
+        txn("f1", "2026-08-03", -10_00, "Figma"),
+        txn("f2", "2026-09-03", -10_40, "Figma"),
+        txn("a1", "2026-08-05", -500_00, "AWS", "cloud"),
+        txn("a2", "2026-09-05", -900_00, "AWS", "cloud"),
+      ],
+      "2026-10-05",
+    )!;
+    expect(b.drivers.map((d) => d.name)).toEqual(["AWS"]);
+    expect(b.otherCents).toBe(40);
+    expect(b.drivers.reduce((s, d) => s + d.changeCents, 0) + b.otherCents - b.revenueChangeCents).toBe(b.changeCents);
+  });
+});

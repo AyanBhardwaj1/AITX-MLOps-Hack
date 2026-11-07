@@ -169,7 +169,10 @@ export function forecastCash({
     // changes the others: the range is the same on the dashboard, in Copilot and on a share page.
     const rng = createRng(seed * 100_003 + path);
     let cash = cashCents;
-    let runway = Number.POSITIVE_INFINITY;
+    // Cash already at or below zero: out today while the company loses money, never while it makes
+    // money, as the headline runway says. (A path can't run out "before today".)
+    const already = cashCents <= 0 ? (netBurnCents > 0 ? 0 : Number.POSITIVE_INFINITY) : null;
+    let runway = already ?? Number.POSITIVE_INFINITY;
     const pathSlope = slope + spread * slopeSe * (slopeSe ? normal(rng.next) : 0);
     const pathLevel = netBurnCents + spread * levelSe * (levelSe ? normal(rng.next) : 0);
     cashByMonth[0]!.push(cash);
@@ -178,8 +181,8 @@ export function forecastCash({
       const before = cash;
       cash -= net;
       if (m <= horizonMonths) cashByMonth[m]!.push(cash);
-      if (runway === Number.POSITIVE_INFINITY && cash <= 0 && net > 0) runway = m - 1 + before / net;
-      if (runway !== Number.POSITIVE_INFINITY && m >= horizonMonths) break;
+      if (already === null && runway === Number.POSITIVE_INFINITY && cash <= 0 && net > 0) runway = Math.max(0, m - 1 + before / net);
+      if ((runway !== Number.POSITIVE_INFINITY || already !== null) && m >= horizonMonths) break;
     }
     runways.push(runway);
   }

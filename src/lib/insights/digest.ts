@@ -1,7 +1,7 @@
 import { STALE_AFTER_DAYS } from "../freshness";
 import { monthlyHistory } from "../finance/history";
 import { describeGrowth, projectScenario, type ScenarioResult } from "../finance/scenario";
-import { categoryName, formatDate, formatMoney } from "../format";
+import { categoryName, formatDate, formatMoney, percentText } from "../format";
 import type { BudgetRow } from "../finance/budgets";
 import { formatCents, formatDollars } from "../money";
 import type { Analysis } from "../pipeline";
@@ -71,7 +71,7 @@ export function digestInputFromAnalysis(
 type Span = string | { bold: string };
 type Block = { kind: "p"; spans: Span[] } | { kind: "h"; text: string } | { kind: "ul"; items: Span[][] } | { kind: "link"; url: string; text: string };
 
-const pct = (g: number) => `${(g * 100).toFixed(1)}%`;
+const pct = (g: number) => percentText(g);
 
 function verdict(s: DigestInput["scenario"]): Span[] {
   const measured = describeGrowth(s.revenueGrowth, s.growthBasis);

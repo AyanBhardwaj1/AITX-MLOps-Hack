@@ -64,3 +64,14 @@ describe("the Runway over time sentence", () => {
     expect(runwayTrendVerdict({ date: "2026-05-01", runwayMonths: 9.96 }, { date: "2026-10-26", runwayMonths: 12.04 })).toBe("Runway grew by 2.0 months since May 1, 2026: 10.0 → 12.0.");
   });
 });
+
+describe("percentText", () => {
+  it("never prints minus zero", async () => {
+    const { percentText } = await import("@/lib/format");
+    expect(percentText(-0.00001)).toBe("0.0%");
+    expect(percentText(-0.00001, true)).toBe("0.0%");
+    expect(percentText(0.0123, true)).toBe("+1.2%");
+    expect(percentText(-0.0123, true)).toBe("-1.2%");
+    expect(percentText(0.05)).toBe("5.0%");
+  });
+});

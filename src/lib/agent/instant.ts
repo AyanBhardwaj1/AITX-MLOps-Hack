@@ -33,12 +33,22 @@ const months = (n: number | null) => (n === null ? "no end (cash-flow positive)"
 const range = (lo: number | null, hi: number | null) =>
   lo === null && hi === null ? "no end in any simulation (cash-flow positive)" : lo === null || hi === null ? `${lo === null ? "no end" : `${lo.toFixed(1)} months`} to ${hi === null ? "no end" : `${hi.toFixed(1)} months`}` : `${lo.toFixed(1)} to ${hi.toFixed(1)} months`;
 
+/** When cash doesn't run down at today's rate: says why, without "-$0" or "cash below zero doesn't run out". */
+function notBurning(cashCents: number, netBurnCents: number): string {
+  const flow =
+    netBurnCents === 0
+      ? "money in matches money out"
+      : `about ${formatDollars(-netBurnCents)}/month more comes in than goes out`;
+  if (cashCents < 0) return `Cash is below zero (${formatDollars(cashCents)}), and ${flow}${netBurnCents === 0 ? ", so it won't recover at today's rate" : ", so it's climbing back at today's rate"}.`;
+  return `${netBurnCents === 0 ? "Money in matches money out" : `You're cash-flow positive: ${flow}`}, so cash (${formatDollars(cashCents)}) doesn't run out at today's rate.`;
+}
+
 function target14(a: Analysis, dismissed: ReadonlySet<string>): InstantAnswer {
   const plan = planToTarget(a, { targetRunwayMonths: TARGET_MONTHS }, dismissed);
   const snap = getFinancialSnapshot(a);
   const lines = [
     snap.runwayMonths === null
-      ? `You're cash-flow positive: about ${formatDollars(-snap.netBurnCentsPerMonth)}/month more comes in than goes out, so cash (${formatDollars(snap.cashCents)}) doesn't run out at today's rate.`
+      ? notBurning(snap.cashCents, snap.netBurnCentsPerMonth)
       : `You have **${months(snap.runwayMonths)}** of runway today (cash ${formatDollars(snap.cashCents)}, net burn ${formatDollars(snap.netBurnCentsPerMonth)}/month).`,
   ];
   if (plan.chosenFindings.length) {

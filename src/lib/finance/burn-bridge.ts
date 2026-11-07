@@ -80,7 +80,9 @@ export function burnBridge(txns: readonly EnrichedTxn[], asOf: IsoDate, { top = 
     }))
     .filter((d) => d.changeCents !== 0)
     .sort((a, b) => Math.abs(b.changeCents) - Math.abs(a.changeCents) || a.name.localeCompare(b.name));
-  const drivers = changes.slice(0, top);
+  // A change under 50 cents would read "$0": it goes in with the rest.
+  const drivers = changes.filter((d) => Math.abs(d.changeCents) >= 50).slice(0, top);
+  const shown = new Set(drivers);
   const netBurnCents = outNow - inNow;
   const previousNetBurnCents = outBefore - inBefore;
   return {
@@ -90,7 +92,7 @@ export function burnBridge(txns: readonly EnrichedTxn[], asOf: IsoDate, { top = 
     previousNetBurnCents,
     changeCents: netBurnCents - previousNetBurnCents,
     drivers,
-    otherCents: changes.slice(top).reduce((s, d) => s + d.changeCents, 0),
+    otherCents: changes.filter((d) => !shown.has(d)).reduce((s, d) => s + d.changeCents, 0),
     revenueChangeCents: inNow - inBefore,
   };
 }

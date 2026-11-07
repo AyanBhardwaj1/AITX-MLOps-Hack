@@ -48,8 +48,9 @@ export function enrichTransactions({ transactions, vendorLabels, corrections }: 
 
 export function analyze({ accounts, transactions, asOf, vendorLabels, corrections }: AnalyzeInput): Analysis {
   const [txns, mapMs] = timed(() => enrichTransactions({ transactions, vendorLabels, corrections }));
-  const latest = txns.reduce<IsoDate>((max, t) => (t.postedAt > max ? t.postedAt : max), "0000-00-00");
-  const effectiveAsOf = asOf ?? latest;
+  const latest = txns.reduce<IsoDate | null>((max, t) => (max === null || t.postedAt > max ? t.postedAt : max), null);
+  // A feed with nothing usable in it (a new account, or only failed rows) is as of today.
+  const effectiveAsOf = asOf ?? latest ?? new Date().toISOString().slice(0, 10);
   const [snapshot, snapMs] = timed(() => computeSnapshot({ cashCents: cashBalanceCents(accounts), txns, asOf: effectiveAsOf }));
   const [detected, detectMs] = timed(() => {
     // Streams once: the findings are worked out from the same ones.
