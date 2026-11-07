@@ -86,3 +86,12 @@ describe("formatSignedDollars", () => {
     expect(formatSignedDollars(0)).toBe("$0");
   });
 });
+
+describe("categoryLabel", () => {
+  it("capitalises a category standing on its own, keeping AI APIs as written", async () => {
+    const { categoryLabel } = await import("@/lib/format");
+    expect(categoryLabel("software")).toBe("Software");
+    expect(categoryLabel("legal_accounting")).toBe("Legal & accounting");
+    expect(categoryLabel("ai_api")).toBe("AI APIs");
+  });
+});

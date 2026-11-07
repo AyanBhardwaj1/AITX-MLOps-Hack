@@ -474,7 +474,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
                   </a>
                 </div>
               </div>
-              {statusError && <p className="mx-5 mt-3 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{statusError}</p>}
+              {statusError && <p role="alert" className="mx-5 mt-3 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{statusError}</p>}
               {live.length === 0 ? (
                 <p className="px-5 py-8 text-center text-sm text-muted">{data.findings.length ? "Everything here has been dismissed." : "No waste detected in this feed."}</p>
               ) : (

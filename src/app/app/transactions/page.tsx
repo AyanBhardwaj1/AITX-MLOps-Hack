@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { CategoryFix } from "@/components/category-fix";
 import { searchTransactions, parseTxnQuery, type TxnQuery } from "@/lib/finance/transaction-search";
-import { categoryLabel, categoryName, formatDate, formatMoney, formatMonth } from "@/lib/format";
+import { categoryLabel, formatDate, formatMoney, formatMonth } from "@/lib/format";
 import { companyName, sessionUser } from "@/lib/server/company";
 import { loadTransactions, parseMode, type DataMode } from "@/lib/server/data";
 import { enrichTransactions } from "@/lib/pipeline";
