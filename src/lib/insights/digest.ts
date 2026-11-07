@@ -120,7 +120,7 @@ function blocks(d: DigestInput): Block[] {
         : { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: formatDollars(b.netBurnCents) }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
     );
     const items: Span[][] = b.drivers.slice(0, TOP_FINDINGS).map((x) => [`${x.name}${x.kind === "new" ? " (new)" : x.kind === "stopped" ? " (stopped)" : ""}: ${signed(x.changeCents)}`]);
-    if (b.revenueChangeCents) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
+    if (Math.abs(b.revenueChangeCents) >= 50) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
     if (items.length) out.push({ kind: "ul", items });
   }
   if (d.budgets?.length) {

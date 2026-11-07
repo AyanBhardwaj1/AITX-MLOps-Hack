@@ -156,7 +156,7 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
           <button type="button" disabled={busy} onClick={() => void submit(null)} className="rounded-lg border border-line px-3 py-1.5 text-warn hover:bg-warn-soft disabled:opacity-50">
             Remove
           </button>
-          <button type="button" onClick={close} className="px-2 py-1.5 text-muted hover:text-ink">
+          <button type="button" disabled={busy} onClick={close} className="px-2 py-1.5 text-muted hover:text-ink disabled:opacity-50">
             Cancel
           </button>
           {error && (

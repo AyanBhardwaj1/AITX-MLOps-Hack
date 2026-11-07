@@ -16,7 +16,13 @@ export function TimeZoneCookie() {
     }
     if (!zone || zone.length > 64) return;
     const current = document.cookie.split("; ").find((c) => c.startsWith(`${TIME_ZONE_COOKIE}=`))?.slice(TIME_ZONE_COOKIE.length + 1);
-    if (current && decodeURIComponent(current) === zone) return;
+    let saved: string | null = null;
+    try {
+      saved = current ? decodeURIComponent(current) : null;
+    } catch {
+      // Malformed (not written by us): overwrite it below.
+    }
+    if (saved === zone) return;
     const secure = location.protocol === "https:" ? "; secure" : "";
     document.cookie = `${TIME_ZONE_COOKIE}=${encodeURIComponent(zone)}; path=/; max-age=31536000; samesite=lax${secure}`;
     router.refresh();

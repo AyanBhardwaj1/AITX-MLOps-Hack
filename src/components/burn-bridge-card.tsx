@@ -65,7 +65,7 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
                 <td className={`tabular py-1.5 text-right ${bridge.otherCents > 0 ? "text-warn" : "text-brand"}`}>{signed(bridge.otherCents)}</td>
               </tr>
             )}
-            {bridge.revenueChangeCents !== 0 && (
+            {Math.abs(bridge.revenueChangeCents) >= 50 && (
               <tr>
                 <th scope="row" className="py-1.5 text-left font-normal">
                   {bridge.revenueChangeCents > 0 ? "More money in" : "Less money in"}

@@ -185,7 +185,7 @@ export function CorrectionEditor({
       <button type="submit" disabled={busy} className="rounded-md bg-brand px-2.5 py-1 font-medium text-white hover:bg-brand-strong disabled:opacity-60">
         {busy ? "Saving…" : "Save"}
       </button>
-      <button type="button" onClick={close} className="rounded-md px-2 py-1 text-muted hover:text-ink">
+      <button type="button" disabled={busy} onClick={close} className="rounded-md px-2 py-1 text-muted hover:text-ink disabled:opacity-50">
         Cancel
       </button>
       {/* Always present, so screen readers announce the note when it appears; after the buttons, so they don't move. */}

@@ -211,6 +211,8 @@ await suite("accounts", async ({ browser, step }) => {
     await a.goto(`${APP}/app?mode=company`);
     await a.getByRole("button", { name: "Sign out" }).click();
     await a.waitForURL(`${APP}/`);
+    // Signing out also removes the time-zone cookie.
+    assert.equal((await a.context().cookies()).some((c) => c.name === "runway_tz"), false);
     const replay = await browser.newContext();
     await replay.addCookies(cookies);
     assert.equal((await replay.request.get(`${APP}/api/export?mode=company&kind=recurring`)).status(), 401);
