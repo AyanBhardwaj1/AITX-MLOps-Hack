@@ -3,9 +3,18 @@ import type { IsoDate } from "./types";
 const MS_PER_DAY = 86_400_000;
 export const AVG_DAYS_PER_MONTH = 30.4375;
 
+// A company's rows span a few thousand distinct days at most, parsed again and again by the
+// detectors: remember each (bounded, so a long-lived server can't grow it without limit).
+const PARSED = new Map<string, number>();
+const PARSED_MAX = 20_000;
+
 function toUtc(d: IsoDate): number {
+  const hit = PARSED.get(d);
+  if (hit !== undefined) return hit;
   const t = Date.parse(`${d}T00:00:00Z`);
   if (Number.isNaN(t)) throw new Error(`Invalid ISO date: ${d}`);
+  if (PARSED.size >= PARSED_MAX) PARSED.clear();
+  PARSED.set(d, t);
   return t;
 }
 
