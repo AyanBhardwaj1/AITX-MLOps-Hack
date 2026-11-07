@@ -46,13 +46,18 @@ await suite("accounts", async ({ browser, step }) => {
     const fix = a.getByRole("form", { name: "Category for Gusto Payroll" });
     await fix.locator("select").first().selectOption("transfer");
     await fix.getByText(/will count toward burn or runway/).waitFor();
-    await fix.getByRole("button", { name: "Cancel" }).click();
+    // Escape closes the editor and puts focus back on the button that opened it.
+    await a.keyboard.press("Escape");
+    await fix.waitFor({ state: "detached" });
+    assert.equal(await a.evaluate(() => document.activeElement?.getAttribute("aria-label")), "Fix the category for Gusto Payroll");
     // The transactions page's editor says the same before anything is saved.
     await a.goto(`${APP}/app/transactions?mode=demo&vendor=gusto`);
     await a.getByRole("button", { name: "Change Gusto Payroll's category" }).click();
     await a.getByLabel("Category for Gusto Payroll").selectOption("transfer");
     await a.getByText(/will count toward burn or runway/).waitFor();
-    await a.getByRole("button", { name: "Cancel" }).click();
+    await a.keyboard.press("Escape");
+    await a.getByRole("button", { name: "Change Gusto Payroll's category" }).waitFor();
+    assert.equal(await a.evaluate(() => document.activeElement?.textContent), "Change Gusto Payroll's category");
     await a.goto(`${APP}/app?mode=demo`);
     await a.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
     // Jump links: each goes to its section, and the row fits a phone without the page scrolling sideways.

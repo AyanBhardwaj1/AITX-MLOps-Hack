@@ -127,6 +127,12 @@ function BudgetLine({ row, mode, editable, month }: { row: BudgetRow; mode: Data
             if (cents === null || cents === 0) return setError("Enter a monthly amount in dollars, like 5,000.");
             void submit(cents);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              close();
+            }
+          }}
           className="mt-2 flex flex-wrap items-center gap-2 text-sm"
         >
           <label htmlFor={`${id}-amount`} className="sr-only">

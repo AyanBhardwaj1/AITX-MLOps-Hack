@@ -141,7 +141,17 @@ export function CorrectionEditor({
   }
   const errorId = `${id}-error`;
   return (
-    <form onSubmit={save} className="mt-2 flex flex-wrap items-end gap-2 rounded-lg bg-canvas p-2 text-xs" aria-label={`Category for ${vendorName}`}>
+    <form
+      onSubmit={save}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          close();
+        }
+      }}
+      className="mt-2 flex flex-wrap items-end gap-2 rounded-lg bg-canvas p-2 text-xs"
+      aria-label={`Category for ${vendorName}`}
+    >
       <label className="flex flex-col gap-1" htmlFor={`${id}-cat`}>
         <span className="text-muted">Category</span>
         <select

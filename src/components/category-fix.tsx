@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { categoryName, TRANSFER_NOTE } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
 import { CATEGORIES, type Category } from "@/lib/types";
@@ -44,6 +44,18 @@ export function CategoryFix({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const changeButton = useRef<HTMLButtonElement>(null);
+  // Set when the editor closes, so focus returns to "Change" once it's back on the page.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (!editing && refocus.current) {
+      refocus.current = false;
+      changeButton.current?.focus();
+    }
+  }, [editing]);
+  const close = () => {
+    refocus.current = true;
+    setEditing(false);
+  };
 
   async function submit(body: Record<string, unknown>, done: string) {
     setBusy(true);
@@ -51,9 +63,8 @@ export function CategoryFix({
     setBusy(false);
     setMessage(problem ?? done);
     if (problem) return;
-    setEditing(false);
+    close();
     router.refresh();
-    requestAnimationFrame(() => changeButton.current?.focus());
   }
 
   return (
@@ -81,6 +92,12 @@ export function CategoryFix({
             e.preventDefault();
             void submit({ mode, ...categoryChange({ vendorKey, category, job }, original, draft) }, `${vendorName} is now ${categoryName(draft)}.`);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              close();
+            }
+          }}
           className="inline-flex flex-wrap items-center gap-2"
         >
           <label htmlFor={`${id}-category`} className="sr-only">
@@ -106,10 +123,7 @@ export function CategoryFix({
           </button>
           <button
             type="button"
-            onClick={() => {
-              setEditing(false);
-              requestAnimationFrame(() => changeButton.current?.focus());
-            }}
+            onClick={close}
             className="px-1 text-muted hover:text-ink"
           >
             Cancel
