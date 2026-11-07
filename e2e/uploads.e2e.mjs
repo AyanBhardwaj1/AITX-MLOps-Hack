@@ -20,6 +20,8 @@ await suite("uploads", async ({ browser, step }) => {
     assert.match(await p.locator(`#${await cash.getAttribute("aria-describedby")}`).innerText(), /Enter today's total cash/);
     assert.equal(await cash.evaluate((el) => el === document.activeElement), true);
     await cash.fill("500000");
+    // Fixed: the field stops being announced as invalid straight away.
+    assert.equal(await cash.getAttribute("aria-invalid"), null);
     await p.getByRole("button", { name: "Upload and analyse" }).click();
     const files = p.locator('input[type="file"]');
     await p.getByText("Choose at least one export file.").waitFor();

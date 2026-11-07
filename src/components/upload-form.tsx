@@ -409,6 +409,7 @@ export function UploadForm({
             {...invalid("files")}
             name="files"
             type="file"
+            disabled={working}
             accept=".csv,.ofx,.qfx,.qbo,text/csv,application/x-ofx"
             multiple
             onChange={(e) => {
@@ -439,7 +440,7 @@ export function UploadForm({
             className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand"
           />
           {files.length > 0 && (
-            <fieldset className="mt-3 space-y-2">
+            <fieldset className="mt-3 space-y-2" disabled={working}>
               <legend className="text-xs text-muted">
                 Which account is each file from? The same charge on two accounts
                 is kept twice; the same account uploaded again isn&apos;t.
@@ -520,7 +521,11 @@ export function UploadForm({
             inputMode="decimal"
             placeholder="e.g. 950,000…"
             value={cash}
-            onChange={(e) => setCash(e.target.value)}
+            onChange={(e) => {
+              setCash(e.target.value);
+              // Fixed: no longer announced as invalid with the old message.
+              if (state.kind === "error" && state.field === "cash") setState({ kind: "idle" });
+            }}
             className={field}
           />
           <CashFromFiles balances={fromFiles} cash={cash} onUse={setCash} />
