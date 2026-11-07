@@ -109,7 +109,7 @@ function blocks(d: DigestInput): Block[] {
       ? { kind: "ul", items: d.changes.map((c) => [{ bold: c.title }, `: ${c.detail}`]) }
       : { kind: "p", spans: ["Nothing unusual this week."] },
   ];
-  if (d.bridge && d.bridge.changeCents !== 0) {
+  if (d.bridge && Math.abs(d.bridge.changeCents) >= 50) {
     const b = d.bridge;
     const name = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
     const signed = formatSignedDollars;

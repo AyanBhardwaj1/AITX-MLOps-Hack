@@ -138,3 +138,19 @@ describe("why burn moved: drivers too small to show", () => {
     expect(b.drivers.reduce((s, d) => s + d.changeCents, 0) + b.otherCents - b.revenueChangeCents).toBe(b.changeCents);
   });
 });
+
+describe("why burn moved: a change that rounds to $0", () => {
+  it("reads as the same in Copilot's answer, not \"up $0\"", async () => {
+    const { analyze } = await import("@/lib/pipeline");
+    const { instantAnswer } = await import("@/lib/agent/instant");
+    const tx = (id: string, date: string, cents: number) => ({ id, account_id: "chk", account_type: "checking", amount: { amount: cents, currency: "USD" }, status: "settled", posted_at: date + "T12:00:00Z", initiated_at: date + "T12:00:00Z", counterparty_name: "ACME HOSTING", transaction_type: "ach_debit" });
+    const a = analyze({
+      accounts: [{ id: "chk", account_type: "checking", balance: { amount: 50_000_00, currency: "USD" } }] as Parameters<typeof analyze>[0]["accounts"],
+      transactions: [tx("a", "2026-08-15", -1_00), tx("b", "2026-09-05", -1_000_00), tx("c", "2026-10-05", -1_000_30)] as Parameters<typeof analyze>[0]["transactions"],
+      asOf: "2026-11-05",
+    });
+    const text = instantAnswer(a, "burn_moved").text;
+    expect(text).not.toMatch(/up \*\*\$0\*\*/);
+    expect(text).toMatch(/the same as/);
+  });
+});

@@ -10,7 +10,8 @@ const signed = formatSignedDollars;
 export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mode: string | null }) {
   if (!bridge) return null;
   const { month, previous, changeCents } = bridge;
-  const verb = changeCents > 0 ? `up ${formatDollars(changeCents)}` : changeCents < 0 ? `down ${formatDollars(-changeCents)}` : "unchanged";
+  // Under 50 cents either way reads "$0": unchanged.
+  const verb = changeCents >= 50 ? `up ${formatDollars(changeCents)}` : changeCents <= -50 ? `down ${formatDollars(-changeCents)}` : "unchanged";
   // A stopped vendor's transactions are in the month before.
   const txHref = (key: string, stopped: boolean) => `/app/transactions?mode=${mode}&vendor=${encodeURIComponent(key)}&month=${stopped ? previous : month}`;
   return (
@@ -30,7 +31,7 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
           </>
         )}
       </p>
-      {changeCents !== 0 || bridge.drivers.length > 0 ? (
+      {Math.abs(changeCents) >= 50 || bridge.drivers.length > 0 ? (
         <table className="mt-3 w-full text-sm">
           <caption className="sr-only">What changed between {formatMonth(previous)} and {formatMonth(month)}, adding up to the change in net burn</caption>
           <thead className="sr-only">

@@ -36,12 +36,12 @@ const range = (lo: number | null, hi: number | null) =>
 /** When cash doesn't run down at today's rate: says why, without "-$0" or "cash below zero doesn't run out". */
 function notBurning(cashCents: number, netBurnCents: number): string {
   const flow =
-    netBurnCents === 0
+    Math.abs(netBurnCents) < 50
       ? "money in matches money out"
       : `about ${formatDollars(-netBurnCents)}/month more comes in than goes out`;
   // Under 50 cents below zero reads as $0, not "-$0".
-  if (cashCents <= -50) return `Cash is below zero (${formatDollars(cashCents)}), and ${flow}${netBurnCents === 0 ? ", so it won't recover at today's rate" : ", so it's climbing back at today's rate"}.`;
-  return `${netBurnCents === 0 ? "Money in matches money out" : `You're cash-flow positive: ${flow}`}, so cash (${formatDollars(cashCents)}) doesn't run out at today's rate.`;
+  if (cashCents <= -50) return `Cash is below zero (${formatDollars(cashCents)}), and ${flow}${Math.abs(netBurnCents) < 50 ? ", so it won't recover at today's rate" : ", so it's climbing back at today's rate"}.`;
+  return `${Math.abs(netBurnCents) < 50 ? "Money in matches money out" : `You're cash-flow positive: ${flow}`}, so cash (${formatDollars(cashCents)}) doesn't run out at today's rate.`;
 }
 
 function target14(a: Analysis, dismissed: ReadonlySet<string>): InstantAnswer {
@@ -192,7 +192,8 @@ function burnMoved(a: Analysis): InstantAnswer {
   const month = (m: string) => formatDate(`${m}-01`).replace(/ 1, /, " ");
   const signed = formatSignedDollars;
   const head =
-    b.changeCents === 0
+    // A change under 50 cents reads "$0": call it the same.
+    Math.abs(b.changeCents) < 50
       ? `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, the same as ${month(b.previous)}.`
       : `${b.netBurnCents < 0 ? `In ${month(b.month)} more came in than went out: cash-flow positive by **${formatDollars(-b.netBurnCents)}**; net burn was` : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**,`} ${b.changeCents > 0 ? "up" : "down"} **${formatDollars(Math.abs(b.changeCents))}** on ${month(b.previous)}.`;
   const rows = [

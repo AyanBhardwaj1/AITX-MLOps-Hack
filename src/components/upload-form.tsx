@@ -124,6 +124,9 @@ export function UploadForm({
   // Set the moment an upload starts, before any await: a second click while big files are still
   // being read would otherwise start a second upload of the same rows.
   const busy = useRef(false);
+  // Counts file picks (the sample included), so a sample that finishes loading after a newer pick
+  // doesn't replace it.
+  const pick = useRef(0);
   const filesRef = useRef<HTMLInputElement>(null);
   const cashRef = useRef<HTMLInputElement>(null);
 
@@ -190,17 +193,13 @@ export function UploadForm({
 
   /** Puts the fictional demo company's export in the form, for a first look without real data. */
   async function fillSample() {
+    const mine = ++pick.current;
     const { sampleExport } = await import("@/lib/seed/sample-export");
     const sample = sampleExport();
     const file = new File([sample.text], sample.name, { type: "text/csv" });
-    setFiles([
-      {
-        file,
-        account: fileAccountLabel(file.name),
-        flip: false,
-        preview: await previewFile(file),
-      },
-    ]);
+    const preview = await previewFile(file);
+    if (mine !== pick.current) return;
+    setFiles([{ file, account: fileAccountLabel(file.name), flip: false, preview }]);
     const filled = Number(sample.cashDollars).toLocaleString("en-US");
     setCash(filled);
     setSampleCash(filled);
@@ -349,7 +348,7 @@ export function UploadForm({
                         <button
                           type="button"
                           onClick={() => void deleteAccount(a.account)}
-                          disabled={deleting}
+                          disabled={deleting || working}
                           className="text-xs text-warn hover:underline disabled:opacity-50"
                           aria-label={`Delete ${a.account}`}
                         >
@@ -380,7 +379,7 @@ export function UploadForm({
               <button
                 type="button"
                 onClick={() => void deleteAll()}
-                disabled={deleting}
+                disabled={deleting || working}
                 className="rounded-lg border border-line px-4 py-2 text-sm text-warn transition-colors hover:bg-warn-soft disabled:opacity-60"
               >
                 {deleting ? "Deleting…" : "Delete all uploaded data"}
@@ -426,6 +425,8 @@ export function UploadForm({
             multiple
             onChange={(e) => {
               const picked = [...(e.target.files ?? [])];
+              // A sample still loading mustn't land over these.
+              pick.current += 1;
               // Their own files replace the sample: its made-up cash figure and note go with it.
               // (A figure typed since is theirs, and stays.)
               if (sampleChosen) {
@@ -541,7 +542,10 @@ export function UploadForm({
             }}
             className={field}
           />
-          <CashFromFiles balances={fromFiles} cash={cash} onUse={setCash} />
+          <CashFromFiles balances={fromFiles} cash={cash} onUse={(value) => {
+            setCash(value);
+            if (state.kind === "error" && state.field === "cash") setState({ kind: "idle" });
+          }} />
         </div>
         <div className="flex flex-wrap gap-2">
           <button
