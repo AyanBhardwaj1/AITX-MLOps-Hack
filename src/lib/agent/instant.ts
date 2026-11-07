@@ -194,7 +194,9 @@ function burnMoved(a: Analysis): InstantAnswer {
   const head =
     // A change under 50 cents reads "$0": call it the same.
     Math.abs(b.changeCents) < 50
-      ? `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, the same as ${month(b.previous)}.`
+      ? b.netBurnCents < 0
+        ? `In ${month(b.month)} more came in than went out: cash-flow positive by **${formatDollars(-b.netBurnCents)}**, the same as ${month(b.previous)}.`
+        : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**, the same as ${month(b.previous)}.`
       : `${b.netBurnCents < 0 ? `In ${month(b.month)} more came in than went out: cash-flow positive by **${formatDollars(-b.netBurnCents)}**; net burn was` : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**,`} ${b.changeCents > 0 ? "up" : "down"} **${formatDollars(Math.abs(b.changeCents))}** on ${month(b.previous)}.`;
   const rows = [
     ...b.drivers.map((d) => `- ${d.name}${d.kind === "new" ? " (new)" : d.kind === "stopped" ? " (stopped)" : ""}: ${signed(d.changeCents)}`),

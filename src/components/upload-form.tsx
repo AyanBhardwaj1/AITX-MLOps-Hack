@@ -153,6 +153,8 @@ export function UploadForm({
   }
 
   async function save(cashCents: number | null) {
+    // A sample still loading mustn't land in the middle of this upload.
+    pick.current += 1;
     setState({ kind: "working", sent: 0, total: 0 });
     const { rows, notes } = await parseFiles(files);
     if (rows.length === 0)
@@ -550,7 +552,7 @@ export function UploadForm({
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            disabled={working || !storageReady}
+            disabled={working || deleting || !storageReady}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-strong active:translate-y-px disabled:opacity-50"
           >
             {working ? "Uploading…" : "Upload and analyse"}

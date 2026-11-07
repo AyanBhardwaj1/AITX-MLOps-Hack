@@ -10,6 +10,10 @@ import { detectChanges, type Change } from "./changes";
 import type { SavingsSummary } from "./savings";
 import { burnBridge, type BurnBridge } from "../finance/burn-bridge";
 
+/** "up $1,200 on September", or "about the same as September" when it moved by under 50 cents. */
+const moved = (b: { changeCents: number; previous: string }, name: (m: string) => string) =>
+  Math.abs(b.changeCents) < 50 ? `about the same as ${name(b.previous)}` : `${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}`;
+
 /**
  * The Monday digest: runway, the default-alive verdict, what changed, and the waste still open.
  * Built from the same deterministic numbers as the dashboard, then rendered as Markdown (in-app
@@ -109,15 +113,16 @@ function blocks(d: DigestInput): Block[] {
       ? { kind: "ul", items: d.changes.map((c) => [{ bold: c.title }, `: ${c.detail}`]) }
       : { kind: "p", spans: ["Nothing unusual this week."] },
   ];
-  if (d.bridge && Math.abs(d.bridge.changeCents) >= 50) {
+  // Shown when burn moved, or when drivers moved but cancelled out (worth seeing either way).
+  if (d.bridge && (Math.abs(d.bridge.changeCents) >= 50 || d.bridge.drivers.length > 0)) {
     const b = d.bridge;
     const name = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
     const signed = formatSignedDollars;
     out.push(
       { kind: "h", text: "Why burn moved" },
       b.netBurnCents < 0
-        ? { kind: "p", spans: [`In ${name(b.month)} more came in than went out: cash-flow positive by `, { bold: formatDollars(-b.netBurnCents) }, `; net burn ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] }
-        : { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: formatDollars(b.netBurnCents) }, `, ${b.changeCents > 0 ? "up" : "down"} ${formatDollars(Math.abs(b.changeCents))} on ${name(b.previous)}.`] },
+        ? { kind: "p", spans: [`In ${name(b.month)} more came in than went out: cash-flow positive by `, { bold: formatDollars(-b.netBurnCents) }, `; net burn ${moved(b, name)}.`] }
+        : { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: formatDollars(b.netBurnCents) }, `, ${moved(b, name)}.`] },
     );
     const items: Span[][] = b.drivers.slice(0, TOP_FINDINGS).map((x) => [`${x.name}${x.kind === "new" ? " (new)" : x.kind === "stopped" ? " (stopped)" : ""}: ${signed(x.changeCents)}`]);
     if (Math.abs(b.revenueChangeCents) >= 50) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
