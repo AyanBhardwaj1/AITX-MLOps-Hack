@@ -135,3 +135,23 @@ describe("memo facts when acting would end the burn", () => {
     expect(facts.addedMonthsText).toBe("unlimited months");
   });
 });
+
+describe("checkMemoNumbers: amounts and months must be amounts and months from the facts", () => {
+  const dayOf = (asOfText: string) => /^[A-Z][a-z]{2} (\d{1,2}), \d{4}$/.exec(asOfText)![1]!;
+  it("refuses a dollar amount that only matches some other number (a day of the month)", async () => {
+    const run = await runAutopilot({ loadData });
+    const day = dayOf(run.memoFacts.asOfText);
+    expect(run.memoFacts.allowedMoney).not.toContain("$" + day);
+    expect(checkMemoNumbers("As of " + run.memoFacts.asOfText + ", cut $" + day + "/month.", run.memoFacts).ok).toBe(false);
+  });
+  it("refuses a months figure that only matches some other number", async () => {
+    const run = await runAutopilot({ loadData });
+    const day = dayOf(run.memoFacts.asOfText);
+    expect(checkMemoNumbers("As of " + run.memoFacts.asOfText + ", runway is " + day + " months.", run.memoFacts).ok).toBe(false);
+  });
+  it("accepts the facts' own amounts and months, however the memo phrases them", async () => {
+    const f = (await runAutopilot({ loadData })).memoFacts;
+    const text = "Cash is " + f.cashText + "; runway " + f.runwayMonthsText + ", or " + f.newRunwayText + " after the fixes (saving " + f.monthlySavingsText + " a month).";
+    expect(checkMemoNumbers(text, f).ok).toBe(true);
+  });
+});

@@ -91,6 +91,8 @@ export interface AutopilotRun {
 }
 
 const NUMBER_RE = /\d[\d,]*(?:\.\d+)?/g;
+const MONEY_RE = /\$\d[\d,]*(?:\.\d+)?/g;
+const MONTHS_RE = /(\d[\d,]*(?:\.\d+)?)\s+(?:more\s+)?months?\b/gi;
 /** One decimal, rounded as the dashboard shows it (toFixed). */
 const oneDecimal = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "unlimited");
 const normalizeNumber = (token: string) => String(Number(token.replaceAll(",", "")));
@@ -100,8 +102,22 @@ const normalizeNumber = (token: string) => String(Number(token.replaceAll(",", "
  * must appear somewhere in the facts. Anything else is treated as invented.
  */
 export function checkMemoNumbers(text: string, facts: object) {
-  const allowed = new Set([...JSON.stringify(facts).matchAll(NUMBER_RE)].map((m) => normalizeNumber(m[0])));
-  const unsupported = [...text.matchAll(NUMBER_RE)].map((m) => m[0]).filter((tok) => !allowed.has(normalizeNumber(tok)));
+  const source = JSON.stringify(facts);
+  const allowed = new Set([...source.matchAll(NUMBER_RE)].map((m) => normalizeNumber(m[0])));
+  // Stricter for what matters most: a dollar amount must be one of the facts' dollar amounts, and a
+  // months figure one of its months figures, not just any number seen somewhere (a day of the month).
+  const amounts = (s: string) => [...s.matchAll(MONEY_RE)].map((m) => m[0]);
+  const months = (s: string) => [...s.matchAll(MONTHS_RE)].map((m) => m[1]!);
+  const allowedMoney = new Set(amounts(source).map((t) => normalizeNumber(t.slice(1))));
+  const listed = (facts as { allowedMonths?: unknown }).allowedMonths;
+  const allowedMonths = new Set([...months(source), ...(Array.isArray(listed) ? listed.map(String) : [])].map(normalizeNumber));
+  const known = (tok: string) => allowed.has(normalizeNumber(tok));
+  const unsupported = [
+    ...[...text.matchAll(NUMBER_RE)].map((m) => m[0]).filter((tok) => !known(tok)),
+    // (A number already reported above isn't reported twice.)
+    ...amounts(text).filter((tok) => known(tok.slice(1)) && !allowedMoney.has(normalizeNumber(tok.slice(1)))),
+    ...months(text).filter((tok) => known(tok) && !allowedMonths.has(normalizeNumber(tok))).map((tok) => `${tok} months`),
+  ];
   return { ok: unsupported.length === 0, unsupported };
 }
 
