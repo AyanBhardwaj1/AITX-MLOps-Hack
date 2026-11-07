@@ -245,4 +245,8 @@ describe("the runway-target answer when nothing burns", () => {
     expect(text).not.toMatch(/doesn't run out/);
     expect(text).toMatch(/below zero/);
   });
+  it("never shows -$0 for cash a few cents below zero", () => {
+    const text = instantAnswer(analyze({ accounts: accounts(-25), transactions: [], asOf: "2026-10-15" }), "target_14").text;
+    expect(text).not.toMatch(/-\$0\b/);
+  });
 });

@@ -39,7 +39,8 @@ function notBurning(cashCents: number, netBurnCents: number): string {
     netBurnCents === 0
       ? "money in matches money out"
       : `about ${formatDollars(-netBurnCents)}/month more comes in than goes out`;
-  if (cashCents < 0) return `Cash is below zero (${formatDollars(cashCents)}), and ${flow}${netBurnCents === 0 ? ", so it won't recover at today's rate" : ", so it's climbing back at today's rate"}.`;
+  // Under 50 cents below zero reads as $0, not "-$0".
+  if (cashCents <= -50) return `Cash is below zero (${formatDollars(cashCents)}), and ${flow}${netBurnCents === 0 ? ", so it won't recover at today's rate" : ", so it's climbing back at today's rate"}.`;
   return `${netBurnCents === 0 ? "Money in matches money out" : `You're cash-flow positive: ${flow}`}, so cash (${formatDollars(cashCents)}) doesn't run out at today's rate.`;
 }
 
@@ -196,7 +197,7 @@ function burnMoved(a: Analysis): InstantAnswer {
       : `${b.netBurnCents < 0 ? `In ${month(b.month)} more came in than went out: cash-flow positive by **${formatDollars(-b.netBurnCents)}**; net burn was` : `Net burn in ${month(b.month)} was **${formatDollars(b.netBurnCents)}**,`} ${b.changeCents > 0 ? "up" : "down"} **${formatDollars(Math.abs(b.changeCents))}** on ${month(b.previous)}.`;
   const rows = [
     ...b.drivers.map((d) => `- ${d.name}${d.kind === "new" ? " (new)" : d.kind === "stopped" ? " (stopped)" : ""}: ${signed(d.changeCents)}`),
-    ...(b.otherCents ? [`- Everything else: ${signed(b.otherCents)}`] : []),
+    ...(Math.abs(b.otherCents) >= 50 ? [`- Everything else: ${signed(b.otherCents)}`] : []),
     ...(b.revenueChangeCents ? [`- ${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`] : []),
   ];
   return { question: INSTANT_QUESTIONS.burn_moved, tools, text: [head, ...(rows.length ? ["What moved it (these add up to the change):", rows.join("\n")] : [])].join("\n\n") };

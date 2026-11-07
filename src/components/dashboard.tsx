@@ -198,7 +198,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
     if (status === "dismissed") {
       setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
       // The row (and the button just pressed) leaves the list: keep focus in the section.
-      document.getElementById("waste-found-title")?.focus();
+      document.getElementById("waste-found-title")?.focus({ preventScroll: true });
     }
     try {
       const res = await fetch("/api/findings", {

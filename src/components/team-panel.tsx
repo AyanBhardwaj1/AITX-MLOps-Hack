@@ -40,6 +40,7 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
   }
 
   async function makeOwner(userId: string, email: string | null) {
+    if (busy) return;
     if (!window.confirm(`Make ${email ?? "them"} the owner? They'll be able to rename or delete the company and manage the team; you'll stay on as a member.`)) return;
     if (await act("/api/company/team/transfer", { userId }, `${email ?? "They"} now own${email ? "s" : ""} the company.`)) router.refresh();
   }
@@ -61,6 +62,7 @@ export function TeamPanel({ initial, owner, selfId, signInUrl }: { initial: Team
   }
 
   async function removeMember(userId: string, who: string | null) {
+    if (busy) return;
     if (!window.confirm(`Remove ${who ?? "them"} from the team? They lose access to the company's data straight away.`)) return;
     await removeRow("/api/company/team/remove", { userId }, `Removed ${who ?? "them"}.`);
   }

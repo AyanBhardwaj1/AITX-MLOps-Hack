@@ -13,7 +13,9 @@ export function formatCents(cents: Cents): string {
 
 /** $1,235 for headline numbers. */
 export function formatDollars(cents: Cents): string {
-  return USD_WHOLE.format(cents / 100);
+  const text = USD_WHOLE.format(cents / 100);
+  // A few cents below zero rounds to zero dollars: "$0", never "-$0".
+  return text === "-$0" ? "$0" : text;
 }
 
 /**

@@ -12,9 +12,11 @@ await suite("accounts", async ({ browser, step }) => {
     // Nothing hidden inside a scroll box (a screen-reader label) stretches the page past its footer.
     const below = await a.evaluate(() => document.documentElement.scrollHeight - (document.querySelector("footer").getBoundingClientRect().bottom + scrollY));
     assert.ok(below < 40, `page runs ${below}px past the footer`);
-    // The early-access form ties a refused address's error to the email field.
+    // The early-access form ties a refused address's error to the email field. (The browser's own
+    // check is switched off here so the server's refusal is what shows.)
     await a.goto(`${APP}/`);
-    await a.getByLabel("Work email").fill("a=b@acme.com");
+    await a.evaluate(() => (document.querySelector('input[name="email"]').form.noValidate = true));
+    await a.getByLabel("Work email").fill("not-an-email");
     await a.getByRole("button", { name: "Join early access" }).click();
     const email = a.getByLabel("Work email");
     await a.waitForFunction(() => document.querySelector('input[name="email"]')?.getAttribute("aria-invalid") === "true");

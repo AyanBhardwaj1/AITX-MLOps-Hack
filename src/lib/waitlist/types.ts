@@ -13,7 +13,8 @@ const MAX_SOURCE = 40;
 const MAX_HONEYPOT = 500;
 
 export const waitlistInput = z.object({
-  email: z.string().trim().toLowerCase().max(MAX_EMAIL).pipe(z.email()),
+  // The browser's own rule for type="email", so an address the form accepts isn't refused here.
+  email: z.string().trim().toLowerCase().max(MAX_EMAIL).pipe(z.email({ pattern: z.regexes.html5Email })),
   role: z.enum(WAITLIST_ROLES).optional(),
   bank: z.enum(WAITLIST_BANKS).optional(),
   /** Which part of the site the signup came from (e.g. "hero", "grader"). */

@@ -112,7 +112,9 @@ export function UploadForm({
   const [deleting, setDeleting] = useState(false);
   // Remounts the file input after an upload, so it shows nothing chosen and the same file can be picked again.
   const [inputKey, setInputKey] = useState(0);
-  const [sampleChosen, setSampleChosen] = useState(false);
+  // The cash figure the sample filled in, while the sample is chosen.
+  const [sampleCash, setSampleCash] = useState<string | null>(null);
+  const sampleChosen = sampleCash !== null;
 
   // Set the moment an upload starts, before any await: a second click while big files are still
   // being read would otherwise start a second upload of the same rows.
@@ -191,8 +193,10 @@ export function UploadForm({
         preview: await previewFile(file),
       },
     ]);
-    setCash(Number(sample.cashDollars).toLocaleString("en-US"));
-    setSampleChosen(true);
+    const filled = Number(sample.cashDollars).toLocaleString("en-US");
+    setCash(filled);
+    setSampleCash(filled);
+
     setState({ kind: "idle" });
   }
 
@@ -415,9 +419,10 @@ export function UploadForm({
             onChange={(e) => {
               const picked = [...(e.target.files ?? [])];
               // Their own files replace the sample: its made-up cash figure and note go with it.
+              // (A figure typed since is theirs, and stays.)
               if (sampleChosen) {
-                setSampleChosen(false);
-                setCashDraft(null);
+                if (cash === sampleCash) setCashDraft(null);
+                setSampleCash(null);
               }
               setFiles(
                 picked.map((file) => ({

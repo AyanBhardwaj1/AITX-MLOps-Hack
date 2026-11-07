@@ -9,5 +9,7 @@ describe("analyze with nothing usable in the feed", () => {
     expect(a.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(a.findings).toEqual([]);
     expect(a.snapshot.cashCents).toBe(100_000_00);
+    // Not "as of … (latest transaction)": there are none.
+    expect(a.asOfFromData).toBe(false);
   });
 });

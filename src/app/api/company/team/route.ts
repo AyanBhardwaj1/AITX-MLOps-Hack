@@ -10,7 +10,7 @@ import { readJsonCapped } from "@/lib/http-body";
 export const runtime = "nodejs";
 
 const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const body = z.object({ email: z.string().trim().max(254).pipe(z.email()) });
+const body = z.object({ email: z.string().trim().max(254).pipe(z.email({ pattern: z.regexes.html5Email })) });
 
 const MESSAGES = {
   invited: null,

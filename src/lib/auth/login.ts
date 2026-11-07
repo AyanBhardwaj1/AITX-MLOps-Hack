@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const input = z.object({ email: z.string().trim().toLowerCase().max(254).pipe(z.email()) });
+const input = z.object({ email: z.string().trim().toLowerCase().max(254).pipe(z.email({ pattern: z.regexes.html5Email })) });
 
 export type LoginResult = { status: 200; body: { ok: true } } | { status: 400; body: { error: string } };
 

@@ -21,7 +21,7 @@ export interface Analysis {
 export interface AnalyzeInput {
   accounts: readonly RhoAccount[];
   transactions: readonly RhoTransaction[];
-  /** Defaults to the latest transaction date, so a stale feed still has recent "complete months". */
+  /** Defaults to the latest transaction date, so a stale feed still has recent "complete months" (today when there are none). */
   asOf?: IsoDate;
   /** LLM labels for vendors the catalog doesn't know (see enrich/vendor-labels). */
   vendorLabels?: ReadonlyMap<string, VendorInfo>;
@@ -35,7 +35,7 @@ function timed<T>(fn: () => T): [T, number] {
   return [out, Math.round((performance.now() - start) * 100) / 100];
 }
 
-/** Rho data in, runway and findings out. Pure and deterministic: no network, no LLM. */
+/** Rho data in, runway and findings out. Deterministic given an as-of date (only an empty feed with none reads the clock): no network, no LLM. */
 /**
  * The transactions with their vendors, LLM labels and people's fixes applied: the first step of the
  * analysis, on its own for pages that only list transactions (it skips the costly detection).
@@ -59,7 +59,8 @@ export function analyze({ accounts, transactions, asOf, vendorLabels, correction
   });
   return {
     asOf: effectiveAsOf,
-    asOfFromData: asOf === undefined,
+    // An empty feed is as of today, not of a transaction.
+    asOfFromData: asOf === undefined && latest !== null,
     txns,
     snapshot,
     ...detected,
