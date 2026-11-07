@@ -60,15 +60,21 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
   return data;
 }
 
-/** The signed-in founder's today, in the time zone their browser reported; UTC outside a request. */
-export async function visitorToday(): Promise<string> {
+/** The signed-in founder's time zone, as their browser reported it; undefined outside a request. */
+export async function visitorTimeZone(): Promise<string | undefined> {
   try {
     const { cookies } = await import("next/headers");
     const zone = (await cookies()).get(TIME_ZONE_COOKIE)?.value;
-    return isoDateInZone(zone ? decodeURIComponent(zone) : undefined);
+    return zone ? decodeURIComponent(zone) : undefined;
   } catch {
-    return isoDateInZone(undefined);
+    return undefined;
   }
+}
+
+/** The signed-in founder's today, in the time zone their browser reported; UTC outside a request. */
+export async function visitorToday(): Promise<string> {
+  // isoDateInZone falls back to UTC for a missing or unknown zone.
+  return isoDateInZone(await visitorTimeZone());
 }
 
 /** A company's stored uploads, by its scope. Callers resolve the scope (from the session, or the cron's list). */

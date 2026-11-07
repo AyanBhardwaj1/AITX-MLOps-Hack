@@ -89,3 +89,15 @@ describe("freshness stays put when a scheduled date arrives", () => {
     expect(f).toMatchObject({ stale: true, through: "2026-09-15" });
   });
 });
+
+describe("cashFreshness in the founder's time zone", () => {
+  it("dates the cash by the founder's calendar, so its age isn't a day off", () => {
+    // 08:00 on Nov 1 in Tokyo is still Oct 31 in UTC; on Tokyo's Nov 7 it's 6 days old, not 7.
+    const tokyoNov7 = new Date("2026-11-07T12:00:00Z");
+    expect(cashFreshness("2026-10-31T23:00:00.000Z", tokyoNov7, "Asia/Tokyo")).toEqual({ daysOld: 6, stale: false, enteredOn: "2026-11-01" });
+    // 17:00 on Nov 1 in Los Angeles is Nov 2 in UTC; on LA's Nov 8 it's 7 days old (stale).
+    expect(cashFreshness("2026-11-02T01:00:00.000Z", new Date("2026-11-08T12:00:00Z"), "America/Los_Angeles")).toEqual({ daysOld: 7, stale: true, enteredOn: "2026-11-01" });
+    // No zone: UTC, as before.
+    expect(cashFreshness("2026-10-31T23:00:00.000Z", tokyoNov7)).toMatchObject({ enteredOn: "2026-10-31" });
+  });
+});

@@ -13,7 +13,7 @@ import { parseScenarioParams, scenarioParams } from "@/lib/finance/scenario-link
 import { BUDGET_CATEGORIES, budgetStatus, runwayWithinBudgets, suggestBudgets, type Budget } from "@/lib/finance/budgets";
 import { DEMO_BUDGETS } from "@/lib/seed/demo-budgets";
 import type { Analysis } from "@/lib/pipeline";
-import { loadAnalysis, parseMode, storedFindings, visitorToday, type DataMode } from "@/lib/server/data";
+import { loadAnalysis, parseMode, storedFindings, visitorTimeZone, visitorToday, type DataMode } from "@/lib/server/data";
 import { sameFinding } from "@/lib/agent/tools";
 import { canFileJiraFromApp, canSendSlackFromApp, hasOpenAI, accountsEnabled } from "@/lib/server/env";
 import { scopeFor } from "@/lib/server/scope";
@@ -144,7 +144,7 @@ async function buildData(mode: DataMode): Promise<DashboardData> {
     freshness: mode === "company" ? dataFreshness(a.asOf, new Date(`${await visitorToday()}T12:00:00Z`), dataset.rowsAddedAt, a.txns.map((t) => t.postedAt)) : undefined,
     futureRows: mode === "company" ? dataset.futureRows || undefined : undefined,
     laggingAccounts: mode === "company" ? laggingFor(dataset, a) : undefined,
-    cashFreshness: mode === "company" && dataset.cashEnteredAt ? (cashFreshness(dataset.cashEnteredAt, new Date(`${await visitorToday()}T12:00:00Z`)) ?? undefined) : undefined,
+    cashFreshness: mode === "company" && dataset.cashEnteredAt ? (cashFreshness(dataset.cashEnteredAt, new Date(`${await visitorToday()}T12:00:00Z`), await visitorTimeZone()) ?? undefined) : undefined,
     gettingStarted: await companyProgress(mode, [...statuses.values()].filter((s) => s !== "open").length),
     asOf: a.asOf,
     asOfFromData: a.asOfFromData,

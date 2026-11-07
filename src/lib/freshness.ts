@@ -1,3 +1,4 @@
+import { isoDateInZone } from "./dates";
 import { CASH_ACCOUNT_ID } from "./uploads/rows";
 
 /** How old uploaded data is: past two weeks, runway is drifting from reality and worth a fresh export. */
@@ -35,11 +36,15 @@ export function dataFreshness(latestDate: string, now: Date, uploadedAt?: string
 /** Cash moves faster than transactions: a week-old figure is worth confirming. */
 export const CASH_STALE_AFTER_DAYS = 7;
 
-/** How long ago today's cash was entered (an ISO timestamp), in whole UTC days; null if unreadable. */
-export function cashFreshness(enteredAt: string, now: Date): { daysOld: number; stale: boolean; enteredOn: string } | null {
+/**
+ * How long ago today's cash was entered (an ISO timestamp), in whole days; null if unreadable. With
+ * `timeZone` (the founder's), the day it was entered is their calendar day, to match a `now` that is
+ * their today; without, UTC.
+ */
+export function cashFreshness(enteredAt: string, now: Date, timeZone?: string): { daysOld: number; stale: boolean; enteredOn: string } | null {
   const at = Date.parse(enteredAt);
   if (Number.isNaN(at)) return null;
-  const enteredOn = new Date(at).toISOString().slice(0, 10);
+  const enteredOn = isoDateInZone(timeZone, new Date(at));
   const { daysOld } = dataFreshness(enteredOn, now);
   return { daysOld, stale: daysOld >= CASH_STALE_AFTER_DAYS, enteredOn };
 }
