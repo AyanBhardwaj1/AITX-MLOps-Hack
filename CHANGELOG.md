@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-11-07: Steadier at scale, kinder to keyboards
+
+### Fixed
+
+- **Uploads.** A second click while files were still being read uploaded them twice (and the first
+  upload then said "Saved 0 new"). A file of more than about 120,000 rows crashed the upload form.
+  Missing cash or files now mark that field, tie the message to it and move the cursor there.
+- **Big exports read about twice as fast.** Vendor matching is cached by cleaned descriptor, and the
+  price-change detector no longer slows down on years of weekly charges. Saving a category fix no
+  longer re-runs the whole analysis. The grader refuses files that add up to over 40 MB instead of
+  freezing the tab.
+- **Your time zone.** Rows dated your today count as happened in your own time zone, not UTC's
+  (a cookie holding the zone name, set only once you're signed in; see the privacy page).
+- **Numbers.** With cash already below zero, the forecast range said "-2.0 months"; it now says
+  zero (or never runs out, if the company makes money), like the headline. No "-$0", "−$0" or
+  "-0.0%" anywhere; Why burn moved leaves out vendors whose change rounds to $0. An empty bank feed
+  no longer crashes the analysis.
+- **Sign-in.** "Use a different email" after the link is sent; someone signed in with an address
+  that can't get in can sign out from the notice. Addresses the browser accepts (a=b@acme.com) are
+  accepted.
+- **Investor links.** Revoking asks first and removes the copy box; an expired or revoked link tells
+  the investor so.
+- **Keyboard and screen readers.** Focus stays put after saving, dismissing, removing a teammate or
+  disconnecting Slack; finding and team buttons say what they act on; Escape closes the category and
+  budget editors; Home/End move between agent tabs; errors on settings are tied to their fields;
+  removing a teammate and disconnecting Slack ask first.
+- **Grader.** A slow file read can't bring older files back over a newer pick, and a file that can't
+  be read says so.
+
 ## 2026-11-06: Self-serve companies
 
 Runway now serves many companies from one deployment. A founder signs in with an email link, gets a
