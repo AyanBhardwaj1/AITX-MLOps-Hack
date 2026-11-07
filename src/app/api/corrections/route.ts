@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { accessErrorResponse } from "@/lib/server/errors";
-import { analyze } from "@/lib/pipeline";
+import { enrichTransactions } from "@/lib/pipeline";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { loadDataset } from "@/lib/server/data";
 import { scopeFor } from "@/lib/server/scope";
@@ -52,7 +52,8 @@ export async function POST(request: Request) {
   try {
     const result = await handleCorrection(body, {
       sinkFor: async (mode) => (mode === "demo" ? demo.sink : getStore(await scopeFor(mode))),
-      knownVendorKeys: async (mode) => new Set(analyze(await loadDataset(mode)).txns.map((t) => t.vendor.key)),
+      // Only the vendors are needed: mapping alone, not the whole analysis (seconds on a big company).
+      knownVendorKeys: async (mode) => new Set(enrichTransactions(await loadDataset(mode)).map((t) => t.vendor.key)),
       canWrite: canWriteRealData,
     });
     const res = NextResponse.json(result.body, { status: result.status });
