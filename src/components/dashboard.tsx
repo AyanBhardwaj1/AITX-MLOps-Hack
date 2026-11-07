@@ -1,6 +1,7 @@
 "use client";
 
 import type { DataMode } from "@/lib/modes";
+import { TimeZoneCookie } from "./time-zone-cookie";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -289,6 +290,7 @@ export function Dashboard({ data, notice }: { data: DashboardData; notice?: stri
       </header>
 
       <main id="main" tabIndex={-1} className="outline-none">
+        {data.mode === "company" && <TimeZoneCookie />}
         {notice && (
           <div role="status" className="mb-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-2 text-sm text-warn">
             {notice}

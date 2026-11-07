@@ -13,6 +13,8 @@ import { scopeFor } from "./scope";
 import { getStore } from "./store";
 import { NoCompanyData } from "./errors";
 import { uploadedDataset } from "../uploads/rows";
+import { isoDateInZone } from "../dates";
+import { TIME_ZONE_COOKIE } from "../time-zone-cookie";
 import type { DataMode } from "../modes";
 import type { VendorCorrection } from "../vendors/corrections";
 import { DEMO_CORRECTIONS_COOKIE, decodeDemoCorrections } from "../vendors/demo-cookie";
@@ -45,7 +47,7 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
     return { accounts: demo.accounts, transactions: demo.transactions, asOf: demo.asOf, label: "demo", actedOn: demo.actedOn };
   }
   // The signed-in user's own uploads; scopeFor() throws SignInRequired when nobody is.
-  if (mode === "company") return loadCompanyDataset(await scopeFor("company"));
+  if (mode === "company") return loadCompanyDataset(await scopeFor("company"), await visitorToday());
   await scopeFor("sandbox"); // refuses the env Rho feed once accounts are on
   const e = env();
   assertSafeToServe({ rhoBaseUrl: e.RHO_BASE_URL, appPassword: e.APP_PASSWORD });
@@ -58,11 +60,23 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
   return data;
 }
 
+/** The signed-in founder's today, in the time zone their browser reported; UTC outside a request. */
+async function visitorToday(): Promise<string> {
+  try {
+    const { cookies } = await import("next/headers");
+    const zone = (await cookies()).get(TIME_ZONE_COOKIE)?.value;
+    return isoDateInZone(zone ? decodeURIComponent(zone) : undefined);
+  } catch {
+    return isoDateInZone(undefined);
+  }
+}
+
 /** A company's stored uploads, by its scope. Callers resolve the scope (from the session, or the cron's list). */
-async function loadCompanyDataset(scope: string): Promise<Dataset> {
+async function loadCompanyDataset(scope: string, today: string = isoDateInZone(undefined)): Promise<Dataset> {
   const uploads = await getStore(scope).loadUploads();
   if (!uploads) throw new NoCompanyData();
-  const data = uploadedDataset({ ...uploads, today: new Date().toISOString().slice(0, 10) });
+  // Rows dated after the founder's today (scheduled payments) haven't happened yet.
+  const data = uploadedDataset({ ...uploads, today });
   // Only rows dated after today: nothing has happened yet to analyse, as with no uploads at all.
   if (data.transactions.length === 0) throw new NoCompanyData();
   return { ...data, cashEnteredAt: uploads.cashEnteredAt, rowsAddedAt: uploads.rowsAddedAt, label: "company" };

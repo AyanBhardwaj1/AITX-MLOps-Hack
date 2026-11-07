@@ -53,3 +53,19 @@ export function addMonths(d: IsoDate, n: number): IsoDate {
  * strings at a fraction of the cost, which matters when sorting tens of thousands of transactions.
  */
 export const compareIsoDates = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * Today's date in an IANA time zone (the founder's, from their browser), so a row dated their today
+ * counts as happened. A missing, unknown or oversized zone name falls back to UTC.
+ */
+export function isoDateInZone(timeZone: string | undefined, now: Date = new Date()): IsoDate {
+  if (timeZone && timeZone.length <= 64) {
+    try {
+      // en-CA formats as YYYY-MM-DD.
+      return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    } catch {
+      // Not a zone this runtime knows.
+    }
+  }
+  return now.toISOString().slice(0, 10);
+}

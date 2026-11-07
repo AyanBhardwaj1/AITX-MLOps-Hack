@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TimeZoneCookie } from "@/components/time-zone-cookie";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UploadForm, type UploadSummary } from "@/components/upload-form";
@@ -46,6 +47,7 @@ export default async function UploadPage() {
   const invites = summary ? [] : await pendingInvitesForMe();
   return (
     <main id="main" className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <TimeZoneCookie />
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link href={summary ? "/app?mode=company" : "/"} className="text-muted hover:text-ink">
           ← {summary ? "Dashboard" : "Runway"}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TimeZoneCookie } from "@/components/time-zone-cookie";
 import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { CategoryFix } from "@/components/category-fix";
@@ -72,6 +73,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
   return (
     <main id="main" className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      {mode === "company" && <TimeZoneCookie />}
       <Link href={`/app?mode=${mode}`} className="text-sm text-muted hover:text-ink">
         ← Dashboard
       </Link>

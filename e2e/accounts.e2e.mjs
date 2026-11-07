@@ -183,6 +183,14 @@ await suite("accounts", async ({ browser, step }) => {
     await uploadSample(a);
     await a.goto(`${APP}/app?mode=company`);
     await a.getByText(/· your uploaded exports/).waitFor();
+    // The app remembers the browser's time zone, so "today" for uploaded rows is the founder's own.
+    await a.waitForFunction(() => document.cookie.includes("runway_tz="));
+    // The public demo sets no such cookie.
+    const visitor = await (await browser.newContext()).newPage();
+    await visitor.goto(`${APP}/app?mode=demo`);
+    await visitor.getByText("Taco Robotics, Inc. · synthetic demo data").waitFor();
+    assert.deepEqual((await visitor.context().cookies()).map((c) => c.name), []);
+    await visitor.context().close();
     assert.equal((await a.request.get(`${APP}/api/export?mode=company&kind=recurring`)).status(), 200);
   });
   const b = await (await browser.newContext()).newPage();
