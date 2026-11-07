@@ -63,6 +63,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {company.role === "owner" ? ", the owner of this company." : ", a member of this company."}
       </p>
       {invites.length > 0 && <InvitesPanel invites={invites} currentName={company.name} />}
+      {/* The company's name first; leaving or deleting it last. */}
+      <CompanySettings part="name" name={company.name} owner={company.role === "owner"} />
       <div className="mt-6">
         <TeamPanel initial={await currentTeam()} owner={company.role === "owner"} selfId={user.id} signInUrl={`${await siteOrigin()}/login`} />
       </div>
@@ -88,7 +90,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           Download everything (JSON)
         </a>
       </section>
-      <CompanySettings name={company.name} owner={company.role === "owner"} />
+      <CompanySettings part="rest" name={company.name} owner={company.role === "owner"} />
     </main>
   );
 }

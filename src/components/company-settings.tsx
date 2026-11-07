@@ -12,7 +12,8 @@ async function post(url: string, body: unknown): Promise<{ ok: boolean; error?: 
   return { ok: Boolean(res?.ok), error: json?.error };
 }
 
-export function CompanySettings({ name, owner }: { name: string; owner: boolean }) {
+/** `part`: the name at the top of settings, the rest (data, leave or delete) at the bottom; both by default. */
+export function CompanySettings({ name, owner, part }: { name: string; owner: boolean; part?: "name" | "rest" }) {
   const id = useId();
   const router = useRouter();
   const [draft, setDraft] = useState(name);
@@ -44,9 +45,10 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
   }
 
   const field = "mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm focus-visible:border-brand";
-  if (!owner) return <LeaveCompany />;
+  if (!owner) return part === "name" ? null : <LeaveCompany />;
   return (
     <div className="mt-6 space-y-6">
+      {part !== "rest" && (
       <form onSubmit={(e) => void saveName(e)} className="space-y-3 rounded-xl border border-line bg-panel p-5">
         <label htmlFor={`${id}-name`} className="block font-semibold">
           Company name
@@ -81,7 +83,10 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
           </p>
         )}
       </form>
+      )}
 
+      {part !== "name" && (
+      <>
       <section aria-labelledby={`${id}-data`} className="rounded-xl border border-line bg-panel p-5">
         <h2 id={`${id}-data`} className="font-semibold">
           Your data
@@ -114,6 +119,8 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
           </p>
         )}
       </form>
+      </>
+      )}
     </div>
   );
 }

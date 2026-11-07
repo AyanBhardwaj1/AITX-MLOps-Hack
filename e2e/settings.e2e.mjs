@@ -16,6 +16,13 @@ await suite("settings", async ({ browser, step }) => {
     await p.waitForURL(`${APP}/app/settings`);
   });
   await step("renaming the company shows on the dashboard", async () => {
+    // The company's name comes first on the page, before the team; deleting it comes last.
+    const order = await p.evaluate(() => {
+      const at = (el) => [...document.querySelectorAll("input, h2")].indexOf(el);
+      const h2 = (text) => [...document.querySelectorAll("h2")].find((h) => h.textContent?.trim() === text);
+      return [at(document.querySelector('input[autocomplete="organization"]')), at(h2("Team")), at(h2("Delete this company"))];
+    });
+    assert.ok(order[0] >= 0 && order[0] < order[1] && order[1] < order[2], `order ${order}`);
     // A blank name: the error is tied to the field, which takes focus.
     const nameField = p.getByLabel("Company name");
     await nameField.fill("   ");
