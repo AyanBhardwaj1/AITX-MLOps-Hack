@@ -39,9 +39,11 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Upload and analyse" }).dblclick();
     await p.getByText(/Saved 7 new transactions/).waitFor({ timeout: 20_000 });
     p.off("request", count);
-    assert.equal(posts.length, 1);
+    assert.equal(posts.length, 1, `upload requests sent: ${posts.length}`);
+    // The accounts table fills in when the page refreshes after the upload: wait for it.
+    await p.getByRole("table", { name: "Uploaded accounts" }).locator("tbody tr").nth(2).waitFor({ timeout: 15_000 });
     const rows = await p.getByRole("table", { name: "Uploaded accounts" }).locator("tbody tr").count();
-    assert.equal(rows, 3);
+    assert.equal(rows, 3, `uploaded accounts listed: ${rows}`);
   });
   await step("a positive-charges file: delete its rows, then upload it flipped", async () => {
     await p.setInputFiles('input[type="file"]', FIXTURES + "positive-card.csv");
