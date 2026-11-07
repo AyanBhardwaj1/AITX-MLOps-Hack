@@ -42,7 +42,13 @@ export function GraderPanel() {
     if (!list) return;
     const picked = [...list];
     const tooBig = picked.find((f) => f.size > MAX_FILE_BYTES);
-    if (tooBig) return setError(`${tooBig.name} is over 20 MB. Export a shorter date range.`);
+    if (tooBig) {
+      // Clear what was picked before, so its result can't pass for this file's.
+      setFiles([]);
+      setFileCash(null);
+      setResult(null);
+      return setError(`${tooBig.name} is over 20 MB. Export a shorter date range.`);
+    }
     const read = await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));
     setFiles(read);
     // Bank downloads carry their balances; a file that can't be read says so when grading.

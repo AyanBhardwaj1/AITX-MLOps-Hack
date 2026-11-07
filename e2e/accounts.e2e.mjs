@@ -110,6 +110,11 @@ await suite("accounts", async ({ browser, step }) => {
     assert.equal(lines[0], "Category,Aug 2026,Sep 2026,Oct 2026,Total");
     assert.equal(lines.at(-1), "Net cash flow,-2045,-2045,-2046,-6136");
     assert.deepEqual(sent, []);
+    // A file too big to read clears the last result, so it can't pass for the new file's.
+    await a.setInputFiles('input[type="file"]', { name: "huge.csv", mimeType: "text/csv", buffer: Buffer.alloc(21 * 1024 * 1024, 32) });
+    await a.getByText("huge.csv is over 20 MB. Export a shorter date range.").waitFor();
+    assert.equal(await a.getByRole("button", { name: "Download monthly P&L (CSV)" }).count(), 0);
+    assert.equal(await a.getByRole("button", { name: "Grade my runway" }).isDisabled(), true);
   });
   await step("company pages send a signed-out visitor to sign in; the APIs answer 401", async () => {
     await a.goto(`${APP}/app?mode=company`);
