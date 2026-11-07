@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatCompactDollars, categoryName } from "@/lib/format";
+import { categoryLabel, formatCompactDollars } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
 import type { CategorySpendRow } from "@/lib/finance/category-spend";
 import { formatDollars } from "@/lib/money";
@@ -13,7 +13,7 @@ const RECENT = "#134e4a";
 /** The connecting range, ≥3:1 against the panel. */
 const RANGE = "#64748b";
 
-const label = (c: CategorySpendRow["category"]) => (c === "rest" ? "Everything else" : categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1));
+const label = (c: CategorySpendRow["category"]) => (c === "rest" ? "Everything else" : categoryLabel(c));
 
 function change(r: CategorySpendRow): string {
   if (r.priorCents === 0) return r.recentCents === 0 ? "no change" : "new";

@@ -36,6 +36,12 @@ export const burnBasis = (months: number) => (months === 0 ? "from the days so f
 /** "legal_accounting" → "legal & accounting" */
 export const categoryName = (category: string) => CATEGORY_NAMES[category] ?? category.replaceAll("_", " ");
 
+/** A category as a label on its own (a menu, a column): "Legal & accounting", "AI APIs". */
+export const categoryLabel = (category: string) => {
+  const name = categoryName(category);
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
+
 /** A recurring charge's runway cost in words; "—" when runway already has no end. */
 export function describeRunwayCost(cost: RunwayCost | null): string {
   if (!cost) return "—";

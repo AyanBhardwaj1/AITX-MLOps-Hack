@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { CategoryFix } from "@/components/category-fix";
 import { searchTransactions, parseTxnQuery, type TxnQuery } from "@/lib/finance/transaction-search";
-import { categoryName, formatDate, formatMoney, formatMonth } from "@/lib/format";
+import { categoryLabel, categoryName, formatDate, formatMoney, formatMonth } from "@/lib/format";
 import { companyName, sessionUser } from "@/lib/server/company";
 import { loadTransactions, parseMode, type DataMode } from "@/lib/server/data";
 import { enrichTransactions } from "@/lib/pipeline";
@@ -95,7 +95,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             <option value="">All</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {categoryName(c)}
+                {categoryLabel(c)}
               </option>
             ))}
           </select>
@@ -233,10 +233,10 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                         {" · "}
                         {accountNames.get(t.accountId) ?? t.accountId}
                         {t.cardholder ? ` · ${t.cardholder}` : ""}
-                        <span className="sm:hidden"> · {categoryName(t.vendor.category)}</span>
+                        <span className="sm:hidden"> · {categoryLabel(t.vendor.category)}</span>
                       </span>
                     </td>
-                    <td className="hidden whitespace-nowrap px-2 py-2 align-top text-muted sm:table-cell">{categoryName(t.vendor.category)}</td>
+                    <td className="hidden whitespace-nowrap px-2 py-2 align-top text-muted sm:table-cell">{categoryLabel(t.vendor.category)}</td>
                     <td className={`tabular whitespace-nowrap px-5 py-2 text-right align-top ${t.amountCents > 0 ? "font-medium text-brand-strong" : ""}`}>
                       {t.amountCents > 0 ? `+${formatMoney(t.amountCents)}` : formatMoney(-t.amountCents)}
                     </td>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import type { BudgetRow, BudgetSuggestions } from "@/lib/finance/budgets";
-import { categoryName, formatDate, formatMoney } from "@/lib/format";
+import { categoryLabel, categoryName, formatDate, formatMoney } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
 import { parseDollarsToCents } from "@/lib/money";
 import type { Category } from "@/lib/types";
@@ -39,7 +39,7 @@ function announce(text: string) {
   if (region) region.textContent = text;
 }
 
-const title = (c: Category) => categoryName(c)[0]!.toUpperCase() + categoryName(c).slice(1);
+const title = (c: Category) => categoryLabel(c);
 
 async function save(category: Category, monthlyCents: number | null): Promise<string | null> {
   const res = await fetch("/api/company/budgets", {

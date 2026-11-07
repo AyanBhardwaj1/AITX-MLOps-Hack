@@ -4,7 +4,7 @@ import type { DataMode } from "@/lib/modes";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { categoryName, TRANSFER_NOTE } from "@/lib/format";
+import { categoryLabel, categoryName, TRANSFER_NOTE } from "@/lib/format";
 import { CATEGORIES } from "@/lib/types";
 
 type Mode = DataMode;
@@ -164,7 +164,7 @@ export function CorrectionEditor({
         >
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
-              {categoryName(c)}
+              {categoryLabel(c)}
             </option>
           ))}
         </select>

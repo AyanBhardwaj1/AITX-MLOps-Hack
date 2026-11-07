@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { categoryName, TRANSFER_NOTE } from "@/lib/format";
+import { categoryLabel, categoryName, TRANSFER_NOTE } from "@/lib/format";
 import type { DataMode } from "@/lib/modes";
 import { CATEGORIES, type Category } from "@/lib/types";
 import { categoryChange } from "@/lib/vendors/corrections";
@@ -73,7 +73,7 @@ export function CategoryFix({
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       <span>
-        Category: <span className="font-medium">{categoryName(category)}</span>
+        Category: <span className="font-medium">{categoryLabel(category)}</span>
         {corrected && <span className="ml-1 rounded bg-brand-soft px-1 text-[11px] font-medium text-brand-strong">your fix</span>}
       </span>
       {!editing ? (
@@ -117,7 +117,7 @@ export function CategoryFix({
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {categoryName(c)}
+                {categoryLabel(c)}
               </option>
             ))}
           </select>

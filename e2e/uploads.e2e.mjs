@@ -126,7 +126,7 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByLabel(/^Category for /).selectOption("marketing");
     await p.getByRole("button", { name: "Save" }).click();
     await p.getByText("your fix", { exact: true }).waitFor();
-    await p.getByText(/Category: marketing/).waitFor();
+    await p.getByText(/Category: Marketing/).waitFor();
     // After saving, focus is back on "Change", not lost to the page.
     await p.waitForFunction(() => /^Change .*'s category$/.test(document.activeElement?.textContent ?? ""));
     // Back to what Runway had: that undoes the fix rather than saving a copy of it.
