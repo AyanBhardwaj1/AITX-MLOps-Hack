@@ -18,7 +18,7 @@ export function sampleExport(): SampleExport {
   const demo = generateDemoCompany();
   const rows = demo.transactions
     .filter((t) => t.status === "settled")
-    .map((t) => [(t.posted_at ?? t.initiated_at).slice(0, 10), quote(t.counterparty_name), (t.amount.amount / 100).toFixed(2), t.transaction_type, t.account_id, quote(t.user_full_name ?? "")].join(","));
+    .map((t) => [(t.posted_at ?? t.initiated_at).slice(0, 10), quote(t.counterparty_name), (t.amount.amount / 100).toFixed(2), t.transaction_type, quote(t.account_name ?? t.account_id), quote(t.user_full_name ?? "")].join(","));
   return {
     name: "taco-robotics-sample.csv",
     text: ["Date,Description,Amount,Type,Account,Cardholder", ...rows].join("\n"),

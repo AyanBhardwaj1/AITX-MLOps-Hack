@@ -18,7 +18,7 @@ export function ActivityList({ entries, limit = entries.length, moreHref = null 
         <ol className="mt-3 divide-y divide-line text-sm">
           {shown.map((e, i) => (
             <li key={`${e.at}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2">
-              <span className="min-w-0">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 {/* Isolated, so a right-to-left character in an account name can't reorder the rest of the line. */}
                 <bdi>{e.detail}</bdi>
                 <span className="text-muted">

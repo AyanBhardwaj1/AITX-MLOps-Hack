@@ -102,7 +102,7 @@ export function CompanySettings({ name, owner }: { name: string; owner: boolean 
           signed in and can start again with an empty company.
         </p>
         <label htmlFor={`${id}-confirm`} className="block text-sm font-medium">
-          Type <span className="font-semibold">{name}</span> to confirm
+          Type <span className="font-semibold [overflow-wrap:anywhere]">{name}</span> to confirm
         </label>
         <input id={`${id}-confirm`} value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} autoComplete="off" spellCheck={false} />
         <button type="submit" disabled={remove.kind === "busy" || confirm.trim() !== name} className="rounded-lg border border-warn px-4 py-2 text-sm font-medium text-warn hover:bg-warn-soft disabled:opacity-50">
