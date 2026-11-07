@@ -14,6 +14,7 @@ import { GraderSignup } from "./grader-signup";
 
 const months = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 40 * 1024 * 1024;
 
 /** A sample export of the fictional demo company, so visitors can try the grader without their own data. */
 async function sampleFiles(): Promise<{ files: GraderFile[]; cashDollars: string }> {
@@ -54,6 +55,9 @@ export function GraderPanel() {
     setError(null);
     const tooBig = picked.find((f) => f.size > MAX_FILE_BYTES);
     if (tooBig) return setError(`${tooBig.name} is over 20 MB. Export a shorter date range.`);
+    // Each file is read and graded in this tab: many big ones together would freeze it.
+    if (picked.reduce((sum, f) => sum + f.size, 0) > MAX_TOTAL_BYTES)
+      return setError("These files add up to over 40 MB. Grade fewer at a time, or export a shorter date range.");
     let read: GraderFile[];
     try {
       read = await Promise.all(picked.map(async (f) => ({ name: f.name, text: await f.text() })));

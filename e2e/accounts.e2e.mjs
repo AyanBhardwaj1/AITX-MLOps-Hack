@@ -127,6 +127,10 @@ await suite("accounts", async ({ browser, step }) => {
     // A file too big to read clears the last result, so it can't pass for the new file's.
     await a.setInputFiles('input[type="file"]', { name: "huge.csv", mimeType: "text/csv", buffer: Buffer.alloc(21 * 1024 * 1024, 32) });
     await a.getByText("huge.csv is over 20 MB. Export a shorter date range.").waitFor();
+    // Under 20 MB each, but too much together to read in one tab.
+    const big = (name) => ({ name, mimeType: "text/csv", buffer: Buffer.alloc(15 * 1024 * 1024, 32) });
+    await a.setInputFiles('input[type="file"]', [big("a.csv"), big("b.csv"), big("c.csv")]);
+    await a.getByText(/These files add up to over 40 MB/).waitFor();
     assert.equal(await a.getByRole("button", { name: "Download monthly P&L (CSV)" }).count(), 0);
     assert.equal(await a.getByRole("button", { name: "Grade my runway" }).isDisabled(), true);
   });
