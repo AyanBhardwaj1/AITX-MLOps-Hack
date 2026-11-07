@@ -61,7 +61,7 @@ export async function loadDataset(mode: DataMode): Promise<Dataset> {
 }
 
 /** The signed-in founder's today, in the time zone their browser reported; UTC outside a request. */
-async function visitorToday(): Promise<string> {
+export async function visitorToday(): Promise<string> {
   try {
     const { cookies } = await import("next/headers");
     const zone = (await cookies()).get(TIME_ZONE_COOKIE)?.value;

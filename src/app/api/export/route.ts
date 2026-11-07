@@ -8,7 +8,7 @@ import { cashPnl } from "@/lib/finance/cash-pnl";
 import { streamChunks } from "@/lib/http-stream";
 import { matchingTransactions, parseTxnQuery } from "@/lib/finance/transaction-search";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
-import { loadAnalysis, loadTransactions, storedFindings, type DataMode } from "@/lib/server/data";
+import { loadAnalysis, loadTransactions, storedFindings, visitorToday, type DataMode } from "@/lib/server/data";
 import { companyDataExport } from "@/lib/server/company-data";
 import { scopeFor } from "@/lib/server/scope";
 import { getStore } from "@/lib/server/store";
@@ -34,7 +34,7 @@ async function matchesExport(mode: DataMode, params: URLSearchParams): Promise<N
   return new NextResponse(streamChunks(matchesCsvLines(rows, names)), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="runway-matches-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="runway-matches-${await visitorToday()}.csv"`,
       "Cache-Control": "no-store",
     },
   });
@@ -47,7 +47,7 @@ async function transactionsExport(): Promise<NextResponse> {
   return new NextResponse(streamChunks(uploadsCsvLines(stored.rows)), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="runway-transactions-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="runway-transactions-${await visitorToday()}.csv"`,
       "Cache-Control": "no-store",
     },
   });
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
       return new NextResponse(streamChunks(await companyDataExport()), {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Content-Disposition": `attachment; filename="runway-company-data-${new Date().toISOString().slice(0, 10)}.json"`,
+          "Content-Disposition": `attachment; filename="runway-company-data-${await visitorToday()}.json"`,
           "Cache-Control": "no-store",
         },
       });
