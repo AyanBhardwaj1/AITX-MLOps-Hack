@@ -57,9 +57,29 @@ function matchCatalog(cleaned: string): CatalogEntry | null {
   return hit?.entry ?? null;
 }
 
+/**
+ * Answers by cleaned descriptor: a company's thousands of raw descriptors clean to a few hundred,
+ * and scanning every catalog alias per row was most of the cost of reading a big export. Bounded,
+ * so a long-lived server can't grow it without limit.
+ */
+const RESOLVED = new Map<string, VendorInfo>();
+const RESOLVED_MAX = 50_000;
+
 /** Maps a raw bank descriptor to a vendor. Catalog hits are free; unknowns get a stable fallback key. */
 export function resolveVendor(rawDescriptor: string): VendorInfo {
   const cleaned = cleanDescriptor(rawDescriptor);
+  let hit = RESOLVED.get(cleaned);
+  if (!hit) {
+    if (RESOLVED.size >= RESOLVED_MAX) RESOLVED.clear();
+    hit = resolveCleaned(cleaned);
+    RESOLVED.set(cleaned, hit);
+  }
+  // A copy: callers may change what they're given (a person's category fix), and that must not
+  // change the next answer.
+  return { ...hit };
+}
+
+function resolveCleaned(cleaned: string): VendorInfo {
   const bare = BARE_BRAND.exec(cleaned)?.[1];
   const entry = matchCatalog(cleaned) ?? (bare ? (VENDOR_CATALOG.find((e) => e.key === bare) ?? null) : null);
   if (entry) {

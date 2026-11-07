@@ -117,24 +117,39 @@ const mean = (xs: readonly number[]) => xs.reduce((sum, x) => sum + x, 0) / xs.l
  * True when the bill is better explained by flat price levels than by a steady trend: a price change,
  * not seat or usage growth. One step must cut the unexplained variation of a least-squares line at
  * least in half; a staircase of two steps must cut it to a quarter (it has one more free parameter).
+ * Each segment's error comes from running sums, so three years of weekly charges stay quick.
  */
-function hasPriceStep(amounts: readonly number[]): boolean {
+export function hasPriceStep(amounts: readonly number[]): boolean {
   const n = amounts.length;
   if (n < 3) return false;
   const xMean = (n - 1) / 2;
   const yMean = mean(amounts);
   const slope = amounts.reduce((acc, y, i) => acc + (i - xMean) * (y - yMean), 0) / amounts.reduce((acc, _, i) => acc + (i - xMean) ** 2, 0);
   const lineError = sse(amounts, (i) => yMean + slope * (i - xMean));
-  const flat = (xs: readonly number[]) => sse(xs, () => mean(xs));
+  // Sums of the amounts (exact: integer cents) and of their squared distance from the overall mean
+  // (centred, so the squares stay small enough to subtract accurately).
+  const sum = [0];
+  const sumSq = [0];
+  for (const y of amounts) {
+    sum.push(sum.at(-1)! + y);
+    sumSq.push(sumSq.at(-1)! + (y - yMean) ** 2);
+  }
+  /** Squared error of amounts[i..j) around their own mean. */
+  const flat = (i: number, j: number) => {
+    const centred = sum[j]! - sum[i]! - (j - i) * yMean;
+    return Math.max(0, sumSq[j]! - sumSq[i]! - (centred * centred) / (j - i));
+  };
+  const avg = (i: number, j: number) => (sum[j]! - sum[i]!) / (j - i);
   let oneStep = Number.POSITIVE_INFINITY;
   let twoStep = Number.POSITIVE_INFINITY;
   let rise = 0;
   for (let k = 1; k < n; k++) {
-    const error = flat(amounts.slice(0, k)) + flat(amounts.slice(k));
-    if (error < oneStep) [oneStep, rise] = [error, mean(amounts.slice(k)) / mean(amounts.slice(0, k)) - 1];
-    for (let j = k + 1; j < n; j++) twoStep = Math.min(twoStep, flat(amounts.slice(0, k)) + flat(amounts.slice(k, j)) + flat(amounts.slice(j)));
+    const head = flat(0, k);
+    const error = head + flat(k, n);
+    if (error < oneStep) [oneStep, rise] = [error, avg(k, n) / avg(0, k) - 1];
+    for (let j = k + 1; j < n; j++) twoStep = Math.min(twoStep, head + flat(k, j) + flat(j, n));
   }
-  const overallRise = mean(amounts.slice(-2)) / mean(amounts.slice(0, 2)) - 1;
+  const overallRise = avg(n - 2, n) / avg(0, 2) - 1;
   return (rise >= CREEP_MIN_RATIO && oneStep <= STEP_FIT_RATIO * lineError) || (overallRise >= CREEP_MIN_RATIO && twoStep <= TWO_STEP_FIT_RATIO * lineError);
 }
 

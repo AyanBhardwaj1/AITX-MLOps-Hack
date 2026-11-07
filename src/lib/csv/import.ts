@@ -347,7 +347,8 @@ function rowAmount(cells: readonly string[], m: Mapping): number | null {
 
 /** A bank row's type from its text and sign: own-account moves, card payoffs, then card or bank spend. */
 export function inferTransactionType(description: string, amountCents: number, onCard: boolean): string {
-  if (!isRevenuePayout(description) && INTERNAL_TRANSFER_PATTERN.test(description)) return "internal_transfer";
+  // The cheap pattern first: looking up the vendor for every row was most of the cost of a big file.
+  if (INTERNAL_TRANSFER_PATTERN.test(description) && !isRevenuePayout(description)) return "internal_transfer";
   if (CARD_PAYOFF_PATTERN.test(description)) return "credit_repayment";
   if (onCard) return amountCents < 0 ? "card_debit" : "card_credit";
   return amountCents < 0 ? "ach_debit" : "ach_credit";

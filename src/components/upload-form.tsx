@@ -8,12 +8,8 @@ import { formatDate } from "@/lib/format";
 import { formatDollars, parseDollarsToCents } from "@/lib/money";
 import { CashFromFiles } from "./cash-from-files";
 import { CashUpdate } from "./cash-update";
-import {
-  fileAccountLabel,
-  chunkUploadRows,
-  toUploadRows,
-  type UploadRow,
-} from "@/lib/uploads/rows";
+import { MAX_FILE_BYTES, parseFiles } from "@/lib/uploads/parse-files";
+import { fileAccountLabel, chunkUploadRows, type UploadRow } from "@/lib/uploads/rows";
 
 export interface UploadSummary {
   transactions: number;
@@ -34,7 +30,7 @@ export interface UploadSummary {
   }[];
 }
 
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
 /** A chosen file and the account its rows belong to (used when the file has no Account column). */
 interface Picked {
   file: File;
@@ -69,44 +65,6 @@ type State =
   | { kind: "done"; inserted: number; duplicates: number; notes: string[] }
   | { kind: "error"; message: string; notes: string[]; field?: "files" | "cash" };
 
-interface Parsed {
-  rows: UploadRow[];
-  notes: string[];
-}
-
-async function parseFiles(files: readonly Picked[]): Promise<Parsed> {
-  const rows: UploadRow[] = [];
-  const notes: string[] = [];
-  for (const { file: f, account, flip } of files) {
-    if (f.size > MAX_FILE_BYTES) {
-      notes.push(
-        `${f.name} is over 20 MB, so it was skipped. Export a shorter date range.`,
-      );
-      continue;
-    }
-    try {
-      const r = importStatement(await f.text(), {
-        accountId: account.trim() || fileAccountLabel(f.name),
-        resolvePayoffs: false,
-        flipSigns: flip,
-      });
-      rows.push(...toUploadRows(r.transactions));
-      if (r.skipped.length > 0)
-        notes.push(
-          `${f.name}: ${r.skipped.length} row${r.skipped.length === 1 ? "" : "s"} couldn't be read and were left out.`,
-        );
-      if (r.mostlyPositive && !flip)
-        notes.push(
-          `${f.name}: most amounts are positive. If this export lists charges as positive numbers, delete "${account.trim() || fileAccountLabel(f.name)}" in the list above, then upload it again with "Charges are positive" ticked.`,
-        );
-    } catch (err) {
-      notes.push(
-        `${f.name}: ${err instanceof Error ? err.message : "couldn't read this file"}`,
-      );
-    }
-  }
-  return { rows, notes };
-}
 
 async function send(
   /** Null keeps the stored figure (the founder didn't change it). */
