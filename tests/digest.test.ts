@@ -116,13 +116,15 @@ describe("why burn moved, in the digest", () => {
     expect(d.markdown).toContain("Why burn moved");
     expect(d.markdown).toContain("Net burn in October was **$51,400**, up $12,500 on September.");
     expect(d.markdown).toContain("- AWS: +$8,100");
+    expect(d.markdown).toContain("- Everything else: +$2,900");
     expect(d.slack).toContain("Smith &amp; &lt;Co&gt; (new): +$1,500");
     // Nothing moved: no section.
     expect(buildDigest({ ...input, bridge: { ...bridge, changeCents: 0, drivers: [] } }).markdown).not.toContain("Why burn moved");
-    // Vendors moved but cancelled out: the section shows them, and says burn held.
-    const even = buildDigest({ ...input, bridge: { ...bridge, changeCents: 30 } }).markdown;
+    // Vendors moved but cancelled out: the section shows them, and the rest that offset them.
+    const even = buildDigest({ ...input, bridge: { ...bridge, changeCents: 30, otherCents: -9_599_70 } }).markdown;
     expect(even).toContain("Net burn in October was **$51,400**, about the same as September.");
     expect(even).toContain("- AWS: +$8,100");
+    expect(even).toContain("- Everything else: −$9,600");
     expect(buildDigest({ ...input, bridge: null }).markdown).not.toContain("Why burn moved");
   });
 });

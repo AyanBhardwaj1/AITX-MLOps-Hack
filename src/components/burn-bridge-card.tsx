@@ -11,7 +11,7 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
   if (!bridge) return null;
   const { month, previous, changeCents } = bridge;
   // Under 50 cents either way reads "$0": unchanged.
-  const verb = changeCents >= 50 ? `up ${formatDollars(changeCents)}` : changeCents <= -50 ? `down ${formatDollars(-changeCents)}` : "unchanged";
+  const verb = changeCents >= 50 ? `up ${formatDollars(changeCents)} on` : changeCents <= -50 ? `down ${formatDollars(-changeCents)} on` : "about the same as";
   // A stopped vendor's transactions are in the month before.
   const txHref = (key: string, stopped: boolean) => `/app/transactions?mode=${mode}&vendor=${encodeURIComponent(key)}&month=${stopped ? previous : month}`;
   return (
@@ -23,11 +23,11 @@ export function BurnBridgeCard({ bridge, mode }: { bridge: BurnBridge | null; mo
         {bridge.netBurnCents < 0 ? (
           <>
             In {formatMonth(month)} more came in than went out: <span className="font-medium text-ink">cash-flow positive</span> by{" "}
-            <span className="tabular font-medium text-ink">{formatDollars(-bridge.netBurnCents)}</span>; net burn {verb} on {formatMonth(previous)}.
+            <span className="tabular font-medium text-ink">{formatDollars(-bridge.netBurnCents)}</span>; net burn {verb} {formatMonth(previous)}.
           </>
         ) : (
           <>
-            Net burn in {formatMonth(month)}: <span className="tabular font-medium text-ink">{formatDollars(bridge.netBurnCents)}</span>, {verb} on {formatMonth(previous)}.
+            Net burn in {formatMonth(month)}: <span className="tabular font-medium text-ink">{formatDollars(bridge.netBurnCents)}</span>, {verb} {formatMonth(previous)}.
           </>
         )}
       </p>

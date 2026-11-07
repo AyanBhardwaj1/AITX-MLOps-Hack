@@ -125,6 +125,9 @@ function blocks(d: DigestInput): Block[] {
         : { kind: "p", spans: [`Net burn in ${name(b.month)} was `, { bold: formatDollars(b.netBurnCents) }, `, ${moved(b, name)}.`] },
     );
     const items: Span[][] = b.drivers.slice(0, TOP_FINDINGS).map((x) => [`${x.name}${x.kind === "new" ? " (new)" : x.kind === "stopped" ? " (stopped)" : ""}: ${signed(x.changeCents)}`]);
+    // The rest (vendors past the top few, and the long tail), so the list adds up to the change.
+    const rest = b.otherCents + b.drivers.slice(TOP_FINDINGS).reduce((s, x) => s + x.changeCents, 0);
+    if (Math.abs(rest) >= 50) items.push([`Everything else: ${signed(rest)}`]);
     if (Math.abs(b.revenueChangeCents) >= 50) items.push([`${b.revenueChangeCents > 0 ? "More" : "Less"} money in: ${signed(-b.revenueChangeCents)}`]);
     if (items.length) out.push({ kind: "ul", items });
   }
