@@ -56,6 +56,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   }
   const { dataset, txns } = loaded;
   const result = searchTransactions(txns, query);
+  // A page past the end (an old link, a hand-edited address) goes to the last page that exists, so
+  // the address and title say which page is shown.
+  if (query.page > result.page) redirect(hrefFor(mode, query, result.page));
   // The filtered vendor as the numbers see it now (with any fix applied), for changing its category.
   const vendor = query.vendor ? txns.find((t) => t.vendor.key === query.vendor)?.vendor : undefined;
   // Before any fix (only worked out when there is one): going back to it undoes the fix.

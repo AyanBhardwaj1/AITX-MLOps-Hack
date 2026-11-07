@@ -102,6 +102,10 @@ await suite("uploads", async ({ browser, step }) => {
     await p.getByRole("button", { name: "Filter" }).click();
     await p.waitForURL(/account=chase/);
     await p.getByRole("heading", { name: "3 transactions match" }).waitFor();
+    // A page past the end goes to the last real page, and the title says so.
+    await p.goto(p.url().replace(/&page=\d+/, "") + "&page=999");
+    await p.waitForURL((u) => !u.searchParams.has("page") || u.searchParams.get("page") === "1");
+    assert.equal(await p.title(), "Transactions · Runway");
     const text = (await p.getByRole("region", { name: "Transactions" }).locator("tbody").innerText()).toUpperCase();
     for (const v of ["AMAZON WEB SERVICES", "FIGMA", "PAYMENT THANK YOU"]) assert.ok(text.includes(v), v);
   });
